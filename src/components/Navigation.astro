@@ -1,0 +1,37 @@
+---
+const userWebsite = Astro.cookies.get("userWebsite");
+---
+
+<nav>
+  <ul class="flex space-x-4">
+    {
+      userWebsite ? (
+        <>
+          <li>
+            <a href="/dashboard" class="text-gray-900 hover:text-gray-700">
+              Dashboard
+            </a>
+          </li>
+          <li>
+            <a href="/user/logout" class="text-gray-900 hover:text-gray-700">
+              Logout
+            </a>
+          </li>
+        </>
+      ) : (
+        <>
+          <li>
+            <a href="/user/login" class="text-gray-900 hover:text-gray-700">
+              Login
+            </a>
+          </li>
+          <li>
+            <a href="/user/signup" class="text-gray-900 hover:text-gray-700">
+              Signup
+            </a>
+          </li>
+        </>
+      )
+    }
+  </ul>
+</nav>
