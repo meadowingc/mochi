@@ -9,6 +9,7 @@
     "astro": "astro"
   },
   "dependencies": {
+    "@astrojs/db": "^0.14.6",
     "@astrojs/node": "^9.0.2",
     "@astrojs/tailwind": "^5.1.5",
     "astro": "^5.1.10",
