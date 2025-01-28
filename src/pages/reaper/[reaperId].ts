@@ -1,5 +1,3 @@
-export const prerender = false;
-
 export async function GET({ params, url: rawUrl, ...request }) {
   // http://localhost:4321/reaper/34?url=${current_url}&path=${path}&referrer=${referrer}
   const { reaperId } = params;

@@ -4,21 +4,34 @@ const User = defineTable({
   columns: {
     id: column.number({ primaryKey: true }),
     website: column.text(),
+    createdAt: column.date(),
   },
 });
 
-const AnalyticsSite = defineTable({
+const Site = defineTable({
   columns: {
     id: column.number({ primaryKey: true }),
-    url: column.text(),
     userId: column.number({ references: () => User.columns.id }),
+    createdAt: column.date(),
+    url: column.text(),
   },
 });
 
-const AnalyticsHit = defineTable({
+const Hit = defineTable({
   columns: {
-    pathname: column.text(),
-    siteId: column.number({ references: () => AnalyticsSite.columns.id }),
+    siteId: column.number({ references: () => Site.columns.id }),
+    path: column.text(),
+    date: column.date(),
+    httpReferer: column.text(),
+    visitorIpHash: column.text(),
+    visidorUserAgentHash: column.text(),
+  },
+});
+
+const VisitingCountry = defineTable({
+  columns: {
+    siteId: column.number({ references: () => Site.columns.id }),
+    countryCode: column.text(),
   },
 });
 
@@ -26,7 +39,8 @@ const AnalyticsHit = defineTable({
 export default defineDb({
   tables: {
     User,
-    AnalyticsSite,
-    AnalyticsHit,
+    Site,
+    Hit,
+    VisitingCountry,
   },
 });

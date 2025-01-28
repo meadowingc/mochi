@@ -1,4 +1,4 @@
-import { db, AnalyticsHit } from "astro:db";
+import { db, Hit } from "astro:db";
 import { defineAction } from "astro:actions";
 import { z } from "astro:schema";
 
@@ -11,10 +11,7 @@ export const hits = {
       body: z.string(),
     }),
     handler: async (input) => {
-      const updatedComments = await db
-        .insert(AnalyticsHit)
-        .values(input)
-        .returning(); // Return the updated comments
+      const updatedComments = await db.insert(Hit).values(input).returning(); // Return the updated comments
       return updatedComments;
     },
   }),

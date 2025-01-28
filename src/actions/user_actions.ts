@@ -18,7 +18,9 @@ export const user = {
 
       if (user.length === 0) {
         // If the user doesn't exist, create them
-        await db.insert(User).values({ website: input.userWebsite });
+        await db
+          .insert(User)
+          .values({ website: input.userWebsite, createdAt: new Date() });
       }
     },
   }),
