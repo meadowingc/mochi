@@ -31,27 +31,43 @@ export const POST: APIRoute = async ({ params, callAction, url, request }) => {
   const pagePath = url.searchParams.get("path");
   const referrer = url.searchParams.get("referrer");
 
+  // try to get the IP from cloudflare headers
+  const cloudflareCountryCode =
+    request.headers.get("CF-IPCountry") || undefined;
+
   const { data: saveSuccess, error: registerHitError } = await callAction(
     actions.hits.registerHit,
     {
       siteId: parseInt(siteId),
       path: pagePath!,
       referer: referrer || undefined,
-      visitorIpHash: "123",
       visitorUserAgentHash: "123",
-      countryCode: "US",
+      countryCode: cloudflareCountryCode,
     }
   );
 
   if (registerHitError) {
     return new Response(`Register hit error: ${registerHitError}`, {
       status: 400,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+      },
     });
   }
 
   if (!saveSuccess) {
-    return new Response("Failed to save hit", { status: 500 });
+    return new Response("Failed to save hit", {
+      status: 500,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+      },
+    });
   }
 
-  return new Response("Hit saved", { status: 200 });
+  return new Response("Hit saved", {
+    status: 200,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+    },
+  });
 };

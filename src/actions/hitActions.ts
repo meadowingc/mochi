@@ -9,9 +9,8 @@ export const hits = {
       date: z.date().optional(),
       path: z.string(),
       referer: z.string().optional(),
-      visitorIpHash: z.string(),
       visitorUserAgentHash: z.string(),
-      countryCode: z.string(),
+      countryCode: z.string().optional(),
     }),
     handler: async (input) => {
       input.date ||= new Date();
@@ -24,7 +23,6 @@ export const hits = {
           path: input.path,
           date: input.date,
           httpReferer: input.referer,
-          visitorIpHash: input.visitorIpHash,
           visitorUserAgentHash: input.visitorUserAgentHash,
           countryCode: input.countryCode,
         })
