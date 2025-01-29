@@ -69,6 +69,7 @@ if (!siteVisits) {
 const countsForPath: { [key: string]: number } = {};
 const countsForReferrer: { [key: string]: number } = {};
 const countsForCountry: { [key: string]: number } = {};
+
 const countsForOS: { [key: string]: number } = {};
 const countsForBrowser: { [key: string]: number } = {};
 const countsForDevice: { [key: string]: number } = {};
@@ -119,6 +120,27 @@ const sortedCountsForReferrer = Object.entries(countsForReferrer)
   }, {});
 
 const sortedCountsForCountry = Object.entries(countsForCountry)
+  .sort(([, a], [, b]) => b - a)
+  .reduce((acc, [key, value]) => {
+    acc[key] = value;
+    return acc;
+  }, {});
+
+const sortedCountsForOS = Object.entries(countsForOS)
+  .sort(([, a], [, b]) => b - a)
+  .reduce((acc, [key, value]) => {
+    acc[key] = value;
+    return acc;
+  }, {});
+
+const sortedCountsForBrowser = Object.entries(countsForBrowser)
+  .sort(([, a], [, b]) => b - a)
+  .reduce((acc, [key, value]) => {
+    acc[key] = value;
+    return acc;
+  }, {});
+
+const sortedCountsForDevice = Object.entries(countsForDevice)
   .sort(([, a], [, b]) => b - a)
   .reduce((acc, [key, value]) => {
     acc[key] = value;
@@ -185,7 +207,7 @@ const sortedCountsForCountry = Object.entries(countsForCountry)
 
   <!-- counts for each country -->
   <PagePathCountTable
-    title="Visits by referrer"
+    title="Visits by country"
     pathToCounts={sortedCountsForCountry}
     siteUrl={dbSite}
     addLinks={false}
@@ -198,7 +220,7 @@ const sortedCountsForCountry = Object.entries(countsForCountry)
   <!-- counts for each OS -->
   <PagePathCountTable
     title="Visits by OS"
-    pathToCounts={countsForOS}
+    pathToCounts={sortedCountsForOS}
     siteUrl={dbSite}
     addLinks={false}
   />
@@ -210,7 +232,19 @@ const sortedCountsForCountry = Object.entries(countsForCountry)
   <!-- counts for each browser -->
   <PagePathCountTable
     title="Visits by browser"
-    pathToCounts={countsForBrowser}
+    pathToCounts={sortedCountsForBrowser}
+    siteUrl={dbSite}
+    addLinks={false}
+  />
+
+  <div class="mt-4">
+    <hr class="my-4 border-t border-gray-200" />
+  </div>
+
+  <!-- counts for each device -->
+  <PagePathCountTable
+    title="Visits by device"
+    pathToCounts={sortedCountsForDevice}
     siteUrl={dbSite}
     addLinks={false}
   />
