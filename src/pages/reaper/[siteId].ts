@@ -1,11 +1,39 @@
 import type { APIRoute } from "astro";
 import { actions } from "astro:actions";
+import { isbot } from "isbot";
 import { UAParser } from "ua-parser-js";
 
 // This can be embedded as
 // http://localhost:4321/reaper/embed/QWFQWFw.js
 export const POST: APIRoute = async ({ params, callAction, url, request }) => {
   // TODO: this should only be accessible from the origin of the site registered by the user
+
+  const currentDomain = url.searchParams.get("url");
+  const pagePath = url.searchParams.get("path");
+  const referrer = url.searchParams.get("referrer");
+
+  // try to get the IP from cloudflare headers
+  const cloudflareCountryCode =
+    request.headers.get("CF-IPCountry") || undefined;
+
+  // parse user agent
+  const userAgent = request.headers.get("User-Agent");
+
+  if (isbot(userAgent)) {
+    return new Response("Bot detected", { status: 200 });
+  }
+
+  let os: string | undefined = undefined;
+  let deviceType: string | undefined = undefined;
+  let browser: string | undefined = undefined;
+
+  if (userAgent) {
+    const parser = new UAParser(userAgent);
+    const result = parser.getResult();
+    os = result.os.name;
+    deviceType = result.device.type;
+    browser = result.browser.name;
+  }
 
   const { siteId } = params;
 
@@ -26,29 +54,6 @@ export const POST: APIRoute = async ({ params, callAction, url, request }) => {
 
   if (!site) {
     return new Response("Site not found", { status: 404 });
-  }
-
-  const currentDomain = url.searchParams.get("url");
-  const pagePath = url.searchParams.get("path");
-  const referrer = url.searchParams.get("referrer");
-
-  // try to get the IP from cloudflare headers
-  const cloudflareCountryCode =
-    request.headers.get("CF-IPCountry") || undefined;
-
-  // parse user agent
-  const userAgent = request.headers.get("User-Agent");
-
-  let os: string | undefined = undefined;
-  let deviceType: string | undefined = undefined;
-  let browser: string | undefined = undefined;
-
-  if (userAgent) {
-    const parser = new UAParser(userAgent);
-    const result = parser.getResult();
-    os = result.os.name;
-    deviceType = result.device.type;
-    browser = result.browser.name;
   }
 
   const { data: saveSuccess, error: registerHitError } = await callAction(
