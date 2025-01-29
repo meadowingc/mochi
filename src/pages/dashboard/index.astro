@@ -1,17 +1,18 @@
 ---
 import { actions } from "astro:actions";
 import Layout from "../../layouts/Layout.astro";
+import { getSession } from "auth-astro/server";
 
-const userWebId = Astro.cookies.get("userWebsite")?.value;
+const session = await getSession(Astro.request);
 
-if (!userWebId) {
+if (!session) {
   return Astro.redirect("/");
 }
 
 const { data: dbUser, error: err1 } = await Astro.callAction(
-  actions.user.getUserByWebsite,
+  actions.user.getUserByEmail,
   {
-    website: userWebId,
+    email: session.user!.email!,
   }
 );
 

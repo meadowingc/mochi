@@ -1,11 +1,14 @@
 ---
-const userWebsite = Astro.cookies.get("userWebsite");
+import { SignOut } from "auth-astro/components";
+import { getSession } from "auth-astro/server";
+const session = await getSession(Astro.request);
+let a = 1;
 ---
 
 <nav>
   <ul class="flex space-x-4">
     {
-      userWebsite ? (
+      session ? (
         <>
           <li>
             <a href="/dashboard" class="text-gray-900 hover:text-gray-700">
@@ -13,9 +16,7 @@ const userWebsite = Astro.cookies.get("userWebsite");
             </a>
           </li>
           <li>
-            <a href="/user/logout" class="text-gray-900 hover:text-gray-700">
-              Logout
-            </a>
+            <SignOut class="text-gray-900 hover:text-gray-700">Logout</SignOut>
           </li>
         </>
       ) : (

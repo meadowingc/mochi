@@ -7,6 +7,8 @@ import tailwind from '@astrojs/tailwind';
 
 import db from '@astrojs/db';
 
+import auth from 'auth-astro';
+
 // https://astro.build/config
 export default defineConfig({
   output: 'server',
@@ -16,5 +18,5 @@ export default defineConfig({
   adapter: node({
     mode: 'standalone'
   }),
-  integrations: [tailwind(), db()]
+  integrations: [tailwind(), db(), auth()]
 });
