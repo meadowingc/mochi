@@ -1,7 +1,9 @@
-import { hits } from "./hit_actions";
-import { user } from "./user_actions";
+import { hits } from "./hitActions";
+import { site } from "./siteActions";
+import { user } from "./userActions";
 
 export const server = {
   hits,
   user,
+  site,
 };

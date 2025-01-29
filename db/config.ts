@@ -22,9 +22,10 @@ const Hit = defineTable({
     siteId: column.number({ references: () => Site.columns.id }),
     path: column.text(),
     date: column.date(),
-    httpReferer: column.text(),
+    httpReferer: column.text({ optional: true }),
     visitorIpHash: column.text(),
-    visidorUserAgentHash: column.text(),
+    visitorUserAgentHash: column.text(),
+    countryCode: column.text(),
   },
 });
 

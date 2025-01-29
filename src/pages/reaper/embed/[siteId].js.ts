@@ -1,11 +1,49 @@
 import type { APIRoute } from "astro";
+import { actions } from "astro:actions";
 
 // This can be embedded as
 // http://localhost:4321/reaper/embed/QWFQWFw.js
-export const GET: APIRoute = async ({ params }) => {
+export const GET: APIRoute = async ({
+  params,
+  callAction,
+  request,
+  ...rest
+}) => {
   // TODO: this should only be accessible from the origin of the site registered by the user
 
   const { siteId } = params;
+
+  if (!siteId) {
+    return new Response("Missing siteId", { status: 400 });
+  }
+
+  const { data: site, error: getSiteError } = await callAction(
+    actions.site.getSiteById,
+    {
+      siteId: parseInt(siteId),
+    }
+  );
+
+  if (getSiteError) {
+    return new Response(`Get site error: ${getSiteError}`, { status: 400 });
+  }
+
+  if (!site) {
+    return new Response("Site not found", { status: 404 });
+  }
+
+  // return 400 if the site requesting the script is not site?.url
+  const siteUrl = new URL(site.url);
+
+  const originRaw =
+    request.headers.get("origin") || request.headers.get("referer");
+
+  if (originRaw && siteUrl.origin !== new URL(originRaw).origin) {
+    return new Response(
+      `Origin '${originRaw}' does not match site origin '${siteUrl.origin}'`,
+      { status: 401 }
+    );
+  }
 
   const currentDomain =
     import.meta.env.MODE === "development"
@@ -50,7 +88,7 @@ export const GET: APIRoute = async ({ params }) => {
 
   return new Response(scriptContent, {
     headers: {
-      "Content-Type": "application/javascript",
+      "Content-Type": "application/javascript; charset=utf-8",
     },
   });
 };

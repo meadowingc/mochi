@@ -1,0 +1,156 @@
+---
+import { actions } from "astro:actions";
+import Layout from "../../../layouts/Layout.astro";
+import PagePathCountTable from "../../../components/PagePathCountTable.astro";
+
+const { siteId } = Astro.params;
+
+if (!siteId || typeof siteId !== "string") {
+  return Astro.redirect("/dashboard");
+}
+
+const { data: dbSite, error } = await Astro.callAction(
+  actions.site.getSiteById,
+  {
+    siteId: Number(siteId),
+  }
+);
+
+if (error) {
+  console.error(error);
+}
+
+if (!dbSite) {
+  return Astro.redirect("/dashboard");
+}
+
+const { data: siteVisits, error: err2 } = await Astro.callAction(
+  actions.hits.getHitsForSite,
+  {
+    siteId: dbSite.id,
+    // minDate: null,
+  }
+);
+
+if (err2) {
+  console.error(err2);
+}
+
+if (!siteVisits) {
+  return Astro.redirect("/dashboard");
+}
+
+const countsForPath: { [key: string]: number } = {};
+const countsForReferrer: { [key: string]: number } = {};
+const countsForCountry: { [key: string]: number } = {};
+
+siteVisits.forEach((visit) => {
+  if (visit.path) {
+    countsForPath[visit.path] = (countsForPath[visit.path] || 0) + 1;
+  }
+
+  if (visit.httpReferer) {
+    countsForReferrer[visit.httpReferer] =
+      (countsForReferrer[visit.httpReferer] || 0) + 1;
+  }
+
+  if (visit.countryCode) {
+    countsForCountry[visit.countryCode] =
+      (countsForCountry[visit.countryCode] || 0) + 1;
+  }
+});
+
+// sort the counts
+const sortedCountsForPath = Object.entries(countsForPath)
+  .sort(([, a], [, b]) => b - a)
+  .reduce((acc, [key, value]) => {
+    acc[key] = value;
+    return acc;
+  }, {});
+
+const sortedCountsForReferrer = Object.entries(countsForReferrer)
+  .sort(([, a], [, b]) => b - a)
+  .reduce((acc, [key, value]) => {
+    acc[key] = value;
+    return acc;
+  }, {});
+
+const sortedCountsForCountry = Object.entries(countsForCountry)
+  .sort(([, a], [, b]) => b - a)
+  .reduce((acc, [key, value]) => {
+    acc[key] = value;
+    return acc;
+  }, {});
+---
+
+<Layout title={`Dashboard - ${dbSite.url}`}>
+  <h1 class="text-2xl font-bold">{dbSite.url}</h1>
+  <hr class="my-4 border-t border-gray-200" />
+
+  <!-- total vists -->
+  <div class="m-4 mb-8">
+    <div class="bg-white shadow-md rounded-lg p-6">
+      <h2 class="text-xl font-bold">Total visits</h2>
+      <p class="mt-2 text-3xl font-semibold text-gray-700">
+        {siteVisits.length}
+      </p>
+    </div>
+  </div>
+
+  <!-- graph of visits -->
+
+  <h2 class="text-xl font-bold">Graph</h2>
+
+  <div class="mt-4">
+    <hr class="my-4 border-t border-gray-200" />
+  </div>
+
+  <!-- counts for each path -->
+  <PagePathCountTable
+    title="Visits by path"
+    pathToCounts={sortedCountsForPath}
+    siteUrl={dbSite}
+  />
+
+  <div class="mt-4">
+    <hr class="my-4 border-t border-gray-200" />
+  </div>
+
+  <!-- counts for each referer and referer for path -->
+  <PagePathCountTable
+    title="Visits by referrer"
+    pathToCounts={sortedCountsForReferrer}
+    siteUrl={dbSite}
+  />
+
+  <div class="mt-4">
+    <hr class="my-4 border-t border-gray-200" />
+  </div>
+
+  <!-- counts for each country -->
+  <div class="mt-4">
+    <h2 class="text-xl font-bold">Visits by country</h2>
+    {
+      Object.keys(sortedCountsForCountry).length === 0 ? (
+        <p>No data</p>
+      ) : (
+        <ul class="mt-2">
+          <li class="flex items-center justify-between py-2 px-4 border-b border-gray-200 bg-white">
+            <span class="font-bold">Path</span>
+            <span class="font-bold">Visits</span>
+          </li>
+          {Object.entries(sortedCountsForCountry).map(
+            ([path, counts], index) => (
+              <li
+                class={`flex items-center justify-between py-2 px-4 border-b border-gray-200 ${index % 2 === 0 ? "bg-gray-100" : "bg-white"}`}
+              >
+                <span>{path}</span>
+                <span>{counts}</span>
+              </li>
+            )
+          )}
+        </ul>
+      )
+    }
+  </div>
+</Layout>

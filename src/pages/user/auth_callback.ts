@@ -1,8 +1,6 @@
 import type { AstroCookies } from "astro";
 import { actions } from "astro:actions";
 
-export const prerender = false;
-
 export async function GET({
   url,
   cookies,
