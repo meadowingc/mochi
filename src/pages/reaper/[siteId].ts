@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { actions } from "astro:actions";
+import { UAParser } from "ua-parser-js";
 
 // This can be embedded as
 // http://localhost:4321/reaper/embed/QWFQWFw.js
@@ -35,14 +36,31 @@ export const POST: APIRoute = async ({ params, callAction, url, request }) => {
   const cloudflareCountryCode =
     request.headers.get("CF-IPCountry") || undefined;
 
+  // parse user agent
+  const userAgent = request.headers.get("User-Agent");
+
+  let os: string | undefined = undefined;
+  let deviceType: string | undefined = undefined;
+  let browser: string | undefined = undefined;
+
+  if (userAgent) {
+    const parser = new UAParser(userAgent);
+    const result = parser.getResult();
+    os = result.os.name;
+    deviceType = result.device.type;
+    browser = result.browser.name;
+  }
+
   const { data: saveSuccess, error: registerHitError } = await callAction(
     actions.hits.registerHit,
     {
       siteId: parseInt(siteId),
       path: pagePath!,
       referer: referrer || undefined,
-      visitorUserAgentHash: "123",
       countryCode: cloudflareCountryCode,
+      visitorOS: os,
+      visitorDeviceType: deviceType,
+      visitorBrowser: browser,
     }
   );
 

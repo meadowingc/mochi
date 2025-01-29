@@ -1,5 +1,5 @@
 ---
-const { pathToCounts, siteUrl, title } = Astro.props;
+const { pathToCounts, siteUrl, title, addLinks } = Astro.props;
 ---
 
 <div class="mt-4">
@@ -18,14 +18,17 @@ const { pathToCounts, siteUrl, title } = Astro.props;
             class={`flex items-center justify-between py-2 px-4 border-b border-gray-200 ${index % 2 === 0 ? "bg-gray-100" : "bg-white"}`}
           >
             <span>
-              <a
-                href={`${siteUrl.url.replace(/\/+$/, "")}/${path.replace(/^\/+/, "")}`}
-                target="_blank"
-                class="text-blue-500 underline"
-                rel="noopener noreferrer"
-              >
-                {path}
-              </a>
+              {addLinks && (
+                <a
+                  href={`${siteUrl.url.replace(/\/+$/, "")}/${path.replace(/^\/+/, "")}`}
+                  target="_blank"
+                  class="text-blue-500 underline"
+                  rel="noopener noreferrer"
+                >
+                  {path}
+                </a>
+              )}
+              {!addLinks && path}
             </span>
             <span>{counts}</span>
           </li>

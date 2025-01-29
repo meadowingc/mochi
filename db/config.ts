@@ -25,7 +25,9 @@ const Hit = defineTable({
     date: column.date(),
     httpReferer: column.text({ optional: true }),
     countryCode: column.text({ optional: true }),
-    visitorUserAgentHash: column.text(),
+    visitorOS: column.text({ optional: true }),
+    visitorDeviceType: column.text({ optional: true }),
+    visitorBrowser: column.text({ optional: true }),
   },
 });
 
