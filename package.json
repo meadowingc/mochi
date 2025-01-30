@@ -16,6 +16,7 @@
     "@auth/core": "^0.37.4",
     "astro": "^5.1.10",
     "auth-astro": "^4.2.0",
+    "chart.js": "^4.4.7",
     "isbot": "^5.1.22",
     "tailwindcss": "^3.4.17",
     "ua-parser-js": "^2.0.0"

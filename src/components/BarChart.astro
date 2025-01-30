@@ -1,0 +1,44 @@
+---
+const { labels, data } = Astro.props;
+---
+
+<canvas
+  id="barChart"
+  width="400"
+  height="200"
+  data-labels={JSON.stringify(labels)}
+  data-data={JSON.stringify(data)}></canvas>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script is:inline>
+  document.addEventListener("DOMContentLoaded", function () {
+    const barChart = document.getElementById("barChart");
+    const ctx = barChart.getContext("2d");
+
+    const labels = JSON.parse(barChart.dataset.labels);
+    const data = JSON.parse(barChart.dataset.data);
+
+    new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: "Visits",
+            data: data,
+            backgroundColor: "rgba(75, 192, 192, 0.2)",
+            borderColor: "rgba(75, 192, 192, 1)",
+            borderWidth: 1,
+          },
+        ],
+      },
+      options: {
+        scales: {
+          y: {
+            beginAtZero: true,
+          },
+        },
+      },
+    });
+  });
+</script>

@@ -3,6 +3,7 @@ import { actions } from "astro:actions";
 import Layout from "../../../layouts/Layout.astro";
 import PagePathCountTable from "../../../components/PagePathCountTable.astro";
 import { getSession } from "auth-astro/server";
+import BarChart from "../../../components/BarChart.astro";
 
 const session = await getSession(Astro.request);
 
@@ -50,11 +51,14 @@ if (dbSite.userId !== dbUser.id) {
   return Astro.redirect("/dashboard");
 }
 
+// min date for the hits is by default 7 days ago
+const minDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
 const { data: siteVisits, error: err2 } = await Astro.callAction(
   actions.hits.getHitsForSite,
   {
     siteId: dbSite.id,
-    // minDate: null,
+    minDate,
   }
 );
 
@@ -146,6 +150,12 @@ const sortedCountsForDevice = Object.entries(countsForDevice)
     acc[key] = value;
     return acc;
   }, {});
+
+const visitsByDay = siteVisits.reduce((acc, visit) => {
+  const date = new Date(visit.date).toLocaleDateString();
+  acc[date] = (acc[date] || 0) + 1;
+  return acc;
+}, {});
 ---
 
 <Layout title={`Dashboard - ${dbSite.url}`}>
@@ -166,7 +176,13 @@ const sortedCountsForDevice = Object.entries(countsForDevice)
   <!-- total vists -->
   <div class="m-4 mb-8">
     <div class="bg-white shadow-md rounded-lg p-6">
-      <h2 class="text-xl font-bold">Total visits</h2>
+      <h2 class="text-xl font-bold">
+        Total visits since: <i
+          >{minDate.getDay()}
+          {minDate.toLocaleString("default", { month: "long" })}
+          {minDate.getFullYear()}
+        </i>
+      </h2>
       <p class="mt-2 text-3xl font-semibold text-gray-700">
         {siteVisits.length}
       </p>
@@ -176,8 +192,10 @@ const sortedCountsForDevice = Object.entries(countsForDevice)
   <!-- graph of visits -->
 
   <h2 class="text-xl font-bold">Graph</h2>
-
-  WIP
+  <BarChart
+    labels={Object.keys(visitsByDay)}
+    data={Object.values(visitsByDay)}
+  />
 
   <div class="mt-4">
     <hr class="my-4 border-t border-gray-200" />
