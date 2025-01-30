@@ -9,8 +9,17 @@ export const POST: APIRoute = async ({ params, callAction, url, request }) => {
   // TODO: this should only be accessible from the origin of the site registered by the user
 
   const currentDomain = url.searchParams.get("url");
-  const pagePath = url.searchParams.get("path");
   const referrer = url.searchParams.get("referrer");
+  let pagePath = url.searchParams.get("path");
+
+  if (pagePath === null) {
+    return new Response("Missing path parameter", { status: 400 });
+  }
+
+  // remove rightmost slash
+  if (pagePath.endsWith("/")) {
+    pagePath = pagePath.slice(0, -1);
+  }
 
   // try to get the IP from cloudflare headers
   const cloudflareCountryCode =
