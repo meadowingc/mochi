@@ -45,10 +45,9 @@ export const GET: APIRoute = async ({
     );
   }
 
-  const currentDomain =
-    import.meta.env.MODE === "development"
-      ? "http://localhost:4321"
-      : "https://mochi.meadow.cafe";
+  const currentDomain = import.meta.env.DEV
+    ? "http://localhost:4321"
+    : "https://mochi.meadow.cafe";
 
   // TODO: these need to be computed from DB for side
   const countryFlags = "🇦🇹🇧🇷🇨🇦🇨🇭🇨🇱🇨🇷🇩🇪🇫🇷🇬🇧🇮🇩🇮🇱🇮🇳🇳🇱🇳🇴🇳🇿🇵🇭🇷🇸🇹🇭🇺🇸";

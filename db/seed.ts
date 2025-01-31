@@ -1,7 +1,7 @@
 import { db, Hit, Site, User } from "astro:db";
 
 export default async function () {
-  if (import.meta.env.MODE === "development") {
+  if (import.meta.env.DEV) {
     await db.insert(User).values([
       {
         id: 1,
