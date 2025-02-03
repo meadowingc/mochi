@@ -2,5 +2,5 @@ package constants
 
 const (
 	APP_NAME       = "mochi"
-	LOCAL_PORT_NUM = "3093"
+	LOCAL_PORT_NUM = "4738"
 )
