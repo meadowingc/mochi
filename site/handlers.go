@@ -1,7 +1,6 @@
 package site
 
 import (
-	"log"
 	"mochi/constants"
 	"mochi/database"
 	"net/http"
@@ -421,10 +420,6 @@ func ReaperPostHit(w http.ResponseWriter, r *http.Request) {
 	var visitorDeviceType *string
 
 	if userAgent != "" {
-		if siteURL.Host == "meadow.cafe" {
-			log.Println("For meadow.cafe, got request with user agent: ", userAgent)
-		}
-
 		ua := useragent.Parse(userAgent)
 
 		if ua.Bot {
