@@ -1,0 +1,40 @@
+{% extends "/layouts/standard.html" %}
+
+{% macro Title %}Embed Instructions{% end %}
+
+{% macro Body %}
+  <h1 class="text-2xl font-bold">{{site.URL}}</h1>
+
+  <!-- embed instructions link -->
+  <div class="mt-2 mb-8">
+    <a href="/dashboard/site/{{site.ID}}" class="text-blue-500 underline">
+      Back to side dashboard
+    </a>
+  </div>
+
+  <hr class="my-4 border-t border-gray-200" />
+
+  <div class="m-4 mb-8">
+    <div class="bg-white shadow-md rounded-lg p-6">
+      <h2 class="text-xl font-bold">Embed instructions</h2>
+      <div class="mt-2 text-gray-700">
+        <p class="mb-2">
+          To embed the analytics script on your site, follow these steps:
+        </p>
+        <p class="mb-4">Copy the script tag below:</p>
+        <code class="bg-gray-100 p-2 rounded-md block">
+          &lt;script src="{{publicURL}}/reaper/embed/{{site.ID}}.js"
+          async&gt;&lt;/script&gt;
+        </code>
+        <p class="mb-2 mt-4">
+          Paste the script tag into the HTML of your website, just before the
+          closing <code>&lt;/body&gt;</code> tag.
+        </p>
+        <p class="mb-4">
+          This will start tracking visits to your site and sending the data to
+          your dashboard.
+        </p>
+      </div>
+    </div>
+  </div>
+{% end %}

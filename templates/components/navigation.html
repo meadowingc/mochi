@@ -1,26 +1,20 @@
 <nav>
   <ul class="flex space-x-4">
-    {
-      session ? (
-        <>
-          <li>
-            <a href="/dashboard" class="text-gray-900 hover:text-gray-700">
-              Dashboard {{now()}}
-            </a>
-          </li>
-          <li>
-            <a href="/auth/logout" class="text-gray-900 hover:text-gray-700">Logout</a>
-          </li>
-        </>
-      ) : (
-        <>
-          <li>
-            <a href="/user/login" class="text-gray-900 hover:text-gray-700">
-              Login
-            </a>
-          </li>
-        </>
-      )
-    }
+    {% if signedInUser == nil %}
+      <li>
+        <a href="/user/login" class="text-gray-900 hover:text-gray-700">
+          Login
+        </a>
+      </li>
+    {% else %}
+      <li>
+        <a href="/dashboard" class="text-gray-900 hover:text-gray-700">
+          Dashboard
+        </a>
+      </li>
+      <li>
+        <a href="/user/logout" class="text-gray-900 hover:text-gray-700">Logout</a>
+      </li>
+    {% end %}
   </ul>
 </nav>

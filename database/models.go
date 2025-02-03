@@ -9,8 +9,7 @@ import (
 
 type User struct {
 	gorm.Model
-	Name         string
-	Email        string `gorm:"uniqueIndex"`
+	Username     string `gorm:"uniqueIndex"`
 	CreatedAt    time.Time
 	PasswordHash datatypes.JSON `gorm:"type:json"`
 	SessionToken string         `gorm:"index;unique"`

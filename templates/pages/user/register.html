@@ -1,11 +1,11 @@
 {% extends "/layouts/standard.html" %}
 
-{% macro Title %}Login{% end %}
+{% macro Title %}Register{% end %}
 
 {% macro Body %}
 <div class="max-w-md mx-auto mt-10 bg-white p-8 rounded-lg shadow-md">
-  <h1 class="text-2xl font-bold mb-6 text-center">Login</h1>
-  <form action="/user/login" method="POST">
+  <h1 class="text-2xl font-bold mb-6 text-center">Register</h1>
+  <form action="/user/register" method="POST">
     <div class="mb-4">
       <label for="username" class="block text-sm font-medium text-gray-700">Username</label>
       <input
@@ -31,17 +31,17 @@
         type="submit"
         class="w-full inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
       >
-        Login
+        Register
       </button>
     </div>
   </form>
   <div class="mt-4 text-center">
-    <p class="text-sm text-gray-600">Don't have an account?</p>
+    <p class="text-sm text-gray-600">Already have an account?</p>
     <a
-      href="/user/register"
+      href="/user/login"
       class="mt-2 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
     >
-      Register
+      Login
     </a>
   </div>
 </div>

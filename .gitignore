@@ -1,8 +1,11 @@
 __astro_back
 
+assets/css/bundled_styles.css
+
 mochi
 mochi.db*
 
 .env
 
+tmp
 node_modules

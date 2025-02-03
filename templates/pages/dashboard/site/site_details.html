@@ -1,0 +1,143 @@
+{% extends "/layouts/standard.html" %}
+
+{% macro Title %}Site Details{% end %}
+
+{% macro Body %}
+
+  {% macro PagePathCountTable(pathToCounts []struct{Key string; Value int}, title string) %}
+    <div class="mt-4">
+      <h2 class="text-xl font-bold">{{ title }}</h2>
+      {% if len(pathToCounts) == 0 %}
+        <p>No data</p>
+      {% else %}
+        <ul class="mt-2">
+          <li class="flex items-center justify-between py-2 px-4 border-b border-gray-200 bg-white">
+            <span class="font-bold">Path</span>
+            <span class="font-bold">Visits</span>
+          </li>
+          {% for path_i, pdata := range pathToCounts %}
+            {% bgColor := "bg-white" %}
+            <li class="flex items-center justify-between py-2 px-4 border-b border-gray-200 {{bgColor}}">
+              <span>{{ pdata.Key }}</span>
+              <span>{{ pdata.Value }}</span>
+            </li>
+          {% end %}
+        </ul>
+      {% end %}
+    </div>
+  {% end %}
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <h1 class="text-2xl font-bold">{{site.URL}}</h1>
+
+  <!-- embed instructions link -->
+  <div class="mt-2 mb-8">
+    <a
+      href="/dashboard/site/embed_instructions/{{site.ID}}"
+      class="text-blue-500 underline"
+    >
+      Embed Instructions
+    </a>
+  </div>
+
+  <hr class="my-4 border-t border-gray-200" />
+
+  <!-- total vists -->
+  <div class="m-4 mb-8">
+    <div class="bg-white shadow-md rounded-lg p-6">
+      <h2 class="text-xl font-bold">
+        Total visits since: <i> {{dateFmt("02 January 2006", minDate)}} </i>
+      </h2>
+      <p class="mt-2 text-3xl font-semibold text-gray-700">
+        {%show len(hits) %}
+      </p>
+    </div>
+  </div>
+
+  <!-- graph of visits -->
+
+  <h2 class="text-xl font-bold">Graph</h2>
+
+  <canvas
+    id="barChart"
+    width="400"
+    height="200"
+  ></canvas>
+
+  <div class="mt-4">
+    <hr class="my-4 border-t border-gray-200" />
+  </div>
+
+  <!-- counts for each path -->
+  {{ PagePathCountTable(sortedCountsForPath, "Visits by Path") }}
+
+  <div class="mt-4">
+    <hr class="my-4 border-t border-gray-200" />
+  </div>
+
+  <!-- counts for each referer and referer for path -->
+  {{ PagePathCountTable(sortedCountsForReferrer, "Visits by referrer") }}
+
+  <div class="mt-4">
+    <hr class="my-4 border-t border-gray-200" />
+  </div>
+
+  <!-- counts for each country -->
+  {{ PagePathCountTable(sortedCountsForCountry, "Visits by country") }}
+
+  <div class="mt-4">
+    <hr class="my-4 border-t border-gray-200" />
+  </div>
+
+  <!-- counts for each OS -->
+  {{ PagePathCountTable(sortedCountsForOS, "Visits by OS") }}
+
+  <div class="mt-4">
+    <hr class="my-4 border-t border-gray-200" />
+  </div>
+
+  <!-- counts for each browser -->
+  {{ PagePathCountTable(sortedCountsForBrowser, "Visits by browser") }}
+
+  <div class="mt-4">
+    <hr class="my-4 border-t border-gray-200" />
+  </div>
+
+  <!-- counts for each device -->
+  {{ PagePathCountTable(sortedCountsForDevice, "Visits by device") }}
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const barChart = document.getElementById("barChart");
+      const ctx = barChart.getContext("2d");
+
+      const labels = JSON.parse({{toJSON(graphDays)}});
+      const data = JSON.parse({{toJSON(graphVisits)}});
+
+      new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: "Visits",
+              data: data,
+              backgroundColor: "rgba(75, 192, 192, 0.2)",
+              borderColor: "rgba(75, 192, 192, 1)",
+              borderWidth: 1,
+            },
+          ],
+        },
+        options: {
+          scales: {
+            y: {
+              beginAtZero: true,
+            },
+          },
+        },
+      });
+    });
+  </script>
+
+{% end %}
