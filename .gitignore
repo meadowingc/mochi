@@ -1,3 +1,8 @@
 __astro_back
 
+mochi
+mochi.db*
+
+.env
+
 node_modules

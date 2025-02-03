@@ -9,6 +9,9 @@ tasks:
   install-tailwind-cli:
     - npm install tailwindcss @tailwindcss/cli
 
+  build-tailwind:
+    - npx @tailwindcss/cli -i ./main.css -o ./assets/css/main.css --watch
+
 
   lint:
     - go run github.com/nishanths/exhaustive/cmd/exhaustive@latest -default-signifies-exhaustive ./...

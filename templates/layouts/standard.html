@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width" />
+    <link
+      rel="shortcut icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Ctext%20y='.9em'%20font-size='90'%3E🍡%3C/text%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="/assets/css/main.css">
+    <title>{{ Title() }} | Mochi</title>
+  </head>
+  <body class="bg-gray-100 text-gray-900">
+    <header class="bg-white shadow">
+      <div
+        class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 flex justify-between items-center"
+      >
+        <h1 class="text-3xl font-bold leading-tight text-gray-900">
+          <a href="/">🍡 mochi</a>
+        </h1>
+        {{ render "/components/navigation.html" }}
+      </div>
+    </header>
+
+    <main>
+      <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div class="px-4 py-6 sm:px-0">
+          {{ Body() }}
+        </div>
+      </div>
+    </main>
+  </body>
+</html>
+
+<style is:global></style>
