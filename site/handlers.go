@@ -422,6 +422,20 @@ func ReaperPostHit(w http.ResponseWriter, r *http.Request) {
 	if userAgent != "" {
 		ua := useragent.Parse(userAgent)
 
+		// some bots are not detected by the useragent package, so we have to
+		// check for them manually
+		var agentNameDenylist = []string{
+			"Dataprovider.com",
+		}
+
+		for _, denylistedAgent := range agentNameDenylist {
+			if strings.Contains(ua.Name, denylistedAgent) {
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte("Bot detected"))
+				return
+			}
+		}
+
 		if ua.Bot {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("Bot detected"))
