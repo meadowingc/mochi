@@ -58,3 +58,10 @@ func generateAuthToken() (string, error) {
 	token := base64.URLEncoding.EncodeToString(tokenBytes)
 	return token, nil
 }
+
+func stringWithValueOrNil(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
+}

@@ -218,8 +218,28 @@ func SiteDetails(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// get all hits for the site within the date and filters
+	pagePathFilter := r.URL.Query().Get("pagePathFilter")
+
+	referrerFilter := stringWithValueOrNil(r.URL.Query().Get("referrerFilter"))
+	countryFilter := stringWithValueOrNil(r.URL.Query().Get("countryFilter"))
+	osFilter := stringWithValueOrNil(r.URL.Query().Get("osFilter"))
+	browserFilter := stringWithValueOrNil(r.URL.Query().Get("browserFilter"))
+	deviceFilter := stringWithValueOrNil(r.URL.Query().Get("deviceFilter"))
+
 	var hits []database.Hit
-	result = database.GetDB().Where("site_id = ? AND date >= ? AND date <= ?", siteIDUint, minDate, maxDate).Order("date ASC").Find(&hits)
+	query := database.GetDB().Where(
+		"site_id = ? AND date >= ? AND date <= ?", siteIDUint, minDate, maxDate,
+	).Where(&database.Hit{
+		Path:              pagePathFilter,
+		HTTPReferer:       referrerFilter,
+		CountryCode:       countryFilter,
+		VisitorOS:         osFilter,
+		VisitorBrowser:    browserFilter,
+		VisitorDeviceType: deviceFilter,
+	})
+
+	result = query.Order("date ASC").Find(&hits)
 	if result.Error != nil {
 		http.Error(w, "Error fetching hits: "+result.Error.Error(), http.StatusInternalServerError)
 		return
@@ -390,16 +410,9 @@ func ReaperPostHit(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	strOrNil := func(s string) *string {
-		if s == "" {
-			return nil
-		}
-		return &s
-	}
-
 	// currentDomainParam := r.URL.Query().Get("url")
 	pagePathParam := r.URL.Query().Get("path")
-	referrerParam := strOrNil(r.URL.Query().Get("referrer"))
+	referrerParam := stringWithValueOrNil(r.URL.Query().Get("referrer"))
 
 	if pagePathParam == "" {
 		w.WriteHeader(http.StatusBadRequest)
@@ -426,7 +439,7 @@ func ReaperPostHit(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	cloudflareCountryCode := strOrNil(r.Header.Get("CF-IPCountry"))
+	cloudflareCountryCode := stringWithValueOrNil(r.Header.Get("CF-IPCountry"))
 	userAgent := r.Header.Get("User-Agent")
 
 	var visitorOS *string
@@ -469,11 +482,11 @@ func ReaperPostHit(w http.ResponseWriter, r *http.Request) {
 		} else {
 			switch {
 			case ua.Mobile:
-				visitorDeviceType = strOrNil("Mobile")
+				visitorDeviceType = stringWithValueOrNil("Mobile")
 			case ua.Tablet:
-				visitorDeviceType = strOrNil("Tablet")
+				visitorDeviceType = stringWithValueOrNil("Tablet")
 			case ua.Desktop:
-				visitorDeviceType = strOrNil("Desktop")
+				visitorDeviceType = stringWithValueOrNil("Desktop")
 			}
 		}
 	}

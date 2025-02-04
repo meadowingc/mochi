@@ -4,7 +4,7 @@
 
 {% macro Body %}
 
-  {% macro PagePathCountTable(pathToCounts []struct{Key string; Value int}, title string) %}
+  {% macro MetricsCountTable(pathToCounts []struct{Key string; Value int}, title, keyColumn, filterName string) %}
     <div class="mt-4">
       <h2 class="text-xl font-bold">{{ title }}</h2>
       {% if len(pathToCounts) == 0 %}
@@ -12,13 +12,13 @@
       {% else %}
         <ul class="mt-2">
           <li class="flex items-center justify-between py-2 px-4 border-b border-gray-200 bg-white">
-            <span class="font-bold">Path</span>
+            <span class="font-bold">{{keyColumn}}</span>
             <span class="font-bold">Visits</span>
           </li>
           {% for path_i, pdata := range pathToCounts %}
             {% bgColor := "bg-white" %}
             <li class="flex items-center justify-between py-2 px-4 border-b border-gray-200 {{bgColor}}">
-              <span>{{ pdata.Key }}</span>
+              <span class="cursor-pointer text-blue-500" onclick="addFilter('{{filterName}}', '{{ pdata.Key }}')">{{ pdata.Key }}</span>
               <span>{{ pdata.Value }}</span>
             </li>
           {% end %}
@@ -43,7 +43,7 @@
 
   <hr class="my-4 border-t border-gray-200" />
 
-  <!-- total vists -->
+  <!-- total vists and filters -->
   <div class="m-4 mb-8">
     <div class="bg-white shadow-md rounded-lg p-6">
       <h2 class="text-xl font-bold">
@@ -62,23 +62,23 @@
               <input type="date" id="maxDate" name="maxDate" value="{{dateFmt("2006-01-02", maxDate)}}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
             </div>
             <div class="pt-6">
-              <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 hover:cursor-pointer">
+              <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 cursor-pointer">
                 Apply
               </button>
             </div>
           </div>
         </form>
         <div class="mt-4 flex space-x-4">
-          <button onclick="setPreset('today')" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 hover:cursor-pointer">
+          <button onclick="setPreset('today')" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 cursor-pointer">
             Today
           </button>
-          <button onclick="setPreset('lastWeek')" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 hover:cursor-pointer">
+          <button onclick="setPreset('lastWeek')" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 cursor-pointer">
             Last Week
           </button>
-          <button onclick="setPreset('lastMonth')" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 hover:cursor-pointer">
+          <button onclick="setPreset('lastMonth')" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 cursor-pointer">
             Last Month
           </button>
-          <button onclick="setPreset('pastYear')" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 hover:cursor-pointer">
+          <button onclick="setPreset('pastYear')" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 cursor-pointer">
             Past Year
           </button>
         </div>
@@ -101,44 +101,81 @@
   </div>
 
   <!-- counts for each path -->
-  {{ PagePathCountTable(sortedCountsForPath, "Visits by Path") }}
+  {{ MetricsCountTable(sortedCountsForPath, "Visits by Path", "Path", "pagePathFilter") }}
 
   <div class="mt-4">
     <hr class="my-4 border-t border-gray-200" />
   </div>
 
   <!-- counts for each referer and referer for path -->
-  {{ PagePathCountTable(sortedCountsForReferrer, "Visits by referrer") }}
+  {{ MetricsCountTable(sortedCountsForReferrer, "Visits by referrer", "Referrer", "referrerFilter") }}
 
   <div class="mt-4">
     <hr class="my-4 border-t border-gray-200" />
   </div>
 
   <!-- counts for each country -->
-  {{ PagePathCountTable(sortedCountsForCountry, "Visits by country") }}
+  {{ MetricsCountTable(sortedCountsForCountry, "Visits by country", "Country", "countryFilter") }}
 
   <div class="mt-4">
     <hr class="my-4 border-t border-gray-200" />
   </div>
 
   <!-- counts for each OS -->
-  {{ PagePathCountTable(sortedCountsForOS, "Visits by OS") }}
+  {{ MetricsCountTable(sortedCountsForOS, "Visits by OS", "OS", "osFilter") }}
 
   <div class="mt-4">
     <hr class="my-4 border-t border-gray-200" />
   </div>
 
   <!-- counts for each browser -->
-  {{ PagePathCountTable(sortedCountsForBrowser, "Visits by browser") }}
+  {{ MetricsCountTable(sortedCountsForBrowser, "Visits by browser", "Browser", "browserFilter") }}
 
   <div class="mt-4">
     <hr class="my-4 border-t border-gray-200" />
   </div>
 
   <!-- counts for each device -->
-  {{ PagePathCountTable(sortedCountsForDevice, "Visits by device") }}
+  {{ MetricsCountTable(sortedCountsForDevice, "Visits by device", "Device", "deviceFilter") }}
 
   <script>
+    function addFilter(filterName, filterValue) {
+      const urlParams = new URLSearchParams(window.location.search);
+      urlParams.set(filterName, filterValue);
+      window.location.search = urlParams.toString();
+    }
+
+    function removeFilter(filterName) {
+      const urlParams = new URLSearchParams(window.location.search);
+      urlParams.delete(filterName);
+      window.location.search = urlParams.toString();
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+      const urlParams = new URLSearchParams(window.location.search);
+      const filters = ['pagePathFilter', 'referrerFilter', 'countryFilter', 'osFilter', 'browserFilter', 'deviceFilter'];
+
+      filters.forEach(filter => {
+        const filterValue = urlParams.get(filter);
+        if (filterValue) {
+          const filterElements = document.querySelectorAll(`[onclick="addFilter('${filter}', '${filterValue}')"]`);
+          filterElements.forEach(element => {
+            element.classList.remove('text-blue-500');
+            element.classList.remove('cursor-pointer');
+            element.classList.add('text-gray-500');
+            element.removeAttribute('onclick');
+            const removeSpan = document.createElement('span');
+            removeSpan.classList.add('text-red-500', 'cursor-pointer');
+            removeSpan.textContent = ' x';
+            removeSpan.onclick = function() {
+              removeFilter(filter);
+            };
+            element.appendChild(removeSpan);
+          });
+        }
+      });
+    });
+
     function setPreset(preset) {
       const today = new Date();
       let minDate = today.toISOString().split('T')[0];
