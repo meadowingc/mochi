@@ -52,23 +52,23 @@
 
       <div class="mt-4">
         <form method="GET">
-          <div class="flex items-center space-x-4">
-            <div>
+          <div class="flex flex-wrap items-center space-y-4 sm:space-y-0 sm:space-x-4">
+            <div class="w-full sm:w-auto">
               <label for="minDate" class="block text-sm font-medium text-gray-700">Min Date</label>
               <input type="date" id="minDate" name="minDate" value="{{dateFmt("2006-01-02", minDate)}}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
             </div>
-            <div>
+            <div class="w-full sm:w-auto">
               <label for="maxDate" class="block text-sm font-medium text-gray-700">Max Date</label>
               <input type="date" id="maxDate" name="maxDate" value="{{dateFmt("2006-01-02", maxDate)}}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
             </div>
-            <div class="pt-6">
+            <div class="w-full sm:w-auto pt-6 sm:pt-0">
               <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 cursor-pointer">
                 Apply
               </button>
             </div>
           </div>
         </form>
-        <div class="mt-4 flex space-x-4">
+        <div class="mt-4 flex flex-wrap space-y-4 sm:space-y-0 sm:space-x-4">
           <button onclick="setPreset('today')" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 cursor-pointer">
             Today
           </button>
