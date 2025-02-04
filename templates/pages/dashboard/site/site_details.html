@@ -47,11 +47,42 @@
   <div class="m-4 mb-8">
     <div class="bg-white shadow-md rounded-lg p-6">
       <h2 class="text-xl font-bold">
-        Total visits since: <i> {{dateFmt("02 January 2006", minDate)}} </i>
+        Total visits in date range: <i>{%show len(hits) %}</i>
       </h2>
-      <p class="mt-2 text-3xl font-semibold text-gray-700">
-        {%show len(hits) %}
-      </p>
+
+      <div class="mt-4">
+        <form method="GET">
+          <div class="flex items-center space-x-4">
+            <div>
+              <label for="minDate" class="block text-sm font-medium text-gray-700">Min Date</label>
+              <input type="date" id="minDate" name="minDate" value="{{dateFmt("2006-01-02", minDate)}}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+            </div>
+            <div>
+              <label for="maxDate" class="block text-sm font-medium text-gray-700">Max Date</label>
+              <input type="date" id="maxDate" name="maxDate" value="{{dateFmt("2006-01-02", maxDate)}}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+            </div>
+            <div class="pt-6">
+              <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 hover:cursor-pointer">
+                Apply
+              </button>
+            </div>
+          </div>
+        </form>
+        <div class="mt-4 flex space-x-4">
+          <button onclick="setPreset('today')" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 hover:cursor-pointer">
+            Today
+          </button>
+          <button onclick="setPreset('lastWeek')" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 hover:cursor-pointer">
+            Last Week
+          </button>
+          <button onclick="setPreset('lastMonth')" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 hover:cursor-pointer">
+            Last Month
+          </button>
+          <button onclick="setPreset('pastYear')" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 hover:cursor-pointer">
+            Past Year
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -108,6 +139,26 @@
   {{ PagePathCountTable(sortedCountsForDevice, "Visits by device") }}
 
   <script>
+    function setPreset(preset) {
+      const today = new Date();
+      let minDate = today.toISOString().split('T')[0];
+
+      const tomorrow = new Date(today.setDate(today.getDate() + 1)).toISOString().split('T')[0];
+
+      if (preset === 'today') {
+        minDate = new Date().toISOString().split('T')[0];
+      } else if(preset === 'lastWeek') {
+        minDate = new Date(today.setDate(today.getDate() - 7)).toISOString().split('T')[0];
+      } else if (preset === 'lastMonth') {
+        minDate = new Date(today.setMonth(today.getMonth() - 1)).toISOString().split('T')[0];
+      } else if (preset === 'pastYear') {
+        minDate = new Date(today.setFullYear(today.getFullYear() - 1)).toISOString().split('T')[0];
+      }
+
+      document.getElementById('minDate').value = minDate;
+      document.getElementById('maxDate').value = tomorrow;
+    }
+
     document.addEventListener("DOMContentLoaded", function () {
       const barChart = document.getElementById("barChart");
       const ctx = barChart.getContext("2d");

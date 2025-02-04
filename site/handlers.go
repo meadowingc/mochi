@@ -192,6 +192,19 @@ func SiteDetails(w http.ResponseWriter, r *http.Request) {
 		minDate = time.Now().AddDate(0, 0, -7) // 7 days ago
 	}
 
+	// Check for maxDate in query params
+	maxDateStr := r.URL.Query().Get("maxDate")
+	var maxDate time.Time
+	if maxDateStr != "" {
+		maxDate, err = time.Parse("2006-01-02", maxDateStr)
+		if err != nil {
+			http.Error(w, "Invalid date format", http.StatusBadRequest)
+			return
+		}
+	} else {
+		maxDate = time.Now().AddDate(0, 0, 1) // tomorrow
+	}
+
 	var site database.Site
 	result := database.GetDB().First(&site, siteIDUint)
 	if result.Error != nil {
@@ -206,7 +219,7 @@ func SiteDetails(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var hits []database.Hit
-	result = database.GetDB().Where("site_id = ? AND date >= ?", siteIDUint, minDate).Order("date ASC").Find(&hits)
+	result = database.GetDB().Where("site_id = ? AND date >= ? AND date <= ?", siteIDUint, minDate, maxDate).Order("date ASC").Find(&hits)
 	if result.Error != nil {
 		http.Error(w, "Error fetching hits: "+result.Error.Error(), http.StatusInternalServerError)
 		return
@@ -262,6 +275,7 @@ func SiteDetails(w http.ResponseWriter, r *http.Request) {
 	RenderTemplate(w, r, "pages/dashboard/site/site_details.html", &native.Declarations{
 		"site":                    &site,
 		"minDate":                 &minDate,
+		"maxDate":                 &maxDate,
 		"hits":                    &hits,
 		"sortedCountsForPath":     &sortedCountsForPath,
 		"sortedCountsForReferrer": &sortedCountsForReferrer,
