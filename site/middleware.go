@@ -64,7 +64,7 @@ func AuthProtectedMiddleware(next http.Handler) http.Handler {
 		}
 
 		// check context for user
-		adminUser := getSignedInUserOrNil(r)
+		adminUser := GetSignedInUserOrNil(r)
 		if adminUser == nil {
 			http.Redirect(w, r, "/user/login", http.StatusSeeOther)
 			return

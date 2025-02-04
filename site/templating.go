@@ -16,7 +16,7 @@ import (
 
 func RenderTemplate(w http.ResponseWriter, r *http.Request, templateName string, extraDeclarations *native.Declarations) {
 
-	signedInUser := getSignedInUserOrNil(r)
+	signedInUser := GetSignedInUserOrNil(r)
 
 	opts := &scriggo.BuildOptions{
 		Globals: native.Declarations{

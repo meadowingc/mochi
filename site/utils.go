@@ -34,13 +34,13 @@ func sortMapByValue(m map[string]int) []struct {
 	return sorted
 }
 
-func getSignedInUserOrNil(r *http.Request) *database.User {
+func GetSignedInUserOrNil(r *http.Request) *database.User {
 	user, _ := r.Context().Value(AuthenticatedUserCookieName).(*database.User)
 	return user
 }
 
-func getSignedInUserOrFail(r *http.Request) *database.User {
-	user := getSignedInUserOrNil(r)
+func GetSignedInUserOrFail(r *http.Request) *database.User {
+	user := GetSignedInUserOrNil(r)
 	if user == nil {
 		log.Fatalf("Expected user to be signed in but it wasn't")
 	}

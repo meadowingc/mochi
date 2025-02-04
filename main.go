@@ -70,6 +70,12 @@ func initRouter() *chi.Mux {
 	r.Handle("/assets/*", http.StripPrefix("/assets", fileServer))
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		signedInUser := site.GetSignedInUserOrNil(r)
+		if signedInUser != nil {
+			http.Redirect(w, r, "/dashboard", http.StatusFound)
+			return
+		}
+
 		site.RenderTemplate(w, r, "pages/home.html", nil)
 	})
 

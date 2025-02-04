@@ -17,7 +17,7 @@ import (
 
 func UserLogin(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		adminUser := getSignedInUserOrNil(r)
+		adminUser := GetSignedInUserOrNil(r)
 		if adminUser == nil {
 			RenderTemplate(w, r, "pages/user/login.html", nil)
 			return
@@ -64,7 +64,7 @@ func UserLogin(w http.ResponseWriter, r *http.Request) {
 
 func UserRegister(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		adminUser := getSignedInUserOrNil(r)
+		adminUser := GetSignedInUserOrNil(r)
 		if adminUser == nil {
 			RenderTemplate(w, r, "pages/user/register.html", nil)
 			return
@@ -120,7 +120,7 @@ func UserLogout(w http.ResponseWriter, r *http.Request) {
 }
 
 func UserDashboardHome(w http.ResponseWriter, r *http.Request) {
-	signedInUser := getSignedInUserOrFail(r)
+	signedInUser := GetSignedInUserOrFail(r)
 
 	userSites := []database.Site{}
 
@@ -139,7 +139,7 @@ func UserDashboardHome(w http.ResponseWriter, r *http.Request) {
 }
 
 func CreateNewSite(w http.ResponseWriter, r *http.Request) {
-	user := getSignedInUserOrFail(r)
+	user := GetSignedInUserOrFail(r)
 	urlParam := r.FormValue("url")
 
 	siteURL, err := url.Parse(urlParam)
@@ -199,7 +199,7 @@ func SiteDetails(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	signedInUser := getSignedInUserOrFail(r)
+	signedInUser := GetSignedInUserOrFail(r)
 	if site.UserID != signedInUser.ID {
 		http.Error(w, "You don't own this site", http.StatusUnauthorized)
 		return
@@ -285,7 +285,7 @@ func SiteEmbedInstructions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	signedInUser := getSignedInUserOrFail(r)
+	signedInUser := GetSignedInUserOrFail(r)
 	if site.UserID != signedInUser.ID {
 		http.Error(w, "You don't own this site", http.StatusUnauthorized)
 		return
