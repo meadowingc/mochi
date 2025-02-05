@@ -290,7 +290,10 @@ func SiteDetails(w http.ResponseWriter, r *http.Request) {
 	countsForOS := make(map[string]int)
 	countsForBrowser := make(map[string]int)
 	countsForDevice := make(map[string]int)
+
 	visitsByDay := make(map[string]int)
+
+	uniqueVisitors := make(map[string]bool)
 
 	for _, hit := range hits {
 		if hit.Path != "" {
@@ -311,8 +314,13 @@ func SiteDetails(w http.ResponseWriter, r *http.Request) {
 		if hit.VisitorDeviceType != nil {
 			countsForDevice[*hit.VisitorDeviceType]++
 		}
+
 		date := hit.Date.Format("2006-01-02")
 		visitsByDay[date]++
+
+		if hit.VisitorIpHash != nil {
+			uniqueVisitors[*hit.VisitorIpHash] = true
+		}
 	}
 
 	sortedCountsForPath := sortMapByValue(countsForPath)
@@ -335,6 +343,7 @@ func SiteDetails(w http.ResponseWriter, r *http.Request) {
 		"minDate":                 &minDate,
 		"maxDate":                 &maxDate,
 		"hits":                    &hits,
+		"numUniqueVisitors":       len(uniqueVisitors),
 		"sortedCountsForPath":     &sortedCountsForPath,
 		"sortedCountsForReferrer": &sortedCountsForReferrer,
 		"sortedCountsForCountry":  &sortedCountsForCountry,
