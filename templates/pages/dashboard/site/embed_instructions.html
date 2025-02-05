@@ -23,7 +23,7 @@
         </p>
         <p class="mb-4">Copy the script tag below:</p>
         <code class="bg-gray-100 p-2 rounded-md block">
-          &lt;script src="{{publicURL}}/reaper/{{signedInUser.Username}}/embed/{{site.ID}}.js"
+          &lt;script src="{{publicURL}}/reaper/{{escapePath(signedInUser.Username)}}/embed/{{site.ID}}.js"
           async&gt;&lt;/script&gt;
         </code>
         <p class="mb-2 mt-4">

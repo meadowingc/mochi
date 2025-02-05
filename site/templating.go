@@ -5,6 +5,7 @@ import (
 	"log"
 	"mochi/constants"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -26,6 +27,9 @@ func RenderTemplate(w http.ResponseWriter, r *http.Request, templateName string,
 			"signedInUser": &signedInUser,
 			"min":          builtin.Min,
 			"max":          builtin.Max,
+			"escapePath": func(path string) string {
+				return url.PathEscape(path)
+			},
 			"dateFmt": func(layout string, t time.Time) string {
 				return t.Format(layout)
 			},

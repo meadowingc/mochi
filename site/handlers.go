@@ -1,6 +1,7 @@
 package site
 
 import (
+	"fmt"
 	"mochi/constants"
 	"mochi/database"
 	"net/http"
@@ -363,7 +364,15 @@ func SiteEmbedInstructions(w http.ResponseWriter, r *http.Request) {
 }
 
 func ReaperGetEmbedJs(w http.ResponseWriter, r *http.Request) {
-	username := chi.URLParam(r, "username")
+	escapedUsername := chi.URLParam(r, "username")
+	escapedUsername = strings.TrimSpace(escapedUsername)
+
+	username, err := url.PathUnescape(escapedUsername)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error unescaping username '%s': %v", escapedUsername, err), http.StatusBadRequest)
+		return
+	}
+
 	siteID := chi.URLParam(r, "siteID")
 
 	userDatabase := database.GetDbIfExists(username)
@@ -415,8 +424,16 @@ func ReaperGetEmbedJs(w http.ResponseWriter, r *http.Request) {
 }
 
 func ReaperPostHit(w http.ResponseWriter, r *http.Request) {
+	escapedUsername := chi.URLParam(r, "username")
+	escapedUsername = strings.TrimSpace(escapedUsername)
+
+	username, err := url.PathUnescape(escapedUsername)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error unescaping username '%s': %v", escapedUsername, err), http.StatusBadRequest)
+		return
+	}
+
 	siteID := chi.URLParam(r, "siteID")
-	username := chi.URLParam(r, "username")
 
 	userDatabase := database.GetDbIfExists(username)
 
