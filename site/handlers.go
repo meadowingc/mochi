@@ -26,11 +26,18 @@ func UserLogin(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		username := r.FormValue("username")
+		username := strings.TrimSpace(r.FormValue("username"))
 		password := r.FormValue("password")
 
+		userDatabase := database.GetDbIfExists(username)
+
+		if userDatabase == nil {
+			http.Error(w, "You're trying to sign in, but perhaps you still need to sign up?", http.StatusUnauthorized)
+			return
+		}
+
 		var admin database.User
-		result := database.GetDB().Where(&database.User{Username: username}).First(&admin)
+		result := userDatabase.Db.Where(&database.User{Username: username}).First(&admin)
 		if result.Error != nil {
 			http.Error(w, "Invalid username. You're trying to sign in, but perhaps you still need to sign up?", http.StatusUnauthorized)
 			return
@@ -50,13 +57,11 @@ func UserLogin(w http.ResponseWriter, r *http.Request) {
 		}
 
 		admin.SessionToken = token
-		database.GetDB().Save(&admin)
+		userDatabase.Db.Save(&admin)
 
-		http.SetCookie(w, &http.Cookie{
-			Name:  string(AuthenticatedUserTokenCookieName),
-			Value: token,
-			Path:  "/",
-		})
+		setUserSession(
+			w, username, token,
+		)
 
 		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 	}
@@ -74,8 +79,18 @@ func UserRegister(w http.ResponseWriter, r *http.Request) {
 		}
 
 	} else {
-		username := r.FormValue("username")
+		username := strings.TrimSpace(r.FormValue("username"))
 		password := r.FormValue("password")
+
+		if username == "" || password == "" {
+			http.Error(w, "Username and password are required", http.StatusBadRequest)
+			return
+		}
+
+		if strings.Contains(username, "/") {
+			http.Error(w, "Username cannot contain a forward slash", http.StatusBadRequest)
+			return
+		}
 
 		passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 		if err != nil {
@@ -90,19 +105,29 @@ func UserRegister(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		userDb := database.GetDbIfExists(username)
+		var userExistsInDb bool = false
+
+		if userDb != nil {
+			userExistsInDb = userDb.Db.Where(&database.User{Username: username}).First(&database.User{}).Error == nil
+		}
+
+		if userDb != nil && userExistsInDb {
+			http.Error(w, "User already exists. You can sign in instead.", http.StatusUnauthorized)
+			return
+		}
+
 		newAdmin := database.User{Username: username, PasswordHash: passwordHash, SessionToken: token}
 
-		result := database.GetDB().Create(&newAdmin)
+		result := database.GetOrCreateDB(username).Db.Create(&newAdmin)
 		if result.Error != nil {
 			http.Error(w, "Error creating account: "+result.Error.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		http.SetCookie(w, &http.Cookie{
-			Name:  string(AuthenticatedUserTokenCookieName),
-			Value: token,
-			Path:  "/",
-		})
+		setUserSession(
+			w, username, token,
+		)
 
 		// Redirect to the admin sign-in page after successful sign-up
 		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
@@ -124,7 +149,7 @@ func UserDashboardHome(w http.ResponseWriter, r *http.Request) {
 
 	userSites := []database.Site{}
 
-	result := database.GetDB().Where(&database.Site{
+	result := database.GetDbOrFatal(signedInUser.Username).Db.Where(&database.Site{
 		UserID: signedInUser.ID,
 	}).Find(&userSites)
 
@@ -149,8 +174,10 @@ func CreateNewSite(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if the site already exists
+	userDatabase := database.GetDbOrFatal(user.Username)
+
 	var existingSite database.Site
-	result := database.GetDB().Where(&database.Site{
+	result := userDatabase.Db.Where(&database.Site{
 		URL:    siteURL.String(),
 		UserID: user.ID,
 	}).First(&existingSite)
@@ -162,7 +189,7 @@ func CreateNewSite(w http.ResponseWriter, r *http.Request) {
 
 	newSite := database.Site{URL: siteURL.String(), UserID: user.ID}
 
-	result = database.GetDB().Create(&newSite)
+	result = userDatabase.Db.Create(&newSite)
 	if result.Error != nil {
 		http.Error(w, "Error creating site: "+result.Error.Error(), http.StatusInternalServerError)
 		return
@@ -205,14 +232,17 @@ func SiteDetails(w http.ResponseWriter, r *http.Request) {
 		maxDate = time.Now().AddDate(0, 0, 1) // tomorrow
 	}
 
+	signedInUser := GetSignedInUserOrFail(r)
+
+	userDatabase := database.GetDbOrFatal(signedInUser.Username)
+
 	var site database.Site
-	result := database.GetDB().First(&site, siteIDUint)
+	result := userDatabase.Db.First(&site, siteIDUint)
 	if result.Error != nil {
 		http.Error(w, "Site not found", http.StatusNotFound)
 		return
 	}
 
-	signedInUser := GetSignedInUserOrFail(r)
 	if site.UserID != signedInUser.ID {
 		http.Error(w, "You don't own this site", http.StatusUnauthorized)
 		return
@@ -228,7 +258,7 @@ func SiteDetails(w http.ResponseWriter, r *http.Request) {
 	deviceFilter := stringWithValueOrNil(r.URL.Query().Get("deviceFilter"))
 
 	var hits []database.Hit
-	query := database.GetDB().Where(
+	query := userDatabase.Db.Where(
 		"site_id = ? AND date >= ? AND date <= ?", siteIDUint, minDate, maxDate,
 	).Where(&database.Hit{
 		Path:              pagePathFilter,
@@ -312,14 +342,16 @@ func SiteDetails(w http.ResponseWriter, r *http.Request) {
 func SiteEmbedInstructions(w http.ResponseWriter, r *http.Request) {
 	siteID := chi.URLParam(r, "siteID")
 
+	signedInUser := GetSignedInUserOrFail(r)
+	userDatabase := database.GetDbOrFatal(signedInUser.Username)
+
 	var site database.Site
-	result := database.GetDB().First(&site, siteID)
+	result := userDatabase.Db.First(&site, siteID)
 	if result.Error != nil {
 		http.Error(w, "Site not found", http.StatusNotFound)
 		return
 	}
 
-	signedInUser := GetSignedInUserOrFail(r)
 	if site.UserID != signedInUser.ID {
 		http.Error(w, "You don't own this site", http.StatusUnauthorized)
 		return
@@ -331,10 +363,18 @@ func SiteEmbedInstructions(w http.ResponseWriter, r *http.Request) {
 }
 
 func ReaperGetEmbedJs(w http.ResponseWriter, r *http.Request) {
+	username := chi.URLParam(r, "username")
 	siteID := chi.URLParam(r, "siteID")
 
+	userDatabase := database.GetDbIfExists(username)
+
+	if userDatabase == nil {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
 	var site database.Site
-	result := database.GetDB().First(&site, siteID)
+	result := userDatabase.Db.First(&site, siteID)
 	if result.Error != nil {
 		http.Error(w, "Site not found", http.StatusNotFound)
 		return
@@ -375,9 +415,17 @@ func ReaperGetEmbedJs(w http.ResponseWriter, r *http.Request) {
 
 func ReaperPostHit(w http.ResponseWriter, r *http.Request) {
 	siteID := chi.URLParam(r, "siteID")
+	username := chi.URLParam(r, "username")
+
+	userDatabase := database.GetDbIfExists(username)
+
+	if userDatabase == nil {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
 
 	var site database.Site
-	result := database.GetDB().First(&site, siteID)
+	result := userDatabase.Db.First(&site, siteID)
 	if result.Error != nil {
 		http.Error(w, "Site not found", http.StatusNotFound)
 		return
@@ -502,7 +550,7 @@ func ReaperPostHit(w http.ResponseWriter, r *http.Request) {
 		VisitorBrowser:    visitorBrowser,
 	}
 
-	result = database.GetDB().Create(&hit)
+	result = userDatabase.Db.Create(&hit)
 
 	if result.Error != nil {
 		w.WriteHeader(http.StatusInternalServerError)

@@ -4,7 +4,7 @@ import { isbot } from "isbot";
 import { UAParser } from "ua-parser-js";
 
 // This can be embedded as
-// http://localhost:4321/reaper/embed/QWFQWFw.js
+// http://localhost:4321/reaper/username/embed/QWFQWFw.js
 export const POST: APIRoute = async ({ params, callAction, url, request }) => {
   // TODO: this should only be accessible from the origin of the site registered by the user
 

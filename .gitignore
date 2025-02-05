@@ -5,6 +5,8 @@ assets/css/bundled_styles.css
 mochi
 mochi.db*
 
+.user_databases
+
 .env
 
 tmp

@@ -25,7 +25,15 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
-	_ = database.GetDB() // force database initialization
+	// check for required env vars
+	for _, envVar := range []string{"COOKIE_SECRET"} {
+		if os.Getenv(envVar) == "" {
+			log.Fatalf("Missing required environment variable: %s", envVar)
+		}
+	}
+
+	database.InitDb()
+
 	r := initRouter()
 
 	signals := make(chan os.Signal, 1)
@@ -43,8 +51,8 @@ func main() {
 	<-signals
 	log.Println("Shutting down gracefully...")
 
-	// Close the database connection
-	database.CloseDB()
+	// Close open database connections
+	database.CleanupOnAppClose()
 }
 
 func initRouter() *chi.Mux {
@@ -95,7 +103,7 @@ func initRouter() *chi.Mux {
 		r.HandleFunc("/logout", site.UserLogout)
 	})
 
-	r.With(CORSEverywhereMiddleware.Handler).Route("/reaper", func(r chi.Router) {
+	r.With(CORSEverywhereMiddleware.Handler).Route("/reaper/{username}", func(r chi.Router) {
 		r.Get("/embed/{siteID}.js", site.ReaperGetEmbedJs)
 		r.Post("/{siteID}", site.ReaperPostHit)
 	})

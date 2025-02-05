@@ -2,6 +2,7 @@ package site
 
 import (
 	"context"
+	"log"
 	"mochi/database"
 	"net/http"
 	"strings"
@@ -34,17 +35,33 @@ func TryPutUserInContextMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
+		cookieParts := strings.Split(cookie.Value, "///")
+
+		if len(cookieParts) != 2 {
+			log.Printf("Invalid cookie value: %s", cookie.Value)
+
+			clearUserSession(w)
+
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		authTokenItself, username := cookieParts[0], cookieParts[1]
+
+		userDatabase := database.GetDbIfExists(username)
+		if userDatabase == nil {
+			log.Printf("User database not found for user: %s", username)
+			clearUserSession(w)
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		// Validate the token and retrieve the corresponding user
 		var user database.User
-		result := database.GetDB().Where(&database.User{SessionToken: cookie.Value}).First(&user)
+		result := database.GetDbOrFatal(username).Db.Where(&database.User{SessionToken: authTokenItself}).First(&user)
 		if result.Error != nil {
 			// Clear the invalid cookie
-			http.SetCookie(w, &http.Cookie{
-				Name:   string(AuthenticatedUserTokenCookieName),
-				Value:  "",
-				Path:   "/",
-				MaxAge: -1,
-			})
+			clearUserSession(w)
 			next.ServeHTTP(w, r)
 			return
 		}
