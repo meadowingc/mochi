@@ -1,7 +1,7 @@
 (function() {
   const pagePath = window.location.pathname;
   const encodedUrl = encodeURIComponent(window.location.href);
-  const analyticsEndpoint = "{{publicURL}}/reaper/{{signedInUser.Username}}/{{site.ID}}";
+  const analyticsEndpoint = "{{publicURL}}/reaper/{{username}}/{{site.ID}}";
   const referrerUrl = document.referrer.indexOf(window.location.href) < 0 ? document.referrer : "";
   let shouldTrack = localStorage.getItem("mochi_ignore") == null;
   const ignoreParam = new URLSearchParams(document.location.search).get("mochi_ignore") || new URLSearchParams(document.location.search).get("mi");

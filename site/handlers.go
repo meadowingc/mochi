@@ -408,8 +408,9 @@ func ReaperGetEmbedJs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	RenderTemplate(w, r, "pages/reaper/embed/reaper_embed.js", &native.Declarations{
-		"site":         &site,
-		"countryFlags": "🇦🇹🇧🇷🇨🇦🇨🇭🇨🇱🇨🇷🇩🇪🇫🇷🇬🇧🇮🇩🇮🇱🇮🇳🇳🇱🇳🇴🇳🇿🇵🇭🇷🇸🇹🇭🇺🇸",
+		"site":          &site,
+		"ownerUsername": username,
+		"countryFlags":  "🇦🇹🇧🇷🇨🇦🇨🇭🇨🇱🇨🇷🇩🇪🇫🇷🇬🇧🇮🇩🇮🇱🇮🇳🇳🇱🇳🇴🇳🇿🇵🇭🇷🇸🇹🇭🇺🇸",
 	})
 }
 
