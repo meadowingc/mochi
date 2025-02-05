@@ -19,20 +19,27 @@
       <h2 class="text-xl font-bold">Embed instructions</h2>
       <div class="mt-2 text-gray-700">
         <p class="mb-2">
-          To embed the analytics script on your site, follow these steps:
+          To embed the analytics script on your site, you need to add the below tag to your site's HTML.
+          You should add it at the very end of the <code class="bg-gray-200 text-red-600 px-1 rounded">&lt;head&gt;</code>
+          tag.
         </p>
-        <p class="mb-4">Copy the script tag below:</p>
-        <code class="bg-gray-100 p-2 rounded-md block">
+        <code class="bg-gray-800 text-white p-4 rounded-lg block overflow-x-auto mb-4 mt-4">
           &lt;script src="{{publicURL}}/reaper/{{escapePath(signedInUser.Username)}}/embed/{{site.ID}}.js"
           async&gt;&lt;/script&gt;
         </code>
-        <p class="mb-2 mt-4">
-          Paste the script tag into the HTML of your website, just before the
-          closing <code>&lt;/body&gt;</code> tag.
-        </p>
         <p class="mb-4">
           This will start tracking visits to your site and sending the data to
           your dashboard.
+        </p>
+        <h3 class="text-lg font-semibold mb-2">Prevent from tracking your own visits</h3>
+        <p class="mb-2">
+          The <code class="bg-gray-200 text-red-600 px-1 rounded">mochi_ignore</code> parameter can be used to control whether your own visits are tracked.
+          You can add <code class="bg-gray-200 text-red-600 px-1 rounded">?mochi_ignore=true</code> to the URL to stop tracking your visits in the current browser.
+          To re-enable tracking, add <code class="bg-gray-200 text-red-600 px-1 rounded">?mochi_ignore=false</code> to the URL.
+        </p>
+        <p class="mb-4">
+          When you disable tracking, a message will alert you that mochi will no longer track your own hits in this browser.
+          Similarly, when you re-enable tracking, a message will alert you that mochi has been enabled for this website in this browser.
         </p>
       </div>
     </div>
