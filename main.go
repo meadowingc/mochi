@@ -25,13 +25,6 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
-	// check for required env vars
-	for _, envVar := range []string{"COOKIE_SECRET"} {
-		if os.Getenv(envVar) == "" {
-			log.Fatalf("Missing required environment variable: %s", envVar)
-		}
-	}
-
 	database.InitDb()
 
 	r := initRouter()
