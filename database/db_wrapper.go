@@ -123,7 +123,11 @@ func getCachedOrCreateDB(username string) *UserDb {
 	}
 
 	// Migrate the schema
-	err = db.AutoMigrate(&User{}, &Site{}, &Hit{})
+	err = db.AutoMigrate(
+		&User{},
+		&Site{},
+		&Hit{},
+	)
 	if err != nil {
 		log.Fatalf("failed to migrate database: %v", err)
 	}

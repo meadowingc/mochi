@@ -1,6 +1,8 @@
 package site
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"mochi/constants"
 	"mochi/database"
@@ -230,8 +232,12 @@ func SiteDetails(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		maxDate = time.Now().AddDate(0, 0, 1) // tomorrow
+		maxDate = time.Now() // today
 	}
+
+	// make sure min date is the very beginning of the day and max date is the very end of the day
+	minDate = time.Date(minDate.Year(), minDate.Month(), minDate.Day(), 0, 0, 0, 0, time.UTC)
+	maxDate = time.Date(maxDate.Year(), maxDate.Month(), maxDate.Day(), 23, 59, 59, 0, time.UTC)
 
 	signedInUser := GetSignedInUserOrFail(r)
 
@@ -260,9 +266,10 @@ func SiteDetails(w http.ResponseWriter, r *http.Request) {
 
 	var hits []database.Hit
 	query := userDatabase.Db.Where(
-		"site_id = ? AND date >= ? AND date <= ?", siteIDUint, minDate, maxDate,
+		"date >= ? AND date <= ?", minDate, maxDate,
 	).Where(&database.Hit{
 		Path:              pagePathFilter,
+		SiteID:            uint(siteIDUint),
 		HTTPReferer:       referrerFilter,
 		CountryCode:       countryFilter,
 		VisitorOS:         osFilter,
@@ -514,6 +521,14 @@ func ReaperPostHit(w http.ResponseWriter, r *http.Request) {
 
 	cloudflareCountryCode := stringWithValueOrNil(r.Header.Get("CF-IPCountry"))
 	userAgent := r.Header.Get("User-Agent")
+	userIp := r.Header.Get("X-Forwarded-For")
+
+	var userIpHash *string = nil
+	if userIp != "" {
+		hash := sha256.Sum256([]byte(userIp))
+		hashString := hex.EncodeToString(hash[:])
+		userIpHash = &hashString
+	}
 
 	var visitorOS *string
 	var visitorBrowser *string
@@ -568,6 +583,7 @@ func ReaperPostHit(w http.ResponseWriter, r *http.Request) {
 		SiteID:            site.ID,
 		Path:              pagePathParam,
 		Date:              time.Now(), // Add 8 hours to get to UTC time
+		VisitorIpHash:     userIpHash,
 		HTTPReferer:       referrerParam,
 		CountryCode:       cloudflareCountryCode,
 		VisitorOS:         visitorOS,

@@ -54,11 +54,11 @@
         <form method="GET">
           <div class="flex flex-wrap items-center space-y-4 sm:space-y-0 sm:space-x-4">
             <div class="w-full sm:w-auto">
-              <label for="minDate" class="block text-sm font-medium text-gray-700">Min Date</label>
+              <label for="minDate" class="block text-sm font-medium text-gray-700">Min Date (inclusive)</label>
               <input type="date" id="minDate" name="minDate" value="{{dateFmt("2006-01-02", minDate)}}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
             </div>
             <div class="w-full sm:w-auto">
-              <label for="maxDate" class="block text-sm font-medium text-gray-700">Max Date</label>
+              <label for="maxDate" class="block text-sm font-medium text-gray-700">Max Date (inclusive)</label>
               <input type="date" id="maxDate" name="maxDate" value="{{dateFmt("2006-01-02", maxDate)}}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
             </div>
             <div class="w-full sm:w-auto pt-6 sm:pt-0">
@@ -185,9 +185,7 @@
 
     function setPreset(preset) {
       const today = new Date();
-      let minDate = today.toISOString().split('T')[0];
-
-      const tomorrow = new Date(today.setDate(today.getDate() + 1)).toISOString().split('T')[0];
+      let minDate, maxDate = today.toISOString().split('T')[0];
 
       if (preset === 'today') {
         minDate = new Date().toISOString().split('T')[0];
@@ -200,7 +198,7 @@
       }
 
       document.getElementById('minDate').value = minDate;
-      document.getElementById('maxDate').value = tomorrow;
+      document.getElementById('maxDate').value = maxDate;
     }
 
     document.addEventListener("DOMContentLoaded", function () {
