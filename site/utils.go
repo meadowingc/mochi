@@ -88,3 +88,11 @@ func stringWithValueOrNil(s string) *string {
 
 	return &strSlice
 }
+
+func countryCodeToFlagEmoji(countryCode string) string {
+	var flagEmoji strings.Builder
+	for _, char := range countryCode {
+		flagEmoji.WriteRune(rune(char) + 0x1F1A5)
+	}
+	return flagEmoji.String()
+}

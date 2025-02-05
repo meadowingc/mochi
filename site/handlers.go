@@ -416,10 +416,17 @@ func ReaperGetEmbedJs(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// TODO: getting these directly from the hits is quite inneficient. Would be better to maybe keep a separate table?
+	countryCodes := []string{"BE", "IT", "US", "FR", "DE"}
+	var countryFlagsStr string
+	for _, code := range countryCodes {
+		countryFlagsStr += countryCodeToFlagEmoji(code)
+	}
+
 	RenderTemplate(w, r, "pages/reaper/embed/reaper_embed.js", &native.Declarations{
 		"site":          &site,
 		"ownerUsername": username,
-		"countryFlags":  "🇦🇹🇧🇷🇨🇦🇨🇭🇨🇱🇨🇷🇩🇪🇫🇷🇬🇧🇮🇩🇮🇱🇮🇳🇳🇱🇳🇴🇳🇿🇵🇭🇷🇸🇹🇭🇺🇸",
+		"countryFlags":  countryFlagsStr,
 	})
 }
 
