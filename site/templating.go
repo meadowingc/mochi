@@ -60,7 +60,7 @@ func RenderTemplate(w http.ResponseWriter, r *http.Request, templateName string,
 	err = template.Run(w, map[string]any{}, nil)
 
 	if err != nil {
-		log.Printf("Template execution error: %v", err)
+		log.Printf("Template execution error for template %s: %v", templateName, err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
