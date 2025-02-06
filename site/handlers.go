@@ -9,6 +9,7 @@ import (
 	"mochi/database"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -333,9 +334,17 @@ func SiteDetails(w http.ResponseWriter, r *http.Request) {
 	graphDays := make([]string, 0, len(visitsByDay))
 	graphVisits := make([]int, 0, len(visitsByDay))
 
-	for day, visits := range visitsByDay {
+	// Collect the keys and sort them
+	sortedDays := make([]string, 0, len(visitsByDay))
+	for day := range visitsByDay {
+		sortedDays = append(sortedDays, day)
+	}
+	sort.Strings(sortedDays)
+
+	// Append the sorted values
+	for _, day := range sortedDays {
 		graphDays = append(graphDays, day)
-		graphVisits = append(graphVisits, visits)
+		graphVisits = append(graphVisits, visitsByDay[day])
 	}
 
 	makeSortedDeclaration := func(m map[string]int) CustomDeclaration {
