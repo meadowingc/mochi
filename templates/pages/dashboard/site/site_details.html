@@ -4,7 +4,7 @@
 
 {% macro Body %}
 
-  {% macro MetricsCountTable(pathToCounts []struct{Key string; Value int}, title, keyColumn, filterName string) %}
+  {% macro MetricsCountTable(pathToCounts []struct{Key string; Value int}, title, keyColumn, filterName string, isLink bool) %}
     <div class="mt-4">
       <h2 class="text-xl font-bold">{{ title }}</h2>
       {% if len(pathToCounts) == 0 %}
@@ -18,7 +18,13 @@
           {% for path_i, pdata := range pathToCounts %}
             {% bgColor := "bg-white" %}
             <li class="flex items-center justify-between py-2 px-4 border-b border-gray-200 {{bgColor}}">
-              <span class="cursor-pointer text-blue-500" onclick="addFilter('{{filterName}}', '{{ pdata.Key }}')">{{ pdata.Key }}</span>
+              <span class="cursor-pointer text-blue-500" onclick="addFilter('{{filterName}}', '{{ pdata.Key }}')">
+                {{ pdata.Key }}
+                
+                {% if isLink %}
+                    <a href="{{pdata.Key}}" class="ml-4 text-gray-500">(⤴)</a>
+                {% end %}
+              </span>
               <span>{{ pdata.Value }}</span>
             </li>
           {% end %}
@@ -26,7 +32,6 @@
       {% end %}
     </div>
   {% end %}
-
   <script src="/assets/js/chart.js"></script>
 
   <h1 class="text-2xl font-bold">{{site.URL}}</h1>
@@ -109,42 +114,42 @@
   </div>
 
   <!-- counts for each path -->
-  {{ MetricsCountTable(sortedCountsForPath, "Visits by Path", "Path", "pagePathFilter") }}
+  {{ MetricsCountTable(sortedCountsForPath, "Visits by Path", "Path", "pagePathFilter", false) }}
 
   <div class="mt-4">
     <hr class="my-4 border-t border-gray-200" />
   </div>
 
   <!-- counts for each referer and referer for path -->
-  {{ MetricsCountTable(sortedCountsForReferrer, "Visits by referrer", "Referrer", "referrerFilter") }}
+  {{ MetricsCountTable(sortedCountsForReferrer, "Visits by referrer", "Referrer", "referrerFilter", true) }}
 
   <div class="mt-4">
     <hr class="my-4 border-t border-gray-200" />
   </div>
 
   <!-- counts for each country -->
-  {{ MetricsCountTable(sortedCountsForCountry, "Visits by country", "Country", "countryFilter") }}
+  {{ MetricsCountTable(sortedCountsForCountry, "Visits by country", "Country", "countryFilter", false) }}
 
   <div class="mt-4">
     <hr class="my-4 border-t border-gray-200" />
   </div>
 
   <!-- counts for each OS -->
-  {{ MetricsCountTable(sortedCountsForOS, "Visits by OS", "OS", "osFilter") }}
+  {{ MetricsCountTable(sortedCountsForOS, "Visits by OS", "OS", "osFilter", false) }}
 
   <div class="mt-4">
     <hr class="my-4 border-t border-gray-200" />
   </div>
 
   <!-- counts for each browser -->
-  {{ MetricsCountTable(sortedCountsForBrowser, "Visits by browser", "Browser", "browserFilter") }}
+  {{ MetricsCountTable(sortedCountsForBrowser, "Visits by browser", "Browser", "browserFilter", false) }}
 
   <div class="mt-4">
     <hr class="my-4 border-t border-gray-200" />
   </div>
 
   <!-- counts for each device -->
-  {{ MetricsCountTable(sortedCountsForDevice, "Visits by device", "Device", "deviceFilter") }}
+  {{ MetricsCountTable(sortedCountsForDevice, "Visits by device", "Device", "deviceFilter", false) }}
 
   <script>
     function clearAllFilters() {
