@@ -32,7 +32,7 @@ func RenderTemplate(
 
 	// Check if the template is already cached
 	cachedTemplate, ok := templateCache.Load(templateName)
-	if !ok {
+	if !ok || constants.DEBUG_MODE {
 		opts := &scriggo.BuildOptions{
 			Globals: native.Declarations{
 				"signedInUser": (**database.User)(nil),
