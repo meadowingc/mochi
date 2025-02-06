@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"log"
 	"mochi/constants"
 	"mochi/database"
 	"net/http"
@@ -452,167 +453,163 @@ func ReaperGetEmbedJs(w http.ResponseWriter, r *http.Request) {
 }
 
 func ReaperPostHit(w http.ResponseWriter, r *http.Request) {
-	escapedUsername := chi.URLParam(r, "username")
-	escapedUsername = strings.TrimSpace(escapedUsername)
+	// Return immediately
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Request received"))
 
-	username, err := url.PathUnescape(escapedUsername)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Error unescaping username '%s': %v", escapedUsername, err), http.StatusBadRequest)
-		return
-	}
+	// Execute the rest of the logic in a goroutine
+	go func() {
+		pagePathParam := r.URL.Query().Get("path")
+		referrerParam := stringWithValueOrNil(r.URL.Query().Get("referrer"))
 
-	siteID := chi.URLParam(r, "siteID")
+		if pagePathParam == "" {
+			log.Printf("ReaperPostHit: Path parameter is required")
+			return
+		}
 
-	userDatabase := database.GetDbIfExists(username)
+		// remove rightmost slash
+		if strings.HasSuffix(pagePathParam, "/") {
+			pagePathParam = strings.TrimRight(pagePathParam, "/")
+		}
 
-	if userDatabase == nil {
-		http.Error(w, "User not found", http.StatusNotFound)
-		return
-	}
+		escapedUsername := chi.URLParam(r, "username")
+		escapedUsername = strings.TrimSpace(escapedUsername)
 
-	var site database.Site
-	result := userDatabase.Db.First(&site, siteID)
-	if result.Error != nil {
-		http.Error(w, "Site not found", http.StatusNotFound)
-		return
-	}
-
-	siteURL, err := url.Parse(site.URL)
-	if err != nil {
-		http.Error(w, "Invalid site URL", http.StatusInternalServerError)
-		return
-	}
-
-	urlOfIncomingRequest := r.Header.Get("origin")
-
-	if urlOfIncomingRequest == "" {
-		urlOfIncomingRequest = r.Header.Get("referer")
-	}
-
-	if urlOfIncomingRequest != "" {
-		incomingURL, err := url.Parse(urlOfIncomingRequest)
+		username, err := url.PathUnescape(escapedUsername)
 		if err != nil {
-			http.Error(w, "Invalid origin URL", http.StatusBadRequest)
+			log.Printf("ReaperPostHit: Error unescaping username '%s': %v", escapedUsername, err)
 			return
 		}
 
-		if siteURL.Host != incomingURL.Host &&
-			// if we're in debug mode then we allow the test-embed-page
-			!(constants.DEBUG_MODE && strings.Contains(constants.PUBLIC_URL, incomingURL.Host)) {
-			http.Error(w, "Origin mismatch", http.StatusForbidden)
+		siteID := chi.URLParam(r, "siteID")
+
+		userDatabase := database.GetDbIfExists(username)
+
+		if userDatabase == nil {
+			log.Printf("ReaperPostHit: User not found: %s", username)
 			return
 		}
-	}
 
-	// currentDomainParam := r.URL.Query().Get("url")
-	pagePathParam := r.URL.Query().Get("path")
-	referrerParam := stringWithValueOrNil(r.URL.Query().Get("referrer"))
+		var site database.Site
+		result := userDatabase.Db.First(&site, siteID)
+		if result.Error != nil {
+			log.Printf("ReaperPostHit: Site '%s' not found for user '%s'", siteID, username)
+			return
+		}
 
-	if pagePathParam == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Path parameter is required"))
-		return
-	}
-
-	// remove rightmost slash
-	if strings.HasSuffix(pagePathParam, "/") {
-		pagePathParam = strings.TrimRight(pagePathParam, "/")
-	}
-
-	// if the referer is the same as the site URL, then it's likely a direct visit and we should set the referrer to nil
-	if referrerParam != nil {
-		referrerURL, err := url.Parse(*referrerParam)
+		siteURL, err := url.Parse(site.URL)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("Unable to parse referrer URL"))
+			log.Printf("ReaperPostHit: Can't parse site URL '%s' for user '%s'", site.URL, username)
 			return
 		}
 
-		if referrerURL.Host == siteURL.Host {
-			referrerParam = nil
-		}
-	}
+		urlOfIncomingRequest := r.Header.Get("origin")
 
-	cloudflareCountryCode := stringWithValueOrNil(r.Header.Get("CF-IPCountry"))
-	userAgent := r.Header.Get("User-Agent")
-	userIp := r.Header.Get("X-Forwarded-For")
-
-	var userIpHash *string = nil
-	if userIp != "" {
-		hash := sha256.Sum256([]byte(userIp))
-		hashString := hex.EncodeToString(hash[:])
-		userIpHash = &hashString
-	}
-
-	var visitorOS *string
-	var visitorBrowser *string
-	var visitorDeviceType *string
-
-	if userAgent != "" {
-		ua := useragent.Parse(userAgent)
-
-		// some bots are not detected by the useragent package, so we have to
-		// check for them manually
-		var agentNameDenylist = []string{
-			"Dataprovider.com",
+		if urlOfIncomingRequest == "" {
+			urlOfIncomingRequest = r.Header.Get("referer")
 		}
 
-		for _, denylistedAgent := range agentNameDenylist {
-			if strings.Contains(ua.Name, denylistedAgent) {
-				w.WriteHeader(http.StatusOK)
-				w.Write([]byte("Bot detected"))
+		if urlOfIncomingRequest != "" {
+			incomingURL, err := url.Parse(urlOfIncomingRequest)
+			if err != nil {
+				log.Printf("ReaperPostHit: Can't parse origin URL: %s", urlOfIncomingRequest)
+				return
+			}
+
+			if siteURL.Host != incomingURL.Host &&
+				// if we're in debug mode then we allow the test-embed-page
+				!(constants.DEBUG_MODE && strings.Contains(constants.PUBLIC_URL, incomingURL.Host)) {
+				log.Printf("ReaperPostHit: Origin mismatch. Site URL: %s, Origin URL: %s", siteURL.Host, incomingURL.Host)
 				return
 			}
 		}
 
-		if ua.Bot {
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("Bot detected"))
-			return
-		}
+		// if the referer is the same as the site URL, then it's likely a direct visit and we should set the referrer to nil
+		if referrerParam != nil {
+			referrerURL, err := url.Parse(*referrerParam)
+			if err != nil {
+				log.Printf("ReaperPostHit: Unable to parse referrer URL: %s", *referrerParam)
+				return
+			}
 
-		if ua.OS != "" {
-			visitorOS = &ua.OS
-		}
-
-		if ua.Name != "" {
-			visitorBrowser = &ua.Name
-		}
-
-		if ua.Device != "" {
-			visitorDeviceType = &ua.Device
-		} else {
-			switch {
-			case ua.Mobile:
-				visitorDeviceType = stringWithValueOrNil("Mobile")
-			case ua.Tablet:
-				visitorDeviceType = stringWithValueOrNil("Tablet")
-			case ua.Desktop:
-				visitorDeviceType = stringWithValueOrNil("Desktop")
+			if referrerURL.Host == siteURL.Host {
+				referrerParam = nil
 			}
 		}
-	}
 
-	hit := database.Hit{
-		SiteID:            site.ID,
-		Path:              pagePathParam,
-		Date:              time.Now(), // Add 8 hours to get to UTC time
-		VisitorIpHash:     userIpHash,
-		HTTPReferer:       referrerParam,
-		CountryCode:       cloudflareCountryCode,
-		VisitorOS:         visitorOS,
-		VisitorDeviceType: visitorDeviceType,
-		VisitorBrowser:    visitorBrowser,
-	}
+		cloudflareCountryCode := stringWithValueOrNil(r.Header.Get("CF-IPCountry"))
+		userAgent := r.Header.Get("User-Agent")
+		userIp := r.Header.Get("X-Forwarded-For")
 
-	result = userDatabase.Db.Create(&hit)
+		var userIpHash *string = nil
+		if userIp != "" {
+			hash := sha256.Sum256([]byte(userIp))
+			hashString := hex.EncodeToString(hash[:])
+			userIpHash = &hashString
+		}
 
-	if result.Error != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Error saving hit"))
-		return
-	}
+		var visitorOS *string
+		var visitorBrowser *string
+		var visitorDeviceType *string
 
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Hit saved"))
+		if userAgent != "" {
+			ua := useragent.Parse(userAgent)
+
+			// some bots are not detected by the useragent package, so we have to
+			// check for them manually
+			var agentNameDenylist = []string{
+				"Dataprovider.com",
+			}
+
+			for _, denylistedAgent := range agentNameDenylist {
+				if strings.Contains(ua.Name, denylistedAgent) {
+					return
+				}
+			}
+
+			if ua.Bot {
+				return
+			}
+
+			if ua.OS != "" {
+				visitorOS = &ua.OS
+			}
+
+			if ua.Name != "" {
+				visitorBrowser = &ua.Name
+			}
+
+			if ua.Device != "" {
+				visitorDeviceType = &ua.Device
+			} else {
+				switch {
+				case ua.Mobile:
+					visitorDeviceType = stringWithValueOrNil("Mobile")
+				case ua.Tablet:
+					visitorDeviceType = stringWithValueOrNil("Tablet")
+				case ua.Desktop:
+					visitorDeviceType = stringWithValueOrNil("Desktop")
+				}
+			}
+		}
+
+		hit := database.Hit{
+			SiteID:            site.ID,
+			Path:              pagePathParam,
+			Date:              time.Now(), // Add 8 hours to get to UTC time
+			VisitorIpHash:     userIpHash,
+			HTTPReferer:       referrerParam,
+			CountryCode:       cloudflareCountryCode,
+			VisitorOS:         visitorOS,
+			VisitorDeviceType: visitorDeviceType,
+			VisitorBrowser:    visitorBrowser,
+		}
+
+		result = userDatabase.Db.Create(&hit)
+
+		if result.Error != nil {
+			log.Printf("ReaperPostHit: Error saving hit: %v", result.Error)
+			return
+		}
+	}()
 }
