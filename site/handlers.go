@@ -292,8 +292,13 @@ func SiteDetails(w http.ResponseWriter, r *http.Request) {
 	countsForDevice := make(map[string]int)
 
 	visitsByDay := make(map[string]int)
-
 	uniqueVisitors := make(map[string]bool)
+
+	// Create a map of all days between minDate and maxDate, with 0 visits
+	for d := minDate; !d.After(maxDate); d = d.AddDate(0, 0, 1) {
+		dateStr := d.Format("2006-01-02")
+		visitsByDay[dateStr] = 0
+	}
 
 	for _, hit := range hits {
 		if hit.Path != "" {
