@@ -188,16 +188,16 @@
 
     function setPreset(preset) {
       const today = new Date();
-      let minDate, maxDate = today.toISOString().split('T')[0];
+      let minDate, maxDate = today.toLocaleDateString('en-CA'); // 'en-CA' format is YYYY-MM-DD
 
       if (preset === 'today') {
-        minDate = new Date().toISOString().split('T')[0];
+        minDate = new Date().toLocaleDateString('en-CA');
       } else if(preset === 'lastWeek') {
-        minDate = new Date(today.setDate(today.getDate() - 7)).toISOString().split('T')[0];
+        minDate = new Date(today.setDate(today.getDate() - 7)).toLocaleDateString('en-CA');
       } else if (preset === 'lastMonth') {
-        minDate = new Date(today.setMonth(today.getMonth() - 1)).toISOString().split('T')[0];
+        minDate = new Date(today.setMonth(today.getMonth() - 1)).toLocaleDateString('en-CA');
       } else if (preset === 'pastYear') {
-        minDate = new Date(today.setFullYear(today.getFullYear() - 1)).toISOString().split('T')[0];
+        minDate = new Date(today.setFullYear(today.getFullYear() - 1)).toLocaleDateString('en-CA');
       }
 
       document.getElementById('minDate').value = minDate;
