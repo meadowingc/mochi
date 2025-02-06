@@ -31,8 +31,10 @@
 
   <h1 class="text-2xl font-bold">{{site.URL}}</h1>
 
-  <!-- embed instructions link -->
-  <div class="mt-2 mb-8">
+  <!-- links -->
+  <div class="flex items-center mt-2">
+    <a href="/dashboard" class="text-blue-500 underline mr-4">Back to Dashboard</a>
+
     <a
       href="/dashboard/site/embed_instructions/{{site.ID}}"
       class="text-blue-500 underline"
@@ -230,6 +232,16 @@
             y: {
               beginAtZero: true,
             },
+          },
+          onClick: function (evt, elements) {
+            if (elements.length > 0) {
+              const index = elements[0].index;
+              const selectedDate = labels[index];
+              const urlParams = new URLSearchParams(window.location.search);
+              urlParams.set('minDate', selectedDate);
+              urlParams.set('maxDate', selectedDate);
+              window.location.search = urlParams.toString();
+            }
           },
         },
       });
