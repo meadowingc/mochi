@@ -54,18 +54,11 @@ func RenderTemplate(w http.ResponseWriter, r *http.Request, templateName string,
 	}
 
 	fs := os.DirFS("templates")
+
 	template, err := scriggo.BuildTemplate(fs, templateName, opts)
 
 	if err != nil {
 		log.Printf("Error building template %s: %v", templateName, err)
-		return
-	}
-
-	err = template.Run(w, map[string]any{}, nil)
-
-	if err != nil {
-		log.Printf("Template execution error for template %s: %v", templateName, err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -75,7 +68,14 @@ func RenderTemplate(w http.ResponseWriter, r *http.Request, templateName string,
 	} else if strings.HasSuffix(templateName, ".css") {
 		w.Header().Set("Content-Type", "text/css")
 	} else if strings.HasSuffix(templateName, ".js") {
-		w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+		w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
 	}
 
+	err = template.Run(w, map[string]any{}, nil)
+
+	if err != nil {
+		log.Printf("Template execution error for template %s: %v", templateName, err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
