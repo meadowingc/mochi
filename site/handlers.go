@@ -15,7 +15,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/mileusna/useragent"
-	"github.com/open2b/scriggo/native"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -23,7 +22,7 @@ func UserLogin(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		adminUser := GetSignedInUserOrNil(r)
 		if adminUser == nil {
-			RenderTemplate(w, r, "pages/user/login.html", nil)
+			RenderTemplate(w, r, "pages/user/login.html", nil, nil)
 			return
 		} else {
 			http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
@@ -75,7 +74,7 @@ func UserRegister(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		adminUser := GetSignedInUserOrNil(r)
 		if adminUser == nil {
-			RenderTemplate(w, r, "pages/user/register.html", nil)
+			RenderTemplate(w, r, "pages/user/register.html", nil, nil)
 			return
 		} else {
 			http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
@@ -162,9 +161,14 @@ func UserDashboardHome(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	RenderTemplate(w, r, "pages/dashboard/dashboard.html", &native.Declarations{
-		"userSites": &userSites,
-	})
+	RenderTemplate(w, r, "pages/dashboard/dashboard.html",
+		&map[string]any{
+			"userSites": (*[]database.Site)(nil),
+		},
+		&map[string]any{
+			"userSites": &userSites,
+		},
+	)
 }
 
 func CreateNewSite(w http.ResponseWriter, r *http.Request) {
@@ -344,22 +348,58 @@ func SiteDetails(w http.ResponseWriter, r *http.Request) {
 		graphVisits = append(graphVisits, visits)
 	}
 
-	RenderTemplate(w, r, "pages/dashboard/site/site_details.html", &native.Declarations{
-		"site":                    &site,
-		"minDate":                 &minDate,
-		"maxDate":                 &maxDate,
-		"hits":                    &hits,
-		"numUniqueVisitors":       len(uniqueVisitors),
-		"sortedCountsForPath":     &sortedCountsForPath,
-		"sortedCountsForReferrer": &sortedCountsForReferrer,
-		"sortedCountsForCountry":  &sortedCountsForCountry,
-		"sortedCountsForOS":       &sortedCountsForOS,
-		"sortedCountsForBrowser":  &sortedCountsForBrowser,
-		"sortedCountsForDevice":   &sortedCountsForDevice,
-		"visitsByDay":             &visitsByDay,
-		"graphDays":               &graphDays,
-		"graphVisits":             &graphVisits,
-	})
+	RenderTemplate(w, r, "pages/dashboard/site/site_details.html",
+		&map[string]any{
+			"site":              (*database.Site)(nil),
+			"minDate":           (*time.Time)(nil),
+			"maxDate":           (*time.Time)(nil),
+			"hits":              (*[]database.Hit)(nil),
+			"numUniqueVisitors": 0,
+			"sortedCountsForPath": (*[]struct {
+				Key   string
+				Value int
+			})(nil),
+			"sortedCountsForReferrer": (*[]struct {
+				Key   string
+				Value int
+			})(nil),
+			"sortedCountsForCountry": (*[]struct {
+				Key   string
+				Value int
+			})(nil),
+			"sortedCountsForOS": (*[]struct {
+				Key   string
+				Value int
+			})(nil),
+			"sortedCountsForBrowser": (*[]struct {
+				Key   string
+				Value int
+			})(nil),
+			"sortedCountsForDevice": (*[]struct {
+				Key   string
+				Value int
+			})(nil),
+			"visitsByDay": (*map[string]int)(nil),
+			"graphDays":   (*[]string)(nil),
+			"graphVisits": (*[]int)(nil),
+		},
+		&map[string]any{
+			"site":                    &site,
+			"minDate":                 &minDate,
+			"maxDate":                 &maxDate,
+			"hits":                    &hits,
+			"numUniqueVisitors":       len(uniqueVisitors),
+			"sortedCountsForPath":     &sortedCountsForPath,
+			"sortedCountsForReferrer": &sortedCountsForReferrer,
+			"sortedCountsForCountry":  &sortedCountsForCountry,
+			"sortedCountsForOS":       &sortedCountsForOS,
+			"sortedCountsForBrowser":  &sortedCountsForBrowser,
+			"sortedCountsForDevice":   &sortedCountsForDevice,
+			"visitsByDay":             &visitsByDay,
+			"graphDays":               &graphDays,
+			"graphVisits":             &graphVisits,
+		},
+	)
 }
 
 func SiteEmbedInstructions(w http.ResponseWriter, r *http.Request) {
@@ -380,9 +420,14 @@ func SiteEmbedInstructions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	RenderTemplate(w, r, "pages/dashboard/site/embed_instructions.html", &native.Declarations{
-		"site": &site,
-	})
+	RenderTemplate(w, r, "pages/dashboard/site/embed_instructions.html",
+		&map[string]any{
+			"site": (*database.Site)(nil),
+		},
+		&map[string]any{
+			"site": &site,
+		},
+	)
 }
 
 func ReaperGetEmbedJs(w http.ResponseWriter, r *http.Request) {
@@ -445,11 +490,18 @@ func ReaperGetEmbedJs(w http.ResponseWriter, r *http.Request) {
 		countryFlagsStr += countryCodeToFlagEmoji(code)
 	}
 
-	RenderTemplate(w, r, "pages/reaper/embed/reaper_embed.js", &native.Declarations{
-		"site":          &site,
-		"ownerUsername": username,
-		"countryFlags":  countryFlagsStr,
-	})
+	RenderTemplate(w, r, "pages/reaper/embed/reaper_embed.js",
+		&map[string]any{
+			"site":          (*database.Site)(nil),
+			"ownerUsername": (*string)(nil),
+			"countryFlags":  (*string)(nil),
+		},
+		&map[string]any{
+			"site":          &site,
+			"ownerUsername": username,
+			"countryFlags":  countryFlagsStr,
+		},
+	)
 }
 
 func ReaperPostHit(w http.ResponseWriter, r *http.Request) {
