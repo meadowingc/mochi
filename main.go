@@ -77,16 +77,16 @@ func initRouter() *chi.Mux {
 			return
 		}
 
-		site.RenderTemplate(w, r, "pages/home.html", nil, nil)
+		site.RenderTemplate(w, r, "pages/home.html", nil)
 	})
 
 	r.Get("/terms-and-conditions", func(w http.ResponseWriter, r *http.Request) {
-		site.RenderTemplate(w, r, "pages/terms_and_conditions.html", nil, nil)
+		site.RenderTemplate(w, r, "pages/terms_and_conditions.html", nil)
 	})
 
 	if constants.DEBUG_MODE {
 		r.Get("/test-embed-page", func(w http.ResponseWriter, r *http.Request) {
-			site.RenderTemplate(w, r, "pages/test_embed_page.html", nil, nil)
+			site.RenderTemplate(w, r, "pages/test_embed_page.html", nil)
 		})
 	}
 
