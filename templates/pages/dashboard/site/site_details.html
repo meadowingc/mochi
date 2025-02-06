@@ -20,7 +20,7 @@
             <li class="flex items-center justify-between py-2 px-4 border-b border-gray-200 {{bgColor}}">
               <span class="cursor-pointer text-blue-500" onclick="addFilter('{{filterName}}', '{{ pdata.Key }}')">
                 {{ pdata.Key }}
-                
+
                 {% if isLink %}
                     <a href="{{pdata.Key}}" class="ml-4 text-gray-500">(⤴)</a>
                 {% end %}
