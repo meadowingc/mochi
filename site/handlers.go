@@ -22,7 +22,7 @@ func UserLogin(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		adminUser := GetSignedInUserOrNil(r)
 		if adminUser == nil {
-			RenderTemplate(w, r, "pages/user/login.html", nil, nil)
+			RenderTemplate(w, r, "pages/user/login.html", nil)
 			return
 		} else {
 			http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
@@ -74,7 +74,7 @@ func UserRegister(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		adminUser := GetSignedInUserOrNil(r)
 		if adminUser == nil {
-			RenderTemplate(w, r, "pages/user/register.html", nil, nil)
+			RenderTemplate(w, r, "pages/user/register.html", nil)
 			return
 		} else {
 			http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
@@ -162,11 +162,8 @@ func UserDashboardHome(w http.ResponseWriter, r *http.Request) {
 	}
 
 	RenderTemplate(w, r, "pages/dashboard/dashboard.html",
-		&map[string]any{
-			"userSites": (*[]database.Site)(nil),
-		},
-		&map[string]any{
-			"userSites": &userSites,
+		&map[string]CustomDeclaration{
+			"userSites": {(*[]database.Site)(nil), &userSites},
 		},
 	)
 }
@@ -333,13 +330,6 @@ func SiteDetails(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	sortedCountsForPath := sortMapByValue(countsForPath)
-	sortedCountsForReferrer := sortMapByValue(countsForReferrer)
-	sortedCountsForCountry := sortMapByValue(countsForCountry)
-	sortedCountsForOS := sortMapByValue(countsForOS)
-	sortedCountsForBrowser := sortMapByValue(countsForBrowser)
-	sortedCountsForDevice := sortMapByValue(countsForDevice)
-
 	graphDays := make([]string, 0, len(visitsByDay))
 	graphVisits := make([]int, 0, len(visitsByDay))
 
@@ -348,56 +338,33 @@ func SiteDetails(w http.ResponseWriter, r *http.Request) {
 		graphVisits = append(graphVisits, visits)
 	}
 
+	makeSortedDeclaration := func(m map[string]int) CustomDeclaration {
+		sortedMap := sortMapByValue(m)
+
+		return CustomDeclaration{(*[]struct {
+			Key   string
+			Value int
+		})(nil),
+			&sortedMap,
+		}
+	}
+
 	RenderTemplate(w, r, "pages/dashboard/site/site_details.html",
-		&map[string]any{
-			"site":              (*database.Site)(nil),
-			"minDate":           (*time.Time)(nil),
-			"maxDate":           (*time.Time)(nil),
-			"hits":              (*[]database.Hit)(nil),
-			"numUniqueVisitors": 0,
-			"sortedCountsForPath": (*[]struct {
-				Key   string
-				Value int
-			})(nil),
-			"sortedCountsForReferrer": (*[]struct {
-				Key   string
-				Value int
-			})(nil),
-			"sortedCountsForCountry": (*[]struct {
-				Key   string
-				Value int
-			})(nil),
-			"sortedCountsForOS": (*[]struct {
-				Key   string
-				Value int
-			})(nil),
-			"sortedCountsForBrowser": (*[]struct {
-				Key   string
-				Value int
-			})(nil),
-			"sortedCountsForDevice": (*[]struct {
-				Key   string
-				Value int
-			})(nil),
-			"visitsByDay": (*map[string]int)(nil),
-			"graphDays":   (*[]string)(nil),
-			"graphVisits": (*[]int)(nil),
-		},
-		&map[string]any{
-			"site":                    &site,
-			"minDate":                 &minDate,
-			"maxDate":                 &maxDate,
-			"hits":                    &hits,
-			"numUniqueVisitors":       len(uniqueVisitors),
-			"sortedCountsForPath":     &sortedCountsForPath,
-			"sortedCountsForReferrer": &sortedCountsForReferrer,
-			"sortedCountsForCountry":  &sortedCountsForCountry,
-			"sortedCountsForOS":       &sortedCountsForOS,
-			"sortedCountsForBrowser":  &sortedCountsForBrowser,
-			"sortedCountsForDevice":   &sortedCountsForDevice,
-			"visitsByDay":             &visitsByDay,
-			"graphDays":               &graphDays,
-			"graphVisits":             &graphVisits,
+		&map[string]CustomDeclaration{
+			"site":                    {(*database.Site)(nil), &site},
+			"minDate":                 {(*time.Time)(nil), &minDate},
+			"maxDate":                 {(*time.Time)(nil), &maxDate},
+			"hits":                    {(*[]database.Hit)(nil), &hits},
+			"numUniqueVisitors":       {0, len(uniqueVisitors)},
+			"sortedCountsForPath":     makeSortedDeclaration(countsForPath),
+			"sortedCountsForReferrer": makeSortedDeclaration(countsForReferrer),
+			"sortedCountsForCountry":  makeSortedDeclaration(countsForCountry),
+			"sortedCountsForOS":       makeSortedDeclaration(countsForOS),
+			"sortedCountsForBrowser":  makeSortedDeclaration(countsForBrowser),
+			"sortedCountsForDevice":   makeSortedDeclaration(countsForDevice),
+			"visitsByDay":             {(*map[string]int)(nil), &visitsByDay},
+			"graphDays":               {(*[]string)(nil), &graphDays},
+			"graphVisits":             {(*[]int)(nil), &graphVisits},
 		},
 	)
 }
@@ -421,11 +388,8 @@ func SiteEmbedInstructions(w http.ResponseWriter, r *http.Request) {
 	}
 
 	RenderTemplate(w, r, "pages/dashboard/site/embed_instructions.html",
-		&map[string]any{
-			"site": (*database.Site)(nil),
-		},
-		&map[string]any{
-			"site": &site,
+		&map[string]CustomDeclaration{
+			"site": {(*database.Site)(nil), &site},
 		},
 	)
 }
@@ -491,15 +455,10 @@ func ReaperGetEmbedJs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	RenderTemplate(w, r, "pages/reaper/embed/reaper_embed.js",
-		&map[string]any{
-			"site":          (*database.Site)(nil),
-			"ownerUsername": (*string)(nil),
-			"countryFlags":  (*string)(nil),
-		},
-		&map[string]any{
-			"site":          &site,
-			"ownerUsername": username,
-			"countryFlags":  countryFlagsStr,
+		&map[string]CustomDeclaration{
+			"site":          {(*database.Site)(nil), &site},
+			"ownerUsername": {(*string)(nil), &username},
+			"countryFlags":  {(*string)(nil), &countryFlagsStr},
 		},
 	)
 }

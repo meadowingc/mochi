@@ -19,12 +19,15 @@ import (
 
 var templateCache sync.Map
 
+type CustomDeclaration struct {
+	TypeDef, Value any
+}
+
 func RenderTemplate(
 	w http.ResponseWriter,
 	r *http.Request,
 	templateName string,
-	extraDeclarationTypes *map[string]any,
-	extraDeclarations *map[string]any,
+	extraDeclarations *map[string]CustomDeclaration,
 ) {
 
 	// Check if the template is already cached
@@ -58,9 +61,9 @@ func RenderTemplate(
 			},
 		}
 
-		if extraDeclarationTypes != nil {
-			for k, v := range *extraDeclarationTypes {
-				opts.Globals[k] = v
+		if extraDeclarations != nil {
+			for k, v := range *extraDeclarations {
+				opts.Globals[k] = v.TypeDef
 			}
 		}
 
@@ -93,7 +96,7 @@ func RenderTemplate(
 
 	if extraDeclarations != nil {
 		for k, v := range *extraDeclarations {
-			runTemplateData[k] = v
+			runTemplateData[k] = v.Value
 		}
 	}
 
