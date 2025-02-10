@@ -10,6 +10,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/mileusna/useragent v1.3.5
 	github.com/open2b/scriggo v0.59.1
+	github.com/tdewolff/minify/v2 v2.21.3
 	golang.org/x/crypto v0.26.0
 	gorm.io/datatypes v1.2.5
 	gorm.io/driver/sqlite v1.5.6
@@ -25,6 +26,7 @@ require (
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/mattn/go-sqlite3 v1.14.22 // indirect
+	github.com/tdewolff/parse/v2 v2.7.19 // indirect
 	golang.org/x/text v0.17.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

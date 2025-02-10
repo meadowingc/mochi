@@ -1,6 +1,7 @@
 package site
 
 import (
+	"bytes"
 	"encoding/json"
 	"log"
 	"mochi/constants"
@@ -15,7 +16,13 @@ import (
 	"github.com/open2b/scriggo"
 	"github.com/open2b/scriggo/builtin"
 	"github.com/open2b/scriggo/native"
+	"github.com/tdewolff/minify/v2"
+	"github.com/tdewolff/minify/v2/css"
+	"github.com/tdewolff/minify/v2/html"
+	"github.com/tdewolff/minify/v2/js"
 )
+
+var minifier *minify.M
 
 var templateCache sync.Map
 
@@ -29,6 +36,17 @@ func RenderTemplate(
 	templateName string,
 	extraDeclarations *map[string]CustomDeclaration,
 ) {
+	if minifier == nil {
+		minifier = minify.New()
+		minifier.Add("text/html", &html.Minifier{
+			KeepDefaultAttrVals: true,
+			KeepDocumentTags:    true,
+			KeepEndTags:         true,
+			KeepQuotes:          true,
+		})
+		minifier.Add("text/javascript", &js.Minifier{})
+		minifier.Add("text/css", &css.Minifier{})
+	}
 
 	// Check if the template is already cached
 	cachedTemplate, ok := templateCache.Load(templateName)
@@ -100,9 +118,30 @@ func RenderTemplate(
 		}
 	}
 
-	err := template.Run(w, runTemplateData, nil)
+	var buf bytes.Buffer
+	err := template.Run(&buf, runTemplateData, nil)
 	if err != nil {
 		log.Printf("Template execution error for template %s: %v", templateName, err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var minifiedBuf bytes.Buffer
+	contentType := w.Header().Get("Content-Type")
+	if !constants.DEBUG_MODE && (contentType == "text/html" || contentType == "text/javascript; charset=utf-8") {
+		err = minifier.Minify(contentType, &minifiedBuf, &buf)
+		if err != nil {
+			log.Printf("Minification error for template %s: %v", templateName, err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		_, err = minifiedBuf.WriteTo(w)
+	} else {
+		_, err = buf.WriteTo(w)
+	}
+
+	if err != nil {
+		log.Printf("Error writing response for template %s: %v", templateName, err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
