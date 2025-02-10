@@ -599,17 +599,19 @@ func ReaperPostHit(w http.ResponseWriter, r *http.Request) {
 				visitorBrowser = &ua.Name
 			}
 
-			if ua.Device != "" {
-				visitorDeviceType = &ua.Device
-			} else {
-				switch {
-				case ua.Mobile:
-					visitorDeviceType = stringWithValueOrNil("Mobile")
-				case ua.Tablet:
-					visitorDeviceType = stringWithValueOrNil("Tablet")
-				case ua.Desktop:
-					visitorDeviceType = stringWithValueOrNil("Desktop")
-				}
+			switch {
+			case ua.Device == "iPhone":
+				visitorDeviceType = stringWithValueOrNil("iPhone")
+			case ua.Device == "iPad":
+				visitorDeviceType = stringWithValueOrNil("iPad")
+			case ua.Mobile:
+				visitorDeviceType = stringWithValueOrNil("Mobile")
+			case ua.Tablet:
+				visitorDeviceType = stringWithValueOrNil("Tablet")
+			case ua.Desktop:
+				visitorDeviceType = stringWithValueOrNil("Desktop")
+			default:
+				visitorDeviceType = stringWithValueOrNil("Other")
 			}
 		}
 
