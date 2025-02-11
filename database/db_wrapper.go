@@ -88,12 +88,14 @@ func CleanupOnAppClose() {
 	defer cacheMutex.Unlock()
 
 	// expire everything
+	closedConnections := 0
 	for username, cached := range dbCache {
 		cached.userDb.close()
 		delete(dbCache, username)
+		closedConnections++
 	}
 
-	log.Println("Closed all database connections")
+	log.Printf("Closed %d database connections", closedConnections)
 }
 
 func cleanupCache() {
