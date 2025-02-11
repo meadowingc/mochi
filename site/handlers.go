@@ -358,13 +358,14 @@ func SiteDetails(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	numUniqueVisitors := len(uniqueVisitors)
 	RenderTemplate(w, r, "pages/dashboard/site/site_details.html",
 		&map[string]CustomDeclaration{
 			"site":                    {(*database.Site)(nil), &site},
 			"minDate":                 {(*time.Time)(nil), &minDate},
 			"maxDate":                 {(*time.Time)(nil), &maxDate},
 			"hits":                    {(*[]database.Hit)(nil), &hits},
-			"numUniqueVisitors":       {0, len(uniqueVisitors)},
+			"numUniqueVisitors":       {(*int)(nil), &numUniqueVisitors},
 			"sortedCountsForPath":     makeSortedDeclaration(countsForPath),
 			"sortedCountsForReferrer": makeSortedDeclaration(countsForReferrer),
 			"sortedCountsForCountry":  makeSortedDeclaration(countsForCountry),
