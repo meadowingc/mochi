@@ -326,8 +326,8 @@ func SiteDetails(w http.ResponseWriter, r *http.Request) {
 		date := hit.Date.Format("2006-01-02")
 		visitsByDay[date]++
 
-		if hit.VisitorIpHash != nil {
-			uniqueVisitors[*hit.VisitorIpHash] = true
+		if hit.VisitorIpUaHash != nil {
+			uniqueVisitors[*hit.VisitorIpUaHash] = true
 		}
 	}
 
@@ -559,13 +559,18 @@ func ReaperPostHit(w http.ResponseWriter, r *http.Request) {
 
 		cloudflareCountryCode := stringWithValueOrNil(r.Header.Get("CF-IPCountry"))
 		userAgent := r.Header.Get("User-Agent")
-		userIp := r.Header.Get("X-Forwarded-For")
+		userIp := r.Header.Get("CF-Connecting-IP")
 
-		var userIpHash *string = nil
+		if userIp == "" {
+			// fallback
+			userIp = r.Header.Get("X-Forwarded-For")
+		}
+
+		var userIpAgentHash *string = nil
 		if userIp != "" {
-			hash := sha256.Sum256([]byte(userIp))
+			hash := sha256.Sum256([]byte(userIp + userAgent))
 			hashString := hex.EncodeToString(hash[:])
-			userIpHash = &hashString
+			userIpAgentHash = &hashString
 		}
 
 		var visitorOS *string
@@ -619,7 +624,7 @@ func ReaperPostHit(w http.ResponseWriter, r *http.Request) {
 			SiteID:            site.ID,
 			Path:              pagePathParam,
 			Date:              time.Now(), // Add 8 hours to get to UTC time
-			VisitorIpHash:     userIpHash,
+			VisitorIpUaHash:   userIpAgentHash,
 			HTTPReferer:       referrerParam,
 			CountryCode:       cloudflareCountryCode,
 			VisitorOS:         visitorOS,

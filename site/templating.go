@@ -53,6 +53,7 @@ func RenderTemplate(
 	if !ok || constants.DEBUG_MODE {
 		opts := &scriggo.BuildOptions{
 			Globals: native.Declarations{
+				"templateName": templateName,
 				"signedInUser": (**database.User)(nil),
 				"isDebug":      constants.DEBUG_MODE,
 				"publicURL":    constants.PUBLIC_URL,

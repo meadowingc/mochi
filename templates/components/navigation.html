@@ -1,3 +1,9 @@
+<h1 class="text-3xl font-bold leading-tight text-gray-900">
+  {% if templateName != "pages/home.html" %}
+    <a href="/">🍡 mochi</a>
+  {% end %}
+</h1>
+
 <nav>
   <ul class="flex space-x-4">
     {% if signedInUser == nil %}

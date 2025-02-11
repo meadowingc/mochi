@@ -29,7 +29,7 @@ type Hit struct {
 	SiteID            uint `gorm:"index"`
 	Path              string
 	Date              time.Time
-	VisitorIpHash     *string
+	VisitorIpUaHash   *string
 	HTTPReferer       *string
 	CountryCode       *string
 	VisitorOS         *string
