@@ -84,7 +84,16 @@ func GetOrCreateDB(username string) *UserDb {
 }
 
 func CleanupOnAppClose() {
-	cleanupCache()
+	cacheMutex.Lock()
+	defer cacheMutex.Unlock()
+
+	// expire everything
+	for username, cached := range dbCache {
+		cached.userDb.close()
+		delete(dbCache, username)
+	}
+
+	log.Println("Closed all database connections")
 }
 
 func cleanupCache() {
