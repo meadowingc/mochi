@@ -18,11 +18,10 @@
           {% for path_i, pdata := range pathToCounts %}
             {% bgColor := "bg-white" %}
             <li class="flex items-center justify-between py-2 px-4 border-b border-gray-200 {{bgColor}}">
-              <span class="cursor-pointer text-blue-500" onclick="addFilter('{{filterName}}', '{{ pdata.Key }}')">
-                {{ pdata.Key }}
-
+              <span class="cursor-pointer text-blue-500">
+                <span onclick="addFilter('{{filterName}}', '{{ pdata.Key }}')">{{ pdata.Key }}</span>
                 {% if isLink %}
-                    <a target="_blank" href="{{pdata.Key}}" class="ml-4 text-gray-500">(⤴)</a>
+                    <a target="_blank" href="{{pdata.Key}}" class="ml-1 text-gray-500">(⤴)</a>
                 {% end %}
               </span>
               <span>{{ pdata.Value }}</span>
@@ -32,6 +31,7 @@
       {% end %}
     </div>
   {% end %}
+
   <script src="/assets/js/chart.js"></script>
 
   <h1 class="text-2xl font-bold">{{site.URL}}</h1>
