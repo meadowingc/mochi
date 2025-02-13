@@ -545,7 +545,6 @@ func ReaperPostHit(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		// if the referer is the same as the site URL, then it's likely a direct visit and we should set the referrer to nil
 		if referrerParam != nil {
 			referrerURL, err := url.Parse(*referrerParam)
 			if err != nil {
@@ -553,8 +552,14 @@ func ReaperPostHit(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
+			// if the referer is the same as the site URL, then it's likely a self visit and we should set the referrer to nil
 			if referrerURL.Host == siteURL.Host {
 				referrerParam = nil
+			} else {
+				// Standardize the protocol to https
+				referrerURL.Scheme = "https"
+				standardizedReferrer := referrerURL.String()
+				referrerParam = &standardizedReferrer
 			}
 		}
 
