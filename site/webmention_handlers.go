@@ -13,27 +13,35 @@ import (
 )
 
 func WebmentionPost(w http.ResponseWriter, r *http.Request) {
+	escapedUsername := chi.URLParam(r, "username")
+	siteID := chi.URLParam(r, "siteId")
+
+	log.Printf("WebmentionPost: username='%s', siteID='%s'", escapedUsername, siteID)
+
+	if escapedUsername == "" {
+		log.Printf("WebmentionPost: Username is empty")
+		http.Error(w, "Username is required", http.StatusBadRequest)
+		return
+	}
+
+	if siteID == "" {
+		log.Printf("WebmentionPost: SiteID is empty")
+		http.Error(w, "SiteID is required", http.StatusBadRequest)
+		return
+	}
+
 	// Return immediately
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Request received"))
 
 	// Execute the rest of the logic in a goroutine
 	go func() {
-		escapedUsername := chi.URLParam(r, "username")
-		log.Printf("WebmentionPost: escapedUsername: '%s'", escapedUsername)
-
 		escapedUsername = strings.TrimSpace(escapedUsername)
-		log.Printf("WebmentionPost: escapedUsername after trim: '%s'", escapedUsername)
-
 		username, err := url.PathUnescape(escapedUsername)
 		if err != nil {
 			log.Printf("WebmentionPost: Error unescaping username '%s': %v", escapedUsername, err)
 			return
 		}
-
-		log.Printf("WebmentionPost: username after path unescape: '%s'", username)
-
-		siteID := chi.URLParam(r, "siteID")
 
 		// Process the webmention
 		sourceUrlStr := r.FormValue("source")
