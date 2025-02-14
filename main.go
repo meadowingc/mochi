@@ -64,7 +64,7 @@ func initRouter() *chi.Mux {
 	r.Use(site.RealIPMiddleware)
 	r.Use(middleware.Logger)
 	r.Use(httprate.LimitByIP(600, time.Minute)) // general rate limiter for all routes (shared across all routes)
-	r.Use(middleware.Recoverer)
+	// r.Use(middleware.Recoverer)
 	r.Use(site.TryPutUserInContextMiddleware)
 
 	fileServer := http.FileServer(http.Dir("./assets"))
