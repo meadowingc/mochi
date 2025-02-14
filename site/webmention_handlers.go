@@ -20,13 +20,18 @@ func WebmentionPost(w http.ResponseWriter, r *http.Request) {
 	// Execute the rest of the logic in a goroutine
 	go func() {
 		escapedUsername := chi.URLParam(r, "username")
+		log.Printf("WebmentionPost: escapedUsername: '%s'", escapedUsername)
+
 		escapedUsername = strings.TrimSpace(escapedUsername)
+		log.Printf("WebmentionPost: escapedUsername after trim: '%s'", escapedUsername)
 
 		username, err := url.PathUnescape(escapedUsername)
 		if err != nil {
 			log.Printf("WebmentionPost: Error unescaping username '%s': %v", escapedUsername, err)
 			return
 		}
+
+		log.Printf("WebmentionPost: username after path unescape: '%s'", username)
 
 		siteID := chi.URLParam(r, "siteID")
 
