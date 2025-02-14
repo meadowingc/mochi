@@ -93,8 +93,6 @@ func WebmentionPost(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		defer resp.Body.Close()
-
 		if resp.StatusCode != http.StatusOK {
 			log.Printf("WebmentionPost: Source URL '%s' returned status code %d for user '%s'", sourceUrlStr, resp.StatusCode, username)
 			return
@@ -106,6 +104,8 @@ func WebmentionPost(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		resp.Body.Close()
+
 		sourceHtml := string(sourceHtmlBytes)
 
 		// Check if the target URL is wrapped in an href attribute
@@ -113,6 +113,27 @@ func WebmentionPost(w http.ResponseWriter, r *http.Request) {
 			log.Printf("WebmentionPost: Source URL '%s' does not contain target URL '%s' wrapped in href for user '%s'", sourceUrlStr, targetUrlStr, username)
 			return
 		}
+
+		// now verify that the target URL is valid and exists
+		req, err = http.NewRequest("GET", targetUrlStr, nil)
+		if err != nil {
+			log.Printf("WebmentionPost: Error creating GET request for target URL '%s' for user '%s': %v", targetUrlStr, username, err)
+			return
+		}
+
+		req.Header.Set("Accept", "text/html")
+		resp, err = client.Do(req)
+		if err != nil {
+			log.Printf("WebmentionPost: Error fetching target URL '%s' for user '%s': %v", targetUrlStr, username, err)
+			return
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			log.Printf("WebmentionPost: Target URL '%s' returned status code %d for user '%s'", targetUrlStr, resp.StatusCode, username)
+			return
+		}
+
+		resp.Body.Close()
 
 		// normalize the target and source URLs
 		normalizeURL := func(u *url.URL) string {
