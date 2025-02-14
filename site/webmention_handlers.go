@@ -13,36 +13,6 @@ import (
 )
 
 func WebmentionPost(w http.ResponseWriter, r *http.Request) {
-	// Retrieve the route context
-	routeCtx := chi.RouteContext(r.Context())
-
-	log.Printf("WebmentionPost: Route pattern: '%s'", routeCtx.RoutePattern())
-	log.Printf("WebmentionPost: Route URLParams: '%s'", routeCtx.URLParams)
-	log.Printf("WebmentionPost: Route URLParams.Keys: '%s'", routeCtx.URLParams.Keys)
-
-	// Iterate over the URL parameters and log them
-	for i := 0; i < len(routeCtx.URLParams.Keys); i++ {
-		key := routeCtx.URLParams.Keys[i]
-		value := routeCtx.URLParams.Values[i]
-		log.Printf("URL Param: '%s' = '%s'", key, value)
-	}
-
-	escapedUsername := chi.URLParam(r, "username")
-	siteID := chi.URLParam(r, "siteId")
-
-	log.Printf("WebmentionPost: username='%s', siteID='%s'", escapedUsername, siteID)
-
-	if escapedUsername == "" {
-		log.Printf("WebmentionPost: Username is empty")
-		http.Error(w, "Username is required", http.StatusBadRequest)
-		return
-	}
-
-	if siteID == "" {
-		log.Printf("WebmentionPost: SiteID is empty")
-		http.Error(w, "SiteID is required", http.StatusBadRequest)
-		return
-	}
 
 	// Return immediately
 	w.WriteHeader(http.StatusOK)
@@ -50,6 +20,9 @@ func WebmentionPost(w http.ResponseWriter, r *http.Request) {
 
 	// Execute the rest of the logic in a goroutine
 	go func() {
+		escapedUsername := chi.URLParam(r, "username")
+		siteID := chi.URLParam(r, "siteId")
+
 		escapedUsername = strings.TrimSpace(escapedUsername)
 		username, err := url.PathUnescape(escapedUsername)
 		if err != nil {

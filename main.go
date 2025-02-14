@@ -90,10 +90,6 @@ func initRouter() *chi.Mux {
 		})
 	}
 
-	// r.Get("/terms-and-conditions", func(w http.ResponseWriter, r *http.Request) {
-	// 	site.RenderTemplate(w, r, "terms_and_conditions", nil)
-	// })
-
 	r.With(httprate.LimitByIP(30, time.Minute)).Route("/user", func(r chi.Router) {
 		r.HandleFunc("/login", site.UserLogin)
 		r.HandleFunc("/register", site.UserRegister)
