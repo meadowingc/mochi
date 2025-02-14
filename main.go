@@ -100,16 +100,16 @@ func initRouter() *chi.Mux {
 		r.HandleFunc("/logout", site.UserLogout)
 	})
 
-	r.With(CORSEverywhereMiddleware.Handler).Route(
-		"/reaper/{username}", func(r chi.Router) {
+	r.With(CORSEverywhereMiddleware.Handler).Group(func(r chi.Router) {
+		r.Route("/reaper/{username}", func(r chi.Router) {
 			r.Get("/embed/{siteID}.js", site.ReaperGetEmbedJs)
 			r.Post("/{siteID}", site.ReaperPostHit)
-		},
-	).Route(
-		"/webmention/{username}/{siteId}", func(r chi.Router) {
+		})
+
+		r.Route("/webmention/{username}/{siteId}", func(r chi.Router) {
 			r.Post("/create", site.WebmentionPost)
-		},
-	)
+		})
+	})
 
 	r.With(site.AuthProtectedMiddleware).Route("/dashboard", func(r chi.Router) {
 		r.Get("/", site.UserDashboardHome)
