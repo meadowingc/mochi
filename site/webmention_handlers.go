@@ -16,6 +16,10 @@ func WebmentionPost(w http.ResponseWriter, r *http.Request) {
 	// Retrieve the route context
 	routeCtx := chi.RouteContext(r.Context())
 
+	log.Printf("WebmentionPost: Route pattern: '%s'", routeCtx.RoutePattern())
+	log.Printf("WebmentionPost: Route URLParams: '%s'", routeCtx.URLParams)
+	log.Printf("WebmentionPost: Route URLParams.Keys: '%s'", routeCtx.URLParams.Keys)
+
 	// Iterate over the URL parameters and log them
 	for i := 0; i < len(routeCtx.URLParams.Keys); i++ {
 		key := routeCtx.URLParams.Keys[i]
