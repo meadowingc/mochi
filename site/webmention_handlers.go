@@ -13,6 +13,16 @@ import (
 )
 
 func WebmentionPost(w http.ResponseWriter, r *http.Request) {
+	// Retrieve the route context
+	routeCtx := chi.RouteContext(r.Context())
+
+	// Iterate over the URL parameters and log them
+	for i := 0; i < len(routeCtx.URLParams.Keys); i++ {
+		key := routeCtx.URLParams.Keys[i]
+		value := routeCtx.URLParams.Values[i]
+		log.Printf("URL Param: '%s' = '%s'", key, value)
+	}
+
 	escapedUsername := chi.URLParam(r, "username")
 	siteID := chi.URLParam(r, "siteId")
 
