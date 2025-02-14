@@ -49,7 +49,7 @@ func WebmentionPost(w http.ResponseWriter, r *http.Request) {
 		userDatabase := database.GetDbIfExists(username)
 
 		if userDatabase == nil {
-			log.Printf("WebmentionPost: User not found: %s", username)
+			log.Printf("WebmentionPost: User not found: '%s'", username)
 			return
 		}
 
