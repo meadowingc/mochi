@@ -105,6 +105,10 @@ func initRouter() *chi.Mux {
 		r.Post("/{siteID}", site.ReaperPostHit)
 	})
 
+	r.With(CORSEverywhereMiddleware.Handler).Route("/webmention/{username}/{siteId}", func(r chi.Router) {
+		r.Post("/create", site.WebmentionPost)
+	})
+
 	r.With(site.AuthProtectedMiddleware).Route("/dashboard", func(r chi.Router) {
 		r.Get("/", site.UserDashboardHome)
 		r.Post("/create-site", site.CreateNewSite)

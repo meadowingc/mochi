@@ -36,3 +36,11 @@ type Hit struct {
 	VisitorDeviceType *string
 	VisitorBrowser    *string
 }
+
+type WebMention struct {
+	gorm.Model
+	SiteID    uint `gorm:"index"`
+	SourceURL string
+	TargetURL string
+	Status    string
+}
