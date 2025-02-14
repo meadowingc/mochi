@@ -63,7 +63,7 @@ func initRouter() *chi.Mux {
 
 	r.Use(site.RealIPMiddleware)
 	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
+	// r.Use(middleware.Recoverer)
 	r.Use(httprate.LimitByIP(600, time.Minute)) // general rate limiter for all routes (shared across all routes)
 	r.Use(site.TryPutUserInContextMiddleware)
 
@@ -106,8 +106,8 @@ func initRouter() *chi.Mux {
 			r.Post("/{siteID}", site.ReaperPostHit)
 		})
 
-		r.Route("/webmention/{username}", func(r chi.Router) {
-			r.Post("/{siteId}/create", site.WebmentionPost)
+		r.Route("/webmention/{username}/{siteId}", func(r chi.Router) {
+			r.Post("/create", site.WebmentionPost)
 		})
 	})
 
