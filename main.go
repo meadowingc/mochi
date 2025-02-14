@@ -64,7 +64,7 @@ func initRouter() *chi.Mux {
 	r.Use(site.RealIPMiddleware)
 	r.Use(middleware.Logger)
 	r.Use(httprate.LimitByIP(600, time.Minute)) // general rate limiter for all routes (shared across all routes)
-	// r.Use(middleware.Recoverer)
+	r.Use(middleware.Recoverer)
 	r.Use(site.TryPutUserInContextMiddleware)
 
 	fileServer := http.FileServer(http.Dir("./assets"))
@@ -100,14 +100,16 @@ func initRouter() *chi.Mux {
 		r.HandleFunc("/logout", site.UserLogout)
 	})
 
-	r.With(CORSEverywhereMiddleware.Handler).Route("/reaper/{username}", func(r chi.Router) {
-		r.Get("/embed/{siteID}.js", site.ReaperGetEmbedJs)
-		r.Post("/{siteID}", site.ReaperPostHit)
-	})
-
-	r.With(CORSEverywhereMiddleware.Handler).Route("/webmention/{username}/{siteId}", func(r chi.Router) {
-		r.Post("/create", site.WebmentionPost)
-	})
+	r.With(CORSEverywhereMiddleware.Handler).Route(
+		"/reaper/{username}", func(r chi.Router) {
+			r.Get("/embed/{siteID}.js", site.ReaperGetEmbedJs)
+			r.Post("/{siteID}", site.ReaperPostHit)
+		},
+	).Route(
+		"/webmention/{username}/{siteId}", func(r chi.Router) {
+			r.Post("/create", site.WebmentionPost)
+		},
+	)
 
 	r.With(site.AuthProtectedMiddleware).Route("/dashboard", func(r chi.Router) {
 		r.Get("/", site.UserDashboardHome)
