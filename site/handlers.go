@@ -371,39 +371,6 @@ func SiteEmbedInstructions(w http.ResponseWriter, r *http.Request) {
 	)
 }
 
-func WebmentionsDetails(w http.ResponseWriter, r *http.Request) {
-	signedInUser := GetSignedInUserOrFail(r)
-	userDatabase := database.GetDbOrFatal(signedInUser.Username)
-
-	site := GetSiteFromContextOrFail(r)
-
-	allWebmentions := []database.WebMention{}
-	result := userDatabase.Db.Where(&database.WebMention{
-		SiteID: site.ID,
-	}).Find(&allWebmentions)
-
-	if result.Error != nil {
-		http.Error(w, "Error fetching webmentions: "+result.Error.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	RenderTemplate(w, r, "pages/dashboard/webmentions/webmentions_details.html",
-		&map[string]CustomDeclaration{
-			"site":        {(*database.Site)(nil), site},
-			"webmentions": {(*[]database.WebMention)(nil), &allWebmentions},
-		},
-	)
-}
-
-func WebmentionSetupInstructions(w http.ResponseWriter, r *http.Request) {
-	site := GetSiteFromContextOrFail(r)
-	RenderTemplate(w, r, "pages/dashboard/webmentions/setup_instructions.html",
-		&map[string]CustomDeclaration{
-			"site": {(*database.Site)(nil), site},
-		},
-	)
-}
-
 func ReaperGetEmbedJs(w http.ResponseWriter, r *http.Request) {
 	escapedUsername := chi.URLParam(r, "username")
 	escapedUsername = strings.TrimSpace(escapedUsername)
