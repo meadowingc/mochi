@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -118,10 +119,20 @@ func WebmentionReceive(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// now validate that the source URL contains a link to the target URL
-		client := &http.Client{}
-		req, err := http.NewRequest("GET", sourceUrlStr, nil)
+		client := &http.Client{
+			Timeout: 5 * time.Second,
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				if len(via) >= 20 {
+					return http.ErrUseLastResponse
+				}
+				return nil
+			},
+		}
+
+		// Make an initial HEAD request
+		req, err := http.NewRequest("HEAD", sourceUrlStr, nil)
 		if err != nil {
-			log.Printf("WebmentionPost: Error creating GET request for source URL '%s' for user '%s': %v", sourceUrlStr, username, err)
+			log.Printf("WebmentionPost: Error creating HEAD request for source URL '%s' for user '%s': %v", sourceUrlStr, username, err)
 			return
 		}
 
@@ -137,7 +148,29 @@ func WebmentionReceive(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		sourceHtmlBytes, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+
+		// Make a full GET request to fetch the source URL
+		req, err = http.NewRequest("GET", sourceUrlStr, nil)
+		if err != nil {
+			log.Printf("WebmentionPost: Error creating GET request for source URL '%s' for user '%s': %v", sourceUrlStr, username, err)
+			return
+		}
+
+		req.Header.Set("Accept", "text/html")
+		resp, err = client.Do(req)
+		if err != nil {
+			log.Printf("WebmentionPost: Error fetching source URL '%s' for user '%s': %v", sourceUrlStr, username, err)
+			return
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			log.Printf("WebmentionPost: Source URL '%s' returned status code %d for user '%s'", sourceUrlStr, resp.StatusCode, username)
+			return
+		}
+
+		// Limit the amount of data fetched to 1MB
+		sourceHtmlBytes, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20)) // 1MB
 		if err != nil {
 			log.Printf("WebmentionPost: Error reading source URL '%s' for user '%s': %v", sourceUrlStr, username, err)
 			return
