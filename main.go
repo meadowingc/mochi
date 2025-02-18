@@ -96,6 +96,14 @@ func initRouter() *chi.Mux {
 		r.HandleFunc("/logout", site.UserLogout)
 	})
 
+	r.With(site.AuthProtectedMiddleware).Route("/dashboard", func(r chi.Router) {
+		r.Get("/", site.UserDashboardHome)
+		r.Post("/create-site", site.CreateNewSite)
+
+		r.HandleFunc("/site/{siteID}", site.SiteDetails)
+		r.HandleFunc("/site/embed_instructions/{siteID}", site.SiteEmbedInstructions)
+	})
+
 	r.With(CORSEverywhereMiddleware.Handler).Group(func(r chi.Router) {
 		r.Route("/reaper/{username}", func(r chi.Router) {
 			r.Get("/embed/{siteID}.js", site.ReaperGetEmbedJs)
@@ -103,16 +111,8 @@ func initRouter() *chi.Mux {
 		})
 
 		r.Route("/webmention/{username}/{siteId}", func(r chi.Router) {
-			r.Post("/create", site.WebmentionPost)
+			r.Post("/receive", site.WebmentionPost)
 		})
-	})
-
-	r.With(site.AuthProtectedMiddleware).Route("/dashboard", func(r chi.Router) {
-		r.Get("/", site.UserDashboardHome)
-		r.Post("/create-site", site.CreateNewSite)
-
-		r.HandleFunc("/site/{siteID}", site.SiteDetails)
-		r.HandleFunc("/site/embed_instructions/{siteID}", site.SiteEmbedInstructions)
 	})
 
 	return r
