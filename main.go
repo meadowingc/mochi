@@ -100,8 +100,8 @@ func initRouter() *chi.Mux {
 		r.Get("/", site.UserDashboardHome)
 		r.Post("/create-site", site.CreateNewSite)
 
-		r.HandleFunc("/site/{siteID}", site.SiteDetails)
-		r.HandleFunc("/site/embed_instructions/{siteID}", site.SiteEmbedInstructions)
+		r.HandleFunc("/analytics/{siteID}", site.SiteDetails)
+		r.HandleFunc("/analytics/embed_instructions/{siteID}", site.SiteEmbedInstructions)
 	})
 
 	r.With(CORSEverywhereMiddleware.Handler).Group(func(r chi.Router) {

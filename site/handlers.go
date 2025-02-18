@@ -359,7 +359,7 @@ func SiteDetails(w http.ResponseWriter, r *http.Request) {
 	}
 
 	numUniqueVisitors := len(uniqueVisitors)
-	RenderTemplate(w, r, "pages/dashboard/site/site_details.html",
+	RenderTemplate(w, r, "pages/dashboard/analytics/analytics_details.html",
 		&map[string]CustomDeclaration{
 			"site":                    {(*database.Site)(nil), &site},
 			"minDate":                 {(*time.Time)(nil), &minDate},
@@ -397,7 +397,7 @@ func SiteEmbedInstructions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	RenderTemplate(w, r, "pages/dashboard/site/embed_instructions.html",
+	RenderTemplate(w, r, "pages/dashboard/analytics/embed_instructions.html",
 		&map[string]CustomDeclaration{
 			"site": {(*database.Site)(nil), &site},
 		},
