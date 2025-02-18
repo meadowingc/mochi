@@ -17,6 +17,9 @@
           </li>
           {% for path_i, pdata := range pathToCounts %}
             {% bgColor := "bg-white" %}
+            {% if path_i % 2 == 0 %}
+              {% bgColor = "bg-gray-50" %}
+            {% end %}
             <li class="flex items-center justify-between py-2 px-4 border-b border-gray-200 {{bgColor}}">
               <span class="cursor-pointer text-blue-500">
                 <span onclick="addFilter('{{filterName}}', '{{ pdata.Key }}')">{{ pdata.Key }}</span>
@@ -36,13 +39,27 @@
 
   <h1 class="text-2xl font-bold">{{site.URL}}</h1>
 
-  <!-- links -->
-  <div class="flex items-center mt-2">
+  <div class="mt-2">
     <a href="/dashboard" class="text-blue-500 underline mr-4">Back to Dashboard</a>
+  </div>
 
+
+    <!-- Tabs -->
+  <div class="mb-8 mt-5 border-b border-t border-gray-200">
+    <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+      <a href="/dashboard/{{site.ID}}/analytics" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm text-indigo-600 border-indigo-500" aria-current="page">
+        Analytics
+      </a>
+      <a href="/dashboard/{{site.ID}}/webmentions" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300">
+        Webmentions
+      </a>
+    </nav>
+  </div>
+
+  <div class="mt-2">
     <a
-      href="/dashboard/analytics/embed_instructions/{{site.ID}}"
-      class="text-blue-500 underline"
+      href="/dashboard/{{site.ID}}/analytics/embed-instructions"
+      class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
     >
       Embed Instructions
     </a>

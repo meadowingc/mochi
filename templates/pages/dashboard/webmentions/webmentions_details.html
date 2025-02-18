@@ -1,0 +1,85 @@
+{% extends "/layouts/standard.html" %}
+
+{% macro Title %}{{site.URL}} | Webmentions{% end %}
+
+{% macro Body %}
+  <h1 class="text-2xl font-bold">{{site.URL}}</h1>
+
+  <div class="mt-2">
+    <a href="/dashboard" class="text-blue-500 underline mr-4">Back to Dashboard</a>
+  </div>
+
+
+    <!-- Tabs -->
+  <div class="mb-8 mt-5 border-b border-t border-gray-200">
+    <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+      <a href="/dashboard/{{site.ID}}/analytics" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300">
+        Analytics
+      </a>
+      <a href="/dashboard/{{site.ID}}/webmentions" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm text-indigo-600 border-indigo-500" aria-current="page">
+        Webmentions
+      </a>
+    </nav>
+  </div>
+
+  <div class="mt-2">
+    <a
+      href="/dashboard/{{site.ID}}/webmentions/setup-instructions"
+      class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+    >
+      Setup webmentions on your site
+    </a>
+  </div>
+
+  <hr class="my-4 border-t border-gray-200" />
+
+  <!-- webmentions -->
+  {% if len(webmentions) == 0 %}
+    <p>No data</p>
+  {% else %}
+    <table class="min-w-full divide-y divide-gray-200">
+      <thead class="bg-gray-50">
+        <tr>
+          <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Site ID
+          </th>
+          <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Source URL
+          </th>
+          <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Target URL
+          </th>
+          <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Status
+          </th>
+          <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Actions
+          </th>
+        </tr>
+      </thead>
+      <tbody class="bg-white divide-y divide-gray-200">
+        {% for webmention in webmentions %}
+        <tr>
+          <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+            {{ webmention.SiteID }}
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+            <a href="{{ webmention.SourceURL }}" class="text-blue-500 underline" target="_blank">{{ webmention.SourceURL }}</a>
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+            <a href="{{ webmention.TargetURL }}" class="text-blue-500 underline" target="_blank">{{ webmention.TargetURL }}</a>
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+            {{ webmention.Status }}
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+            <button class="text-indigo-600 hover:text-indigo-900">Approve</button>
+            <button class="text-red-600 hover:text-red-900 ml-2">Reject</button>
+          </td>
+        </tr>
+        {% end %}
+      </tbody>
+    </table>
+  {% end %}
+
+{% end %}

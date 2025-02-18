@@ -6,7 +6,15 @@ import (
 	"mochi/database"
 	"net/http"
 	"strings"
+
+	"github.com/go-chi/chi/v5"
 )
+
+// Add the site to the context
+type contextKey string
+
+const siteKey contextKey = "site"
+const userKey contextKey = "user"
 
 // RealIPMiddleware extracts the client's real IP address from the
 // X-Forwarded-For header and sets it on the request's RemoteAddr field. Useful
@@ -97,4 +105,39 @@ func AuthProtectedMiddleware(next http.Handler) http.Handler {
 		// otherwise, continue to the next handler
 		next.ServeHTTP(w, r)
 	})
+}
+
+func UserSiteDashboardMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// check that user owns the site
+		siteID := chi.URLParam(r, "siteID")
+
+		signedInUser := GetSignedInUserOrFail(r)
+		userDatabase := database.GetDbOrFatal(signedInUser.Username)
+
+		var site database.Site
+		result := userDatabase.Db.First(&site, siteID)
+		if result.Error != nil {
+			http.Error(w, "Site not found", http.StatusNotFound)
+			return
+		}
+
+		if site.UserID != signedInUser.ID {
+			http.Error(w, "You don't own this site", http.StatusUnauthorized)
+			return
+		}
+
+		ctx := context.WithValue(r.Context(), siteKey, &site)
+
+		// otherwise, continue to the next handler
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func GetSiteFromContextOrFail(r *http.Request) *database.Site {
+	site, ok := r.Context().Value(siteKey).(*database.Site)
+	if !ok {
+		log.Fatalf("Site not found in context")
+	}
+	return site
 }

@@ -54,7 +54,7 @@
     <ul class="mt-4">
       {% for site in userSites %}
       <li class="flex items-center justify-between py-2 border-b border-gray-200">
-        <a href="/dashboard/analytics/{{ site.ID }}" class="text-blue-600 hover:underline">{{ site.URL }}</a>
+        <a href="/dashboard/{{ site.ID }}/analytics" class="text-blue-600 hover:underline">{{ site.URL }}</a>
         <span class="text-gray-500">{{ site.URL }}</span>
       </li>
       {% end %}

@@ -12,7 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func WebmentionPost(w http.ResponseWriter, r *http.Request) {
+func WebmentionReceive(w http.ResponseWriter, r *http.Request) {
 
 	// Return immediately
 	w.WriteHeader(http.StatusOK)

@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -204,17 +203,11 @@ func CreateNewSite(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 }
 
-func SiteDetails(w http.ResponseWriter, r *http.Request) {
-	siteID := chi.URLParam(r, "siteID")
-	siteIDUint, err := strconv.ParseUint(siteID, 10, 32)
-	if err != nil {
-		http.Error(w, "Invalid site ID", http.StatusBadRequest)
-		return
-	}
-
+func SiteAnalytics(w http.ResponseWriter, r *http.Request) {
 	// Check for minDate in query params
 	minDateStr := r.URL.Query().Get("minDate")
 	var minDate time.Time
+	var err error
 	if minDateStr != "" {
 		minDate, err = time.Parse("2006-01-02", minDateStr)
 		if err != nil {
@@ -246,17 +239,7 @@ func SiteDetails(w http.ResponseWriter, r *http.Request) {
 
 	userDatabase := database.GetDbOrFatal(signedInUser.Username)
 
-	var site database.Site
-	result := userDatabase.Db.First(&site, siteIDUint)
-	if result.Error != nil {
-		http.Error(w, "Site not found", http.StatusNotFound)
-		return
-	}
-
-	if site.UserID != signedInUser.ID {
-		http.Error(w, "You don't own this site", http.StatusUnauthorized)
-		return
-	}
+	site := GetSiteFromContextOrFail(r)
 
 	// get all hits for the site within the date and filters
 	pagePathFilter := r.URL.Query().Get("pagePathFilter")
@@ -272,7 +255,7 @@ func SiteDetails(w http.ResponseWriter, r *http.Request) {
 		"date >= ? AND date <= ?", minDate, maxDate,
 	).Where(&database.Hit{
 		Path:              pagePathFilter,
-		SiteID:            uint(siteIDUint),
+		SiteID:            site.ID,
 		HTTPReferer:       referrerFilter,
 		CountryCode:       countryFilter,
 		VisitorOS:         osFilter,
@@ -280,7 +263,7 @@ func SiteDetails(w http.ResponseWriter, r *http.Request) {
 		VisitorDeviceType: deviceFilter,
 	})
 
-	result = query.Order("date ASC").Find(&hits)
+	result := query.Order("date ASC").Find(&hits)
 	if result.Error != nil {
 		http.Error(w, "Error fetching hits: "+result.Error.Error(), http.StatusInternalServerError)
 		return
@@ -361,7 +344,7 @@ func SiteDetails(w http.ResponseWriter, r *http.Request) {
 	numUniqueVisitors := len(uniqueVisitors)
 	RenderTemplate(w, r, "pages/dashboard/analytics/analytics_details.html",
 		&map[string]CustomDeclaration{
-			"site":                    {(*database.Site)(nil), &site},
+			"site":                    {(*database.Site)(nil), site},
 			"minDate":                 {(*time.Time)(nil), &minDate},
 			"maxDate":                 {(*time.Time)(nil), &maxDate},
 			"hits":                    {(*[]database.Hit)(nil), &hits},
@@ -380,26 +363,43 @@ func SiteDetails(w http.ResponseWriter, r *http.Request) {
 }
 
 func SiteEmbedInstructions(w http.ResponseWriter, r *http.Request) {
-	siteID := chi.URLParam(r, "siteID")
+	site := GetSiteFromContextOrFail(r)
+	RenderTemplate(w, r, "pages/dashboard/analytics/embed_instructions.html",
+		&map[string]CustomDeclaration{
+			"site": {(*database.Site)(nil), site},
+		},
+	)
+}
 
+func WebmentionsDetails(w http.ResponseWriter, r *http.Request) {
 	signedInUser := GetSignedInUserOrFail(r)
 	userDatabase := database.GetDbOrFatal(signedInUser.Username)
 
-	var site database.Site
-	result := userDatabase.Db.First(&site, siteID)
+	site := GetSiteFromContextOrFail(r)
+
+	allWebmentions := []database.WebMention{}
+	result := userDatabase.Db.Where(&database.WebMention{
+		SiteID: site.ID,
+	}).Find(&allWebmentions)
+
 	if result.Error != nil {
-		http.Error(w, "Site not found", http.StatusNotFound)
+		http.Error(w, "Error fetching webmentions: "+result.Error.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	if site.UserID != signedInUser.ID {
-		http.Error(w, "You don't own this site", http.StatusUnauthorized)
-		return
-	}
-
-	RenderTemplate(w, r, "pages/dashboard/analytics/embed_instructions.html",
+	RenderTemplate(w, r, "pages/dashboard/webmentions/webmentions_details.html",
 		&map[string]CustomDeclaration{
-			"site": {(*database.Site)(nil), &site},
+			"site":        {(*database.Site)(nil), site},
+			"webmentions": {(*[]database.WebMention)(nil), &allWebmentions},
+		},
+	)
+}
+
+func WebmentionSetupInstructions(w http.ResponseWriter, r *http.Request) {
+	site := GetSiteFromContextOrFail(r)
+	RenderTemplate(w, r, "pages/dashboard/webmentions/setup_instructions.html",
+		&map[string]CustomDeclaration{
+			"site": {(*database.Site)(nil), site},
 		},
 	)
 }
