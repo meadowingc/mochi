@@ -7,6 +7,7 @@ import (
 	"mochi/database"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -27,6 +28,11 @@ func WebmentionsDetails(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error fetching webmentions: "+result.Error.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	// sort webmentions by CreatedAt
+	sort.Slice(allWebmentions, func(i, j int) bool {
+		return allWebmentions[i].CreatedAt.After(allWebmentions[j].CreatedAt)
+	})
 
 	RenderTemplate(w, r, "pages/dashboard/webmentions/webmentions_details.html",
 		&map[string]CustomDeclaration{

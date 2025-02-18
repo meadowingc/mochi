@@ -9,8 +9,7 @@
     <a href="/dashboard" class="text-blue-500 underline mr-4">Back to Dashboard</a>
   </div>
 
-
-    <!-- Tabs -->
+  <!-- Tabs -->
   <div class="mb-8 mt-5 border-b border-t border-gray-200">
     <nav class="-mb-px flex space-x-8" aria-label="Tabs">
       <a href="/dashboard/{{site.ID}}/analytics" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300">
@@ -37,49 +36,36 @@
   {% if len(webmentions) == 0 %}
     <p>No data</p>
   {% else %}
-    <table class="min-w-full divide-y divide-gray-200">
-      <thead class="bg-gray-50">
-        <tr>
-          <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Site ID
-          </th>
-          <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Source URL
-          </th>
-          <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Target URL
-          </th>
-          <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Status
-          </th>
-          <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Actions
-          </th>
-        </tr>
-      </thead>
-      <tbody class="bg-white divide-y divide-gray-200">
-        {% for webmention in webmentions %}
-        <tr>
-          <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-            {{ webmention.SiteID }}
-          </td>
-          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-            <a href="{{ webmention.SourceURL }}" class="text-blue-500 underline" target="_blank">{{ webmention.SourceURL }}</a>
-          </td>
-          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-            <a href="{{ webmention.TargetURL }}" class="text-blue-500 underline" target="_blank">{{ webmention.TargetURL }}</a>
-          </td>
-          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-            {{ webmention.Status }}
-          </td>
-          <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+    <ul class="divide-y divide-gray-200">
+      {% for webmention in webmentions %}
+      <li class="py-4">
+        <div class="flex justify-between items-center">
+          <div>
+            <p class="text-sm text-gray-500">
+              <strong>Source URL:</strong>
+              <a href="{{ webmention.SourceURL }}" class="text-blue-500 underline" target="_blank">{{ webmention.SourceURL }}</a>
+            </p>
+            <p class="text-sm text-gray-500">
+              <strong>Target URL:</strong>
+              <a href="{{ webmention.TargetURL }}" class="text-blue-500 underline" target="_blank">{{ webmention.TargetURL }}</a>
+            </p>
+            <p class="text-sm text-gray-500">
+              <strong>Created At:</strong>
+              {{ webmention.CreatedAt.Format("2006-01-02 15:04:05") }}
+            </p>
+            <p class="text-sm text-gray-500">
+              <strong>Status:</strong>
+              {{ webmention.Status }}
+            </p>
+          </div>
+          <div class="flex space-x-2">
             <button class="text-indigo-600 hover:text-indigo-900">Approve</button>
-            <button class="text-red-600 hover:text-red-900 ml-2">Reject</button>
-          </td>
-        </tr>
-        {% end %}
-      </tbody>
-    </table>
+            <button class="text-red-600 hover:text-red-900">Reject</button>
+          </div>
+        </div>
+      </li>
+      {% end %}
+    </ul>
   {% end %}
 
 {% end %}
