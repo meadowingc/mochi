@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"mochi/database"
+	"net"
 	"net/http"
 	"net/url"
 	"sort"
@@ -83,6 +84,12 @@ func WebmentionReceive(w http.ResponseWriter, r *http.Request) {
 		targetUrl, err := url.Parse(targetUrlStr)
 		if err != nil {
 			log.Printf("WebmentionPost: Can't parse target URL '%s' for user '%s'", targetUrlStr, username)
+			return
+		}
+
+		// Check if the target URL is a loopback address
+		if isLoopbackAddress(targetUrl.Hostname()) {
+			log.Printf("WebmentionPost: Target URL '%s' is a loopback address for user '%s'", targetUrlStr, username)
 			return
 		}
 
@@ -254,4 +261,26 @@ func WebmentionReceive(w http.ResponseWriter, r *http.Request) {
 		}
 
 	}()
+}
+
+// Helper function to check if a hostname is a loopback address
+func isLoopbackAddress(hostname string) bool {
+	ip := net.ParseIP(hostname)
+	if ip != nil {
+		return ip.IsLoopback()
+	}
+
+	// Resolve the hostname to an IP address
+	ips, err := net.LookupIP(hostname)
+	if err != nil {
+		return false
+	}
+
+	for _, ip := range ips {
+		if ip.IsLoopback() {
+			return true
+		}
+	}
+
+	return false
 }
