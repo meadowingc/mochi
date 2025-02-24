@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -55,43 +56,45 @@ func WebmentionSetupInstructions(w http.ResponseWriter, r *http.Request) {
 
 func WebmentionReceive(w http.ResponseWriter, r *http.Request) {
 
-	// Return immediately
+	//	extract request data
+	escapedUsername := chi.URLParam(r, "username")
+	siteID := chi.URLParam(r, "siteId")
+
+	escapedUsername = strings.TrimSpace(escapedUsername)
+	username, err := url.PathUnescape(escapedUsername)
+	if err != nil {
+		log.Printf("WebmentionPost: Error unescaping username '%s': %v", escapedUsername, err)
+		return
+	}
+
+	// Process the webmention
+	sourceUrlStr := r.FormValue("source")
+	targetUrlStr := r.FormValue("target")
+
+	sourceUrl, err := url.Parse(sourceUrlStr)
+	if err != nil {
+		log.Printf("WebmentionPost: Can't parse source URL '%s' for user '%s'", sourceUrlStr, username)
+		return
+	}
+
+	targetUrl, err := url.Parse(targetUrlStr)
+	if err != nil {
+		log.Printf("WebmentionPost: Can't parse target URL '%s' for user '%s'", targetUrlStr, username)
+		return
+	}
+
+	// Check if the target URL is a loopback address
+	if isLoopbackAddress(targetUrl.Hostname()) {
+		log.Printf("WebmentionPost: Target URL '%s' is a loopback address for user '%s'", targetUrlStr, username)
+		return
+	}
+
+	// Return immediately and defer the rest of the logic
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Request received"))
 
 	// Execute the rest of the logic in a goroutine
 	go func() {
-		escapedUsername := chi.URLParam(r, "username")
-		siteID := chi.URLParam(r, "siteId")
-
-		escapedUsername = strings.TrimSpace(escapedUsername)
-		username, err := url.PathUnescape(escapedUsername)
-		if err != nil {
-			log.Printf("WebmentionPost: Error unescaping username '%s': %v", escapedUsername, err)
-			return
-		}
-
-		// Process the webmention
-		sourceUrlStr := r.FormValue("source")
-		targetUrlStr := r.FormValue("target")
-
-		sourceUrl, err := url.Parse(sourceUrlStr)
-		if err != nil {
-			log.Printf("WebmentionPost: Can't parse source URL '%s' for user '%s'", sourceUrlStr, username)
-			return
-		}
-
-		targetUrl, err := url.Parse(targetUrlStr)
-		if err != nil {
-			log.Printf("WebmentionPost: Can't parse target URL '%s' for user '%s'", targetUrlStr, username)
-			return
-		}
-
-		// Check if the target URL is a loopback address
-		if isLoopbackAddress(targetUrl.Hostname()) {
-			log.Printf("WebmentionPost: Target URL '%s' is a loopback address for user '%s'", targetUrlStr, username)
-			return
-		}
 
 		userDatabase := database.GetDbIfExists(username)
 
@@ -188,7 +191,10 @@ func WebmentionReceive(w http.ResponseWriter, r *http.Request) {
 		sourceHtml := string(sourceHtmlBytes)
 
 		// Check if the target URL is wrapped in an href attribute
-		if !strings.Contains(sourceHtml, fmt.Sprintf(`href="%s"`, targetUrlStr)) {
+		hrefPattern := fmt.Sprintf(`href\s*=\s*(?:['"])%s(?:['"])`, regexp.QuoteMeta(targetUrlStr))
+		hrefRegex := regexp.MustCompile(hrefPattern)
+
+		if !hrefRegex.MatchString(sourceHtml) {
 			log.Printf("WebmentionPost: Source URL '%s' does not contain target URL '%s' wrapped in href for user '%s'", sourceUrlStr, targetUrlStr, username)
 			return
 		}
