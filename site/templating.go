@@ -53,13 +53,14 @@ func RenderTemplate(
 	if !ok || constants.DEBUG_MODE {
 		opts := &scriggo.BuildOptions{
 			Globals: native.Declarations{
-				"templateName": templateName,
-				"signedInUser": (**database.User)(nil),
-				"isDebug":      constants.DEBUG_MODE,
-				"publicURL":    constants.PUBLIC_URL,
-				"appName":      constants.APP_NAME,
-				"min":          builtin.Min,
-				"max":          builtin.Max,
+				"templateName":   templateName,
+				"signedInUser":   (**database.User)(nil),
+				"isDebug":        constants.DEBUG_MODE,
+				"publicURL":      constants.PUBLIC_URL,
+				"webmentionsURL": constants.WEBMENTIONS_URL,
+				"appName":        constants.APP_NAME,
+				"min":            builtin.Min,
+				"max":            builtin.Max,
 				"escapePath": func(path string) string {
 					return url.PathEscape(path)
 				},

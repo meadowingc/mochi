@@ -22,7 +22,7 @@
           To set up webmentions on your site, you need to add the following link tag to your site's <code class="bg-gray-200 text-red-600 px-1 rounded">&lt;head&gt;</code> section.
         </p>
         <code class="bg-gray-800 text-white p-4 rounded-lg block overflow-x-auto mb-4 mt-4">
-          &lt;link rel="webmention" href="{{publicURL}}/webmention/{{escapePath(signedInUser.Username)}}/{{site.ID}}/receive" /&gt;
+          &lt;link rel="webmention" href="{{webmentionsURL}}/webmention/{{escapePath(signedInUser.Username)}}/{{site.ID}}/receive" /&gt;
         </code>
         <p class="mb-4">
           This will make it so that anyone that wants to send webmentions to your site can do so by sending them to <code>mochi</code>!
