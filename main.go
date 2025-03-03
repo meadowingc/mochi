@@ -32,6 +32,8 @@ func main() {
 
 	r := initRouter()
 
+	go notifier.StartInteractionHandler()
+
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 
@@ -124,8 +126,6 @@ func initRouter() *chi.Mux {
 			r.Post("/receive", site.WebmentionReceive)
 		})
 	})
-
-	notifier.RegisterInteractionHandlers(r)
 
 	return r
 }
