@@ -2,6 +2,7 @@ package notifier
 
 import (
 	"crypto/ed25519"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -17,15 +18,21 @@ func RegisterInteractionHandlers(chiRouter *chi.Mux) {
 
 func interactionHandler(w http.ResponseWriter, r *http.Request) {
 	// Verify the interaction request
-	publicKey := os.Getenv("DISCORD_NOTIFIER_PUBLIC_KEY")
-	verified := discordgo.VerifyInteraction(r, ed25519.PublicKey(publicKey))
+	publicKeyStr := os.Getenv("DISCORD_NOTIFIER_PUBLIC_KEY")
+	publicKeyBytes, err := hex.DecodeString(publicKeyStr)
+	if err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	verified := discordgo.VerifyInteraction(r, ed25519.PublicKey(publicKeyBytes))
 	if !verified {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	var interaction discordgo.Interaction
-	err := json.NewDecoder(r.Body).Decode(&interaction)
+	err = json.NewDecoder(r.Body).Decode(&interaction)
 	if err != nil {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
