@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 
@@ -51,6 +52,7 @@ func interactionHandler(w http.ResponseWriter, r *http.Request) {
 	case discordgo.InteractionApplicationCommand:
 		handleApplicationCommand(interaction)
 	default:
+		log.Printf("Unknown interaction type: %v", interaction.Type)
 		http.Error(w, "Unknown interaction type", http.StatusBadRequest)
 		return
 	}
