@@ -4,6 +4,7 @@ import (
 	"log"
 	"mochi/constants"
 	"mochi/database"
+	"mochi/notifier"
 	"mochi/site"
 	"net/http"
 	"os"
@@ -24,6 +25,8 @@ func main() {
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
+
+	notifier.SendMessageToUsername("meadow_37", "Mochi is starting up")
 
 	database.InitDb()
 
@@ -46,6 +49,8 @@ func main() {
 
 	// Close open database connections
 	database.CleanupOnAppClose()
+
+	notifier.SendMessageToUsername("meadow_37", "Mochi is shutting down")
 }
 
 func initRouter() *chi.Mux {
@@ -119,6 +124,8 @@ func initRouter() *chi.Mux {
 			r.Post("/receive", site.WebmentionReceive)
 		})
 	})
+
+	notifier.RegisterInteractionHandlers(r)
 
 	return r
 }
