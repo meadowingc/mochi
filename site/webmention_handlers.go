@@ -146,7 +146,11 @@ func WebmentionReceive(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		req.Header.Set("Accept", "text/html")
+		// some servers reject requests that don't have standard headers (eg, from bots)
+		req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
+		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+		req.Header.Set("Accept-Language", "en-US,en;q=0.9")
+
 		resp, err := client.Do(req)
 		if err != nil {
 			log.Printf("WebmentionPost: Error fetching source URL '%s' for user '%s': %v", sourceUrlStr, username, err)
@@ -154,7 +158,7 @@ func WebmentionReceive(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			log.Printf("WebmentionPost: Source URL '%s' returned status code %d for user '%s'", sourceUrlStr, resp.StatusCode, username)
+			log.Printf("WebmentionPost: [HEAD] Source URL '%s' returned status code %d for user '%s'", sourceUrlStr, resp.StatusCode, username)
 			return
 		}
 
@@ -167,7 +171,10 @@ func WebmentionReceive(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		req.Header.Set("Accept", "text/html")
+		req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
+		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+		req.Header.Set("Accept-Language", "en-US,en;q=0.9")
+
 		resp, err = client.Do(req)
 		if err != nil {
 			log.Printf("WebmentionPost: Error fetching source URL '%s' for user '%s': %v", sourceUrlStr, username, err)
@@ -175,7 +182,7 @@ func WebmentionReceive(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			log.Printf("WebmentionPost: Source URL '%s' returned status code %d for user '%s'", sourceUrlStr, resp.StatusCode, username)
+			log.Printf("WebmentionPost: [GET] Source URL '%s' returned status code %d for user '%s'", sourceUrlStr, resp.StatusCode, username)
 			return
 		}
 
