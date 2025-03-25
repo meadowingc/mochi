@@ -4,7 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"log"
-	"mochi/database"
+	"mochi/user_database"
 	"net/http"
 	"sort"
 	"strings"
@@ -35,12 +35,12 @@ func sortMapByValue(m map[string]int) []struct {
 	return sorted
 }
 
-func GetSignedInUserOrNil(r *http.Request) *database.User {
-	user, _ := r.Context().Value(AuthenticatedUserCookieName).(*database.User)
+func GetSignedInUserOrNil(r *http.Request) *user_database.User {
+	user, _ := r.Context().Value(AuthenticatedUserCookieName).(*user_database.User)
 	return user
 }
 
-func GetSignedInUserOrFail(r *http.Request) *database.User {
+func GetSignedInUserOrFail(r *http.Request) *user_database.User {
 	user := GetSignedInUserOrNil(r)
 	if user == nil {
 		log.Fatalf("Expected user to be signed in but it wasn't")

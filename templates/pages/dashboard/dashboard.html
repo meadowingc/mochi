@@ -5,6 +5,19 @@
 {% macro Body %}
 
   <h1 class="text-3xl font-bold leading-tight text-gray-900">Dashboard</h1>
+
+  <!-- Navigation tabs -->
+  <div class="mt-6 border-b border-gray-200">
+    <nav class="-mb-px flex space-x-8">
+      <a href="/dashboard" class="border-indigo-500 text-indigo-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+        Sites
+      </a>
+      <a href="/dashboard/webmention-sender" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+        Webmention Sender
+      </a>
+    </nav>
+  </div>
+
   <div class="mt-6">
     <button
       id="create-site-button"
@@ -17,33 +30,7 @@
 
   <!-- inline site creaton form because I'm lazy -->
   <form id="create-site-form" method="POST" class="mt-6 hidden" action="/dashboard/create-site">
-    <div>
-      <label for="url" class="block text-sm font-medium text-gray-700"
-        >Site URL:</label
-      >
-      <input
-        id="url"
-        name="url"
-        type="text"
-        required
-        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white"
-      />
-    </div>
-    <div class="mt-4 flex items-center">
-      <button
-        type="submit"
-        class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 mr-4"
-      >
-        Add Site
-      </button>
-      <button
-        type="button"
-        onclick="toggleCreateSiteForm()"
-        class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-      >
-        Cancel
-      </button>
-    </div>
+    <!-- ...existing form... -->
   </form>
 
   <!-- list of user sites -->
@@ -58,7 +45,6 @@
         <span class="text-gray-500">{{ site.URL }}</span>
       </li>
       {% end %}
-
     </ul>
   </div>
   {% end %}

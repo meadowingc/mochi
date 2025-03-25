@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"log"
 	"mochi/constants"
-	"mochi/database"
+	"mochi/shared_database"
+	"mochi/user_database"
+	"mochi/webmention_sender"
 	"net/http"
 	"net/url"
 	"sort"
@@ -32,15 +34,15 @@ func UserLogin(w http.ResponseWriter, r *http.Request) {
 		username := strings.TrimSpace(r.FormValue("username"))
 		password := r.FormValue("password")
 
-		userDatabase := database.GetDbIfExists(username)
+		useruser_database := user_database.GetDbIfExists(username)
 
-		if userDatabase == nil {
+		if useruser_database == nil {
 			http.Error(w, "You're trying to sign in, but perhaps you still need to sign up?", http.StatusUnauthorized)
 			return
 		}
 
-		var admin database.User
-		result := userDatabase.Db.Where(&database.User{Username: username}).First(&admin)
+		var admin user_database.User
+		result := useruser_database.Db.Where(&user_database.User{Username: username}).First(&admin)
 		if result.Error != nil {
 			http.Error(w, "Invalid username. You're trying to sign in, but perhaps you still need to sign up?", http.StatusUnauthorized)
 			return
@@ -60,7 +62,7 @@ func UserLogin(w http.ResponseWriter, r *http.Request) {
 		}
 
 		admin.SessionToken = token
-		userDatabase.Db.Save(&admin)
+		useruser_database.Db.Save(&admin)
 
 		setUserSession(
 			w, username, token,
@@ -108,11 +110,11 @@ func UserRegister(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		userDb := database.GetDbIfExists(username)
+		userDb := user_database.GetDbIfExists(username)
 		var userExistsInDb bool = false
 
 		if userDb != nil {
-			userExistsInDb = userDb.Db.Where(&database.User{Username: username}).First(&database.User{}).Error == nil
+			userExistsInDb = userDb.Db.Where(&user_database.User{Username: username}).First(&user_database.User{}).Error == nil
 		}
 
 		if userDb != nil && userExistsInDb {
@@ -120,9 +122,9 @@ func UserRegister(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		newAdmin := database.User{Username: username, PasswordHash: passwordHash, SessionToken: token}
+		newAdmin := user_database.User{Username: username, PasswordHash: passwordHash, SessionToken: token}
 
-		result := database.GetOrCreateDB(username).Db.Create(&newAdmin)
+		result := user_database.GetOrCreateDB(username).Db.Create(&newAdmin)
 		if result.Error != nil {
 			http.Error(w, "Error creating account: "+result.Error.Error(), http.StatusInternalServerError)
 			return
@@ -150,9 +152,9 @@ func UserLogout(w http.ResponseWriter, r *http.Request) {
 func UserDashboardHome(w http.ResponseWriter, r *http.Request) {
 	signedInUser := GetSignedInUserOrFail(r)
 
-	userSites := []database.Site{}
+	userSites := []user_database.Site{}
 
-	result := database.GetDbOrFatal(signedInUser.Username).Db.Where(&database.Site{
+	result := user_database.GetDbOrFatal(signedInUser.Username).Db.Where(&user_database.Site{
 		UserID: signedInUser.ID,
 	}).Find(&userSites)
 
@@ -163,7 +165,7 @@ func UserDashboardHome(w http.ResponseWriter, r *http.Request) {
 
 	RenderTemplate(w, r, "pages/dashboard/dashboard.html",
 		&map[string]CustomDeclaration{
-			"userSites": {(*[]database.Site)(nil), &userSites},
+			"userSites": {(*[]user_database.Site)(nil), &userSites},
 		},
 	)
 }
@@ -179,10 +181,10 @@ func CreateNewSite(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if the site already exists
-	userDatabase := database.GetDbOrFatal(user.Username)
+	useruser_database := user_database.GetDbOrFatal(user.Username)
 
-	var existingSite database.Site
-	result := userDatabase.Db.Where(&database.Site{
+	var existingSite user_database.Site
+	result := useruser_database.Db.Where(&user_database.Site{
 		URL:    siteURL.String(),
 		UserID: user.ID,
 	}).First(&existingSite)
@@ -192,9 +194,9 @@ func CreateNewSite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	newSite := database.Site{URL: siteURL.String(), UserID: user.ID}
+	newSite := user_database.Site{URL: siteURL.String(), UserID: user.ID}
 
-	result = userDatabase.Db.Create(&newSite)
+	result = useruser_database.Db.Create(&newSite)
 	if result.Error != nil {
 		http.Error(w, "Error creating site: "+result.Error.Error(), http.StatusInternalServerError)
 		return
@@ -237,7 +239,7 @@ func SiteAnalytics(w http.ResponseWriter, r *http.Request) {
 
 	signedInUser := GetSignedInUserOrFail(r)
 
-	userDatabase := database.GetDbOrFatal(signedInUser.Username)
+	useruser_database := user_database.GetDbOrFatal(signedInUser.Username)
 
 	site := GetSiteFromContextOrFail(r)
 
@@ -250,10 +252,10 @@ func SiteAnalytics(w http.ResponseWriter, r *http.Request) {
 	browserFilter := stringWithValueOrNil(r.URL.Query().Get("browserFilter"))
 	deviceFilter := stringWithValueOrNil(r.URL.Query().Get("deviceFilter"))
 
-	var hits []database.Hit
-	query := userDatabase.Db.Where(
+	var hits []user_database.Hit
+	query := useruser_database.Db.Where(
 		"date >= ? AND date <= ?", minDate, maxDate,
-	).Where(&database.Hit{
+	).Where(&user_database.Hit{
 		Path:              pagePathFilter,
 		SiteID:            site.ID,
 		HTTPReferer:       referrerFilter,
@@ -344,10 +346,10 @@ func SiteAnalytics(w http.ResponseWriter, r *http.Request) {
 	numUniqueVisitors := len(uniqueVisitors)
 	RenderTemplate(w, r, "pages/dashboard/analytics/analytics_details.html",
 		&map[string]CustomDeclaration{
-			"site":                    {(*database.Site)(nil), site},
+			"site":                    {(*user_database.Site)(nil), site},
 			"minDate":                 {(*time.Time)(nil), &minDate},
 			"maxDate":                 {(*time.Time)(nil), &maxDate},
-			"hits":                    {(*[]database.Hit)(nil), &hits},
+			"hits":                    {(*[]user_database.Hit)(nil), &hits},
 			"numUniqueVisitors":       {(*int)(nil), &numUniqueVisitors},
 			"sortedCountsForPath":     makeSortedDeclaration(countsForPath),
 			"sortedCountsForReferrer": makeSortedDeclaration(countsForReferrer),
@@ -366,7 +368,7 @@ func SiteEmbedInstructions(w http.ResponseWriter, r *http.Request) {
 	site := GetSiteFromContextOrFail(r)
 	RenderTemplate(w, r, "pages/dashboard/analytics/embed_instructions.html",
 		&map[string]CustomDeclaration{
-			"site": {(*database.Site)(nil), site},
+			"site": {(*user_database.Site)(nil), site},
 		},
 	)
 }
@@ -383,15 +385,15 @@ func ReaperGetEmbedJs(w http.ResponseWriter, r *http.Request) {
 
 	siteID := chi.URLParam(r, "siteID")
 
-	userDatabase := database.GetDbIfExists(username)
+	useruser_database := user_database.GetDbIfExists(username)
 
-	if userDatabase == nil {
+	if useruser_database == nil {
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}
 
-	var site database.Site
-	result := userDatabase.Db.First(&site, siteID)
+	var site user_database.Site
+	result := useruser_database.Db.First(&site, siteID)
 	if result.Error != nil {
 		http.Error(w, "Site not found", http.StatusNotFound)
 		return
@@ -433,7 +435,7 @@ func ReaperGetEmbedJs(w http.ResponseWriter, r *http.Request) {
 
 	RenderTemplate(w, r, "pages/reaper/embed/reaper_embed.js",
 		&map[string]CustomDeclaration{
-			"site":          {(*database.Site)(nil), &site},
+			"site":          {(*user_database.Site)(nil), &site},
 			"ownerUsername": {(*string)(nil), &username},
 			"countryFlags":  {(*string)(nil), &countryFlagsStr},
 		},
@@ -471,15 +473,15 @@ func ReaperPostHit(w http.ResponseWriter, r *http.Request) {
 
 		siteID := chi.URLParam(r, "siteID")
 
-		userDatabase := database.GetDbIfExists(username)
+		useruser_database := user_database.GetDbIfExists(username)
 
-		if userDatabase == nil {
+		if useruser_database == nil {
 			log.Printf("ReaperPostHit: User not found: %s", username)
 			return
 		}
 
-		var site database.Site
-		result := userDatabase.Db.First(&site, siteID)
+		var site user_database.Site
+		result := useruser_database.Db.First(&site, siteID)
 		if result.Error != nil {
 			log.Printf("ReaperPostHit: Site '%s' not found for user '%s'", siteID, username)
 			return
@@ -593,7 +595,7 @@ func ReaperPostHit(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		hit := database.Hit{
+		hit := user_database.Hit{
 			SiteID:            site.ID,
 			Path:              pagePathParam,
 			Date:              time.Now(), // Add 8 hours to get to UTC time
@@ -605,11 +607,120 @@ func ReaperPostHit(w http.ResponseWriter, r *http.Request) {
 			VisitorBrowser:    visitorBrowser,
 		}
 
-		result = userDatabase.Db.Create(&hit)
+		result = useruser_database.Db.Create(&hit)
 
 		if result.Error != nil {
 			log.Printf("ReaperPostHit: Error saving hit: %v", result.Error)
 			return
 		}
 	}()
+}
+
+// WebmentionSenderDashboard handles the webmention sender dashboard page
+func WebmentionSenderDashboard(w http.ResponseWriter, r *http.Request) {
+	user := GetSignedInUserOrNil(r)
+	if user == nil {
+		http.Redirect(w, r, "/", http.StatusFound)
+		return
+	}
+
+	// Get monitored URLs for this user
+	monitoredURLs, err := webmention_sender.GetMonitoredURLsForUser(user.Username)
+	if err != nil {
+		log.Printf("Error fetching monitored URLs: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// Get recent sent webmentions
+	sentWebmentions, err := webmention_sender.GetRecentSentWebmentionsForUser(user.Username, 20)
+	if err != nil {
+		log.Printf("Error fetching sent webmentions: %v", err)
+	}
+
+	RenderTemplate(w, r, "pages/dashboard/webmention_sender/webmention_sender.html",
+		&map[string]CustomDeclaration{
+			"monitoredURLs":   {(*[]shared_database.MonitoredURL)(nil), &monitoredURLs},
+			"sentWebmentions": {(*[]shared_database.SentWebmention)(nil), &sentWebmentions},
+		})
+}
+
+// WebmentionSenderAddURLs handles adding URLs for monitoring
+func WebmentionSenderAddURLs(w http.ResponseWriter, r *http.Request) {
+	user := GetSignedInUserOrFail(r)
+
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+
+	pageUrlsText := r.FormValue("page-urls")
+	rssUrlsText := r.FormValue("rss-urls")
+
+	// Split by newline and process each URL
+	urlsList := strings.Split(pageUrlsText, "\n")
+	for _, urlStr := range urlsList {
+		urlStr = strings.TrimSpace(urlStr)
+		if urlStr == "" {
+			continue
+		}
+
+		// Add URL to database
+		err := webmention_sender.AddURLToMonitor(user.Username, urlStr, false)
+		if err != nil {
+			log.Printf("Error adding URL %s: %v", urlStr, err)
+		}
+	}
+
+	// Split RSS URLs by newline and process each URL
+	rssUrlsList := strings.Split(rssUrlsText, "\n")
+	for _, urlStr := range rssUrlsList {
+		urlStr = strings.TrimSpace(urlStr)
+		if urlStr == "" {
+			continue
+		}
+
+		// Add URL to database
+		err := webmention_sender.AddURLToMonitor(user.Username, urlStr, true)
+		if err != nil {
+			log.Printf("Error adding URL %s: %v", urlStr, err)
+		}
+	}
+
+	http.Redirect(w, r, "/dashboard/webmention-sender", http.StatusSeeOther)
+}
+
+// // WebmentionSenderProcessURL handles processing a URL immediately
+func WebmentionSenderProcessURL(w http.ResponseWriter, r *http.Request) {
+	user := GetSignedInUserOrNil(r)
+	if user == nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+
+	url := r.FormValue("process-url")
+	isRSS := r.FormValue("is-rss") == "on"
+
+	if url == "" {
+		http.Error(w, "URL is required", http.StatusBadRequest)
+		return
+	}
+
+	// Process URL immediately
+	if isRSS {
+		go webmention_sender.ProcessRSSFeed(&shared_database.MonitoredURL{
+			URL: url,
+		}, true)
+	} else {
+		go webmention_sender.ProcessSingleURL(&shared_database.MonitoredURL{
+			URL: url,
+		}, true)
+	}
+
+	http.Redirect(w, r, "/dashboard/webmention-sender", http.StatusSeeOther)
 }

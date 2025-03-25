@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"mochi/database"
+	"mochi/user_database"
 	"net"
 	"net/http"
 	"net/url"
@@ -18,12 +18,12 @@ import (
 
 func WebmentionsDetails(w http.ResponseWriter, r *http.Request) {
 	signedInUser := GetSignedInUserOrFail(r)
-	userDatabase := database.GetDbOrFatal(signedInUser.Username)
+	useruser_database := user_database.GetDbOrFatal(signedInUser.Username)
 
 	site := GetSiteFromContextOrFail(r)
 
-	allWebmentions := []database.WebMention{}
-	result := userDatabase.Db.Where(&database.WebMention{
+	allWebmentions := []user_database.WebMention{}
+	result := useruser_database.Db.Where(&user_database.WebMention{
 		SiteID: site.ID,
 	}).Find(&allWebmentions)
 
@@ -39,8 +39,8 @@ func WebmentionsDetails(w http.ResponseWriter, r *http.Request) {
 
 	RenderTemplate(w, r, "pages/dashboard/webmentions/webmentions_details.html",
 		&map[string]CustomDeclaration{
-			"site":        {(*database.Site)(nil), site},
-			"webmentions": {(*[]database.WebMention)(nil), &allWebmentions},
+			"site":        {(*user_database.Site)(nil), site},
+			"webmentions": {(*[]user_database.WebMention)(nil), &allWebmentions},
 		},
 	)
 }
@@ -49,7 +49,7 @@ func WebmentionSetupInstructions(w http.ResponseWriter, r *http.Request) {
 	site := GetSiteFromContextOrFail(r)
 	RenderTemplate(w, r, "pages/dashboard/webmentions/setup_instructions.html",
 		&map[string]CustomDeclaration{
-			"site": {(*database.Site)(nil), site},
+			"site": {(*user_database.Site)(nil), site},
 		},
 	)
 }
@@ -96,15 +96,15 @@ func WebmentionReceive(w http.ResponseWriter, r *http.Request) {
 	// Execute the rest of the logic in a goroutine
 	go func() {
 
-		userDatabase := database.GetDbIfExists(username)
+		useruser_database := user_database.GetDbIfExists(username)
 
-		if userDatabase == nil {
+		if useruser_database == nil {
 			log.Printf("WebmentionPost: User not found: '%s'", username)
 			return
 		}
 
-		var site database.Site
-		result := userDatabase.Db.First(&site, siteID)
+		var site user_database.Site
+		result := useruser_database.Db.First(&site, siteID)
 		if result.Error != nil {
 			log.Printf("WebmentionPost: Site '%s' not found for user '%s'", siteID, username)
 			return
@@ -247,8 +247,8 @@ func WebmentionReceive(w http.ResponseWriter, r *http.Request) {
 		sourceUrlStr = normalizeURL(sourceUrl)
 
 		// Check if the webmention already exists
-		var existingWebmention database.WebMention
-		result = userDatabase.Db.Where(&database.WebMention{
+		var existingWebmention user_database.WebMention
+		result = useruser_database.Db.Where(&user_database.WebMention{
 			SiteID:    site.ID,
 			SourceURL: sourceUrlStr,
 			TargetURL: targetUrlStr,
@@ -260,14 +260,14 @@ func WebmentionReceive(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// actually save webmention
-		webmention := database.WebMention{
+		webmention := user_database.WebMention{
 			SiteID:    site.ID,
 			SourceURL: sourceUrlStr,
 			TargetURL: targetUrlStr,
 			Status:    "pending",
 		}
 
-		result = userDatabase.Db.Create(&webmention)
+		result = useruser_database.Db.Create(&webmention)
 		if result.Error != nil {
 			log.Printf("WebmentionPost: Error creating webmention for user '%s': %v", username, result.Error)
 			return

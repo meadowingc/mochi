@@ -3,9 +3,11 @@ package main
 import (
 	"log"
 	"mochi/constants"
-	"mochi/database"
 	"mochi/notifier"
+	"mochi/shared_database"
 	"mochi/site"
+	"mochi/user_database"
+	"mochi/webmention_sender"
 	"net/http"
 	"os"
 	"os/signal"
@@ -28,11 +30,13 @@ func main() {
 
 	notifier.SendMessageToUsername("meadow_37", "Mochi is starting up")
 
-	database.InitDb()
+	shared_database.InitSharedDb()
+	user_database.InitDb()
 
 	r := initRouter()
 
 	go notifier.StartInteractionHandler()
+	go webmention_sender.StartPeriodicChecker()
 
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
@@ -49,8 +53,9 @@ func main() {
 	<-signals
 	log.Println("Shutting down gracefully...")
 
-	// Close open database connections
-	database.CleanupOnAppClose()
+	// Close open user_database connections
+	user_database.CleanupOnAppClose()
+	shared_database.CleanupOnAppClose()
 
 	notifier.SendMessageToUsername("meadow_37", "Mochi is shutting down")
 }
@@ -113,6 +118,12 @@ func initRouter() *chi.Mux {
 
 			r.Get("/webmentions", site.WebmentionsDetails)
 			r.Get("/webmentions/setup-instructions", site.WebmentionSetupInstructions)
+		})
+
+		r.Route("/webmention-sender", func(r chi.Router) {
+			r.Get("/", site.WebmentionSenderDashboard)
+			r.Post("/add", site.WebmentionSenderAddURLs)
+			// r.Post("/process", site.WebmentionSenderProcessURL)
 		})
 	})
 

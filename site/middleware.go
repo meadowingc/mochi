@@ -3,7 +3,7 @@ package site
 import (
 	"context"
 	"log"
-	"mochi/database"
+	"mochi/user_database"
 	"net/http"
 	"strings"
 
@@ -56,17 +56,17 @@ func TryPutUserInContextMiddleware(next http.Handler) http.Handler {
 
 		authTokenItself, username := cookieParts[0], cookieParts[1]
 
-		userDatabase := database.GetDbIfExists(username)
-		if userDatabase == nil {
-			log.Printf("User database not found for user: %s", username)
+		useruser_database := user_database.GetDbIfExists(username)
+		if useruser_database == nil {
+			log.Printf("User user_database not found for user: %s", username)
 			clearUserSession(w)
 			next.ServeHTTP(w, r)
 			return
 		}
 
 		// Validate the token and retrieve the corresponding user
-		var user database.User
-		result := database.GetDbOrFatal(username).Db.Where(&database.User{SessionToken: authTokenItself}).First(&user)
+		var user user_database.User
+		result := user_database.GetDbOrFatal(username).Db.Where(&user_database.User{SessionToken: authTokenItself}).First(&user)
 		if result.Error != nil {
 			// Clear the invalid cookie
 			clearUserSession(w)
@@ -113,10 +113,10 @@ func UserSiteDashboardMiddleware(next http.Handler) http.Handler {
 		siteID := chi.URLParam(r, "siteID")
 
 		signedInUser := GetSignedInUserOrFail(r)
-		userDatabase := database.GetDbOrFatal(signedInUser.Username)
+		useruser_database := user_database.GetDbOrFatal(signedInUser.Username)
 
-		var site database.Site
-		result := userDatabase.Db.First(&site, siteID)
+		var site user_database.Site
+		result := useruser_database.Db.First(&site, siteID)
 		if result.Error != nil {
 			http.Error(w, "Site not found", http.StatusNotFound)
 			return
@@ -134,8 +134,8 @@ func UserSiteDashboardMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func GetSiteFromContextOrFail(r *http.Request) *database.Site {
-	site, ok := r.Context().Value(siteKey).(*database.Site)
+func GetSiteFromContextOrFail(r *http.Request) *user_database.Site {
+	site, ok := r.Context().Value(siteKey).(*user_database.Site)
 	if !ok {
 		log.Fatalf("Site not found in context")
 	}

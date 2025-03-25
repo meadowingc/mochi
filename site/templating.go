@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"mochi/constants"
-	"mochi/database"
+	"mochi/user_database"
 	"net/http"
 	"net/url"
 	"os"
@@ -54,7 +54,7 @@ func RenderTemplate(
 		opts := &scriggo.BuildOptions{
 			Globals: native.Declarations{
 				"templateName":   templateName,
-				"signedInUser":   (**database.User)(nil),
+				"signedInUser":   (**user_database.User)(nil),
 				"isDebug":        constants.DEBUG_MODE,
 				"publicURL":      constants.PUBLIC_URL,
 				"webmentionsURL": constants.WEBMENTIONS_URL,
