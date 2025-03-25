@@ -725,7 +725,7 @@ func WebmentionSenderProcessURL(w http.ResponseWriter, r *http.Request) {
 	// Process URL immediately
 	var sentWebmentions []shared_database.SentWebmention
 	if isRSS {
-		sentWebmentions = webmention_sender.ProcessRSSFeed(&shared_database.MonitoredURL{
+		sentWebmentions = webmention_sender.ProcessFeed(&shared_database.MonitoredURL{
 			URL: urlBeingProcessed,
 		}, true)
 	} else {

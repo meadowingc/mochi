@@ -16,21 +16,38 @@ import (
 )
 
 const (
-	maxRSSEntriesToCheck = 20
-	userAgent            = "Mochi Webmention Sender (https://mochi.meadow.cafe)"
+	maxFeedEntriesToCheck = 20
+	userAgent             = "Mochi Webmention Sender (https://mochi.meadow.cafe)"
 )
 
 // RSS feed structures
 type RSS struct {
-	Channel Channel `xml:"channel"`
+	Channel RssChannel `xml:"channel"`
 }
 
-type Channel struct {
-	Items []Item `xml:"item"`
+type RssChannel struct {
+	Items []RssItem `xml:"item"`
 }
 
-type Item struct {
+type RssItem struct {
 	Link string `xml:"link"`
+}
+
+type Atom struct {
+	XMLName xml.Name    `xml:"feed"`
+	Entries []AtomEntry `xml:"entry"`
+	Links   []AtomLink  `xml:"link"`
+}
+
+type AtomEntry struct {
+	Title string     `xml:"title"`
+	Links []AtomLink `xml:"link"`
+	ID    string     `xml:"id"`
+}
+
+type AtomLink struct {
+	Href string `xml:"href,attr"`
+	Rel  string `xml:"rel,attr"`
 }
 
 // StartPeriodicChecker starts the periodic checking of monitored URLs
@@ -68,17 +85,17 @@ func CheckAllMonitoredURLs() {
 		}
 
 		if monitoredURL.IsRSS {
-			ProcessRSSFeed(&monitoredURL, false)
+			ProcessFeed(&monitoredURL, false)
 		} else {
 			ProcessSingleURL(&monitoredURL, false)
 		}
 	}
 }
 
-// ProcessRSSFeed fetches an RSS feed and processes recent entries
-func ProcessRSSFeed(monitoredURL *shared_database.MonitoredURL, skipSave bool) []shared_database.SentWebmention {
+// ProcessFeed fetches a feed (RSS or Atom) and processes recent entries
+func ProcessFeed(monitoredURL *shared_database.MonitoredURL, skipSave bool) []shared_database.SentWebmention {
 	feedURL := monitoredURL.URL
-	log.Printf("Processing RSS feed: %s", feedURL)
+	log.Printf("Processing feed: %s", feedURL)
 
 	sentWebmentions := []shared_database.SentWebmention{}
 
@@ -108,62 +125,192 @@ func ProcessRSSFeed(monitoredURL *shared_database.MonitoredURL, skipSave bool) [
 		return sentWebmentions
 	}
 
+	// Try to parse as RSS first
 	var rss RSS
-	if err := xml.Unmarshal(body, &rss); err != nil {
-		log.Printf("Error parsing RSS feed %s: %v", feedURL, err)
-		return sentWebmentions
+	rssErr := xml.Unmarshal(body, &rss)
+	if rssErr == nil && len(rss.Channel.Items) > 0 {
+		// Successfully parsed as RSS
+		return processRSSItems(rss.Channel.Items, monitoredURL, skipSave)
 	}
 
-	count := 0
-	alreadyCheckdeItems := make(map[string]struct{})
+	// If RSS parsing failed, try Atom
+	var atom Atom
+	atomErr := xml.Unmarshal(body, &atom)
+	if atomErr == nil && len(atom.Entries) > 0 {
+		// Successfully parsed as Atom
+		return processAtomEntries(atom.Entries, monitoredURL, skipSave)
+	}
 
-	for _, item := range rss.Channel.Items {
-		if count >= maxRSSEntriesToCheck {
+	// Neither format worked
+	log.Printf("Failed to parse feed as RSS: %v", rssErr)
+	log.Printf("Failed to parse feed as Atom: %v", atomErr)
+	return sentWebmentions
+
+	// var rss RSS
+	// if err := xml.Unmarshal(body, &rss); err != nil {
+	// 	log.Printf("Error parsing RSS feed %s: %v", feedURL, err)
+	// 	return sentWebmentions
+	// }
+
+	// count := 0
+	// alreadyCheckdeItems := make(map[string]struct{})
+
+	// for _, item := range rss.Channel.Items {
+	// 	if count >= maxRSSEntriesToCheck {
+	// 		break
+	// 	}
+
+	// 	itemUrl, err := StandardizeURL(item.Link)
+	// 	if err != nil {
+	// 		log.Printf("Error standardizing URL %s: %v", itemUrl, err)
+	// 		continue
+	// 	}
+
+	// 	if _, exists := alreadyCheckdeItems[itemUrl]; exists {
+	// 		alreadyCheckdeItems[itemUrl] = struct{}{}
+	// 		continue
+	// 	}
+	// 	if itemUrl != "" {
+	// 		pageLinks := getLinksInPageForWhichWeHaventSentWebmentionsTo(itemUrl)
+
+	// 		for _, targetURL := range pageLinks {
+	// 			if _, exists := alreadyCheckdeItems[targetURL]; exists {
+	// 				alreadyCheckdeItems[targetURL] = struct{}{}
+	// 				continue
+	// 			}
+
+	// 			log.Printf("Processing link: %s", targetURL)
+	// 			webmentionResult, err := SendWebmention(itemUrl, targetURL)
+	// 			if err != nil {
+	// 				log.Printf("Error sending webmention: %v", err)
+	// 				continue
+	// 			}
+
+	// 			sentWebmentions = append(sentWebmentions, shared_database.SentWebmention{
+	// 				MonitoredURLID: monitoredURL.ID,
+	// 				SourceURL:      itemUrl,
+	// 				TargetURL:      targetURL,
+	// 				StatusCode:     webmentionResult.StatusCode,
+	// 				ResponseBody:   webmentionResult.ResponseBody,
+	// 				UniqueSource:   "",
+	// 				UniqueTarget:   "",
+	// 			})
+
+	// 			if !skipSave {
+	// 				RecordSentWebmention(monitoredURL, itemUrl, targetURL, webmentionResult.StatusCode, webmentionResult.ResponseBody)
+	// 			}
+	// 		}
+
+	// 		count++
+	// 	}
+	// }
+
+	// return sentWebmentions
+}
+
+// processRSSItems processes items from an RSS feed
+func processRSSItems(items []RssItem, monitoredURL *shared_database.MonitoredURL, skipSave bool) []shared_database.SentWebmention {
+	sentWebmentions := []shared_database.SentWebmention{}
+	count := 0
+	alreadyCheckedItems := make(map[string]struct{})
+
+	for _, item := range items {
+		if count >= maxFeedEntriesToCheck {
 			break
 		}
 
-		itemUrl, err := StandardizeURL(item.Link)
+		itemURL, err := StandardizeURL(item.Link)
 		if err != nil {
-			log.Printf("Error standardizing URL %s: %v", itemUrl, err)
+			log.Printf("Error standardizing URL %s: %v", item.Link, err)
 			continue
 		}
 
-		if _, exists := alreadyCheckdeItems[itemUrl]; exists {
-			alreadyCheckdeItems[itemUrl] = struct{}{}
+		if _, exists := alreadyCheckedItems[itemURL]; exists {
 			continue
 		}
-		if itemUrl != "" {
-			pageLinks := getLinksInPageForWhichWeHaventSentWebmentionsTo(itemUrl)
+		alreadyCheckedItems[itemURL] = struct{}{}
 
-			for _, targetURL := range pageLinks {
-				if _, exists := alreadyCheckdeItems[targetURL]; exists {
-					alreadyCheckdeItems[targetURL] = struct{}{}
-					continue
-				}
-
-				log.Printf("Processing link: %s", targetURL)
-				webmentionResult, err := SendWebmention(itemUrl, targetURL)
-				if err != nil {
-					log.Printf("Error sending webmention: %v", err)
-					continue
-				}
-
-				sentWebmentions = append(sentWebmentions, shared_database.SentWebmention{
-					MonitoredURLID: monitoredURL.ID,
-					SourceURL:      itemUrl,
-					TargetURL:      targetURL,
-					StatusCode:     webmentionResult.StatusCode,
-					ResponseBody:   webmentionResult.ResponseBody,
-					UniqueSource:   "",
-					UniqueTarget:   "",
-				})
-
-				if !skipSave {
-					RecordSentWebmention(monitoredURL, itemUrl, targetURL, webmentionResult.StatusCode, webmentionResult.ResponseBody)
-				}
-			}
-
+		if itemURL != "" {
+			itemWebmentions := processEntryURL(itemURL, monitoredURL, skipSave)
+			sentWebmentions = append(sentWebmentions, itemWebmentions...)
 			count++
+		}
+	}
+
+	return sentWebmentions
+}
+
+// processAtomEntries processes entries from an Atom feed
+func processAtomEntries(entries []AtomEntry, monitoredURL *shared_database.MonitoredURL, skipSave bool) []shared_database.SentWebmention {
+	sentWebmentions := []shared_database.SentWebmention{}
+	count := 0
+	alreadyCheckedItems := make(map[string]struct{})
+
+	for _, entry := range entries {
+		if count >= maxFeedEntriesToCheck {
+			break
+		}
+
+		// Get the link - in Atom, prefer the "alternate" link if present
+		var entryLink string
+		for _, link := range entry.Links {
+			if link.Rel == "alternate" || link.Rel == "" {
+				entryLink = link.Href
+				break
+			}
+		}
+
+		// If no suitable link was found, skip this entry
+		if entryLink == "" {
+			continue
+		}
+
+		itemURL, err := StandardizeURL(entryLink)
+		if err != nil {
+			log.Printf("Error standardizing URL %s: %v", entryLink, err)
+			continue
+		}
+
+		if _, exists := alreadyCheckedItems[itemURL]; exists {
+			continue
+		}
+		alreadyCheckedItems[itemURL] = struct{}{}
+
+		if itemURL != "" {
+			itemWebmentions := processEntryURL(itemURL, monitoredURL, skipSave)
+			sentWebmentions = append(sentWebmentions, itemWebmentions...)
+			count++
+		}
+	}
+
+	return sentWebmentions
+}
+
+// processEntryURL handles a single entry URL from any feed type
+func processEntryURL(entryURL string, monitoredURL *shared_database.MonitoredURL, skipSave bool) []shared_database.SentWebmention {
+	sentWebmentions := []shared_database.SentWebmention{}
+	pageLinks := getLinksInPageForWhichWeHaventSentWebmentionsTo(entryURL)
+
+	for _, targetURL := range pageLinks {
+		log.Printf("Processing link: %s", targetURL)
+		webmentionResult, err := SendWebmention(entryURL, targetURL)
+		if err != nil {
+			log.Printf("Error sending webmention: %v", err)
+			continue
+		}
+
+		sentWebmentions = append(sentWebmentions, shared_database.SentWebmention{
+			MonitoredURLID: monitoredURL.ID,
+			SourceURL:      entryURL,
+			TargetURL:      targetURL,
+			StatusCode:     webmentionResult.StatusCode,
+			ResponseBody:   webmentionResult.ResponseBody,
+			UniqueSource:   entryURL,
+			UniqueTarget:   targetURL,
+		})
+
+		if !skipSave {
+			RecordSentWebmention(monitoredURL, entryURL, targetURL, webmentionResult.StatusCode, webmentionResult.ResponseBody)
 		}
 	}
 
