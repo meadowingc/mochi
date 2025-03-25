@@ -665,8 +665,14 @@ func WebmentionSenderAddURLs(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
+		urlStr, err := webmention_sender.StandardizeURL(urlStr)
+		if err != nil {
+			log.Printf("Error standardizing URL %s: %v", urlStr, err)
+			continue
+		}
+
 		// Add URL to database
-		err := webmention_sender.AddURLToMonitor(user.Username, urlStr, false)
+		err = webmention_sender.AddURLToMonitor(user.Username, urlStr, false)
 		if err != nil {
 			log.Printf("Error adding URL %s: %v", urlStr, err)
 		}
@@ -680,8 +686,13 @@ func WebmentionSenderAddURLs(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		// Add URL to database
-		err := webmention_sender.AddURLToMonitor(user.Username, urlStr, true)
+		urlStr, err := webmention_sender.StandardizeURL(urlStr)
+		if err != nil {
+			log.Printf("Error standardizing URL %s: %v", urlStr, err)
+			continue
+		}
+
+		err = webmention_sender.AddURLToMonitor(user.Username, urlStr, true)
 		if err != nil {
 			log.Printf("Error adding URL %s: %v", urlStr, err)
 		}
@@ -690,7 +701,7 @@ func WebmentionSenderAddURLs(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/dashboard/webmention-sender", http.StatusSeeOther)
 }
 
-// // WebmentionSenderProcessURL handles processing a URL immediately
+// WebmentionSenderProcessURL handles processing a URL immediately
 func WebmentionSenderProcessURL(w http.ResponseWriter, r *http.Request) {
 	user := GetSignedInUserOrNil(r)
 	if user == nil {
@@ -703,24 +714,28 @@ func WebmentionSenderProcessURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	url := r.FormValue("process-url")
+	urlBeingProcessed := r.FormValue("process-url")
 	isRSS := r.FormValue("is-rss") == "on"
 
-	if url == "" {
+	if urlBeingProcessed == "" {
 		http.Error(w, "URL is required", http.StatusBadRequest)
 		return
 	}
 
 	// Process URL immediately
+	var sentWebmentions []shared_database.SentWebmention
 	if isRSS {
-		go webmention_sender.ProcessRSSFeed(&shared_database.MonitoredURL{
-			URL: url,
+		sentWebmentions = webmention_sender.ProcessRSSFeed(&shared_database.MonitoredURL{
+			URL: urlBeingProcessed,
 		}, true)
 	} else {
-		go webmention_sender.ProcessSingleURL(&shared_database.MonitoredURL{
-			URL: url,
+		sentWebmentions = webmention_sender.ProcessSingleURL(&shared_database.MonitoredURL{
+			URL: urlBeingProcessed,
 		}, true)
 	}
-
-	http.Redirect(w, r, "/dashboard/webmention-sender", http.StatusSeeOther)
+	RenderTemplate(w, r, "pages/dashboard/webmention_sender/process_single_webmention_results.html",
+		&map[string]CustomDeclaration{
+			"urlBeingProcessed": {(*string)(nil), &urlBeingProcessed},
+			"sentWebmentions":   {(*[]shared_database.SentWebmention)(nil), &sentWebmentions},
+		})
 }

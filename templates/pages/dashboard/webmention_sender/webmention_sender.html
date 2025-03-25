@@ -20,11 +20,11 @@
   <!-- Process single URL immediately -->
   <div class="mt-6 p-4 bg-gray-50 rounded-lg">
     <h2 class="text-lg font-medium text-gray-900">Process URL Now</h2>
-    <p class="mt-1 text-sm text-gray-500">Check a URL for links and send webmentions immediately</p>
+    <p class="mt-1 text-sm text-gray-500">Check a URL for links and send webmentions immediately. Note that this will take a while.</p>
 
     <form method="POST" action="/dashboard/webmention-sender/process" class="mt-4">
-      <div class="flex items-end space-x-4">
-        <div class="flex-grow">
+      <div>
+        <div class="flex-grow mb-3">
           <label for="process-url" class="block text-sm font-medium text-gray-700">URL to process</label>
           <input
             type="text"
@@ -35,16 +35,20 @@
             required
           />
         </div>
-        <div class="flex items-center">
-          <input type="checkbox" id="is-rss" name="is-rss" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
-          <label for="is-rss" class="ml-2 block text-sm text-gray-900">RSS Feed</label>
+
+        <div class="flex items-center gap-4">
+          <div class="flex items-center">
+            <input type="checkbox" id="is-rss" name="is-rss" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+            <label for="is-rss" class="ml-2 block text-sm text-gray-900">RSS Feed</label>
+          </div>
+
+          <button
+            type="submit"
+            class="px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 whitespace-nowrap"
+          >
+            Process URL
+          </button>
         </div>
-        <button
-          type="submit"
-          class="py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-        >
-          Process
-        </button>
       </div>
     </form>
   </div>
@@ -89,7 +93,7 @@
     </div>
 
     <!-- Web Pages -->
-    <div class="mt-6 p-4 bg-gray-50 rounded-lg">
+    <div class="p-4 bg-gray-50 rounded-lg sm:max-sm:mt-8">
       <h2 class="text-lg font-medium text-gray-900">Web Pages</h2>
       <p class="mt-1 text-sm text-gray-500">Add individual web pages to monitor for links</p>
 

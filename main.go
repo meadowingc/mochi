@@ -28,7 +28,9 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
-	notifier.SendMessageToUsername("meadow_37", "Mochi is starting up")
+	if !constants.DEBUG_MODE {
+		notifier.SendMessageToUsername("meadow_37", "Mochi is starting up")
+	}
 
 	shared_database.InitSharedDb()
 	user_database.InitDb()
@@ -57,7 +59,9 @@ func main() {
 	user_database.CleanupOnAppClose()
 	shared_database.CleanupOnAppClose()
 
-	notifier.SendMessageToUsername("meadow_37", "Mochi is shutting down")
+	if !constants.DEBUG_MODE {
+		notifier.SendMessageToUsername("meadow_37", "Mochi is shutting down")
+	}
 }
 
 func initRouter() *chi.Mux {
@@ -123,7 +127,7 @@ func initRouter() *chi.Mux {
 		r.Route("/webmention-sender", func(r chi.Router) {
 			r.Get("/", site.WebmentionSenderDashboard)
 			r.Post("/add", site.WebmentionSenderAddURLs)
-			// r.Post("/process", site.WebmentionSenderProcessURL)
+			r.Post("/process", site.WebmentionSenderProcessURL)
 		})
 	})
 

@@ -6,6 +6,7 @@ import (
 	"log"
 	"mochi/constants"
 	"mochi/user_database"
+	"mochi/webmention_sender"
 	"net/http"
 	"net/url"
 	"os"
@@ -77,6 +78,46 @@ func RenderTemplate(
 						return ""
 					}
 					return string(jsonData)
+				},
+				"shortenUrl": func(urlStr string) string {
+					// First standardize the URL
+					standardizedURL, err := webmention_sender.StandardizeURL(urlStr)
+					if err != nil {
+						log.Printf("Error standardizing URL: %v", err)
+						return urlStr // Return original if there's an error
+					}
+
+					// Parse the URL
+					parsedURL, err := url.Parse(standardizedURL)
+					if err != nil {
+						log.Printf("Error parsing URL: %v", err)
+						return standardizedURL
+					}
+
+					// Remove www. if present
+					host := parsedURL.Host
+					host = strings.TrimPrefix(host, "www.")
+
+					// Shorten the path if it's too long
+					path := parsedURL.Path
+					if len(path) > 20 {
+						// Keep the first part and the last part
+						path = path[:10] + "..." + path[len(path)-10:]
+					}
+
+					// Add query parameters if they exist, but abbreviate if too long
+					query := parsedURL.RawQuery
+					if query != "" {
+						if len(query) > 15 {
+							query = query[:15] + "..."
+						}
+						path = path + "?" + query
+					}
+
+					// Construct the shortened URL
+					shortenedURL := host + path
+
+					return shortenedURL
 				},
 			},
 		}

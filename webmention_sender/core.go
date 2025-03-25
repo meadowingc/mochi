@@ -76,54 +76,64 @@ func CheckAllMonitoredURLs() {
 }
 
 // ProcessRSSFeed fetches an RSS feed and processes recent entries
-func ProcessRSSFeed(monitoredURL *shared_database.MonitoredURL, skipSave bool) {
+func ProcessRSSFeed(monitoredURL *shared_database.MonitoredURL, skipSave bool) []shared_database.SentWebmention {
 	feedURL := monitoredURL.URL
 	log.Printf("Processing RSS feed: %s", feedURL)
+
+	sentWebmentions := []shared_database.SentWebmention{}
 
 	client := &http.Client{Timeout: 30 * time.Second}
 	req, err := http.NewRequest("GET", feedURL, nil)
 	if err != nil {
 		log.Printf("Error creating request for RSS feed %s: %v", feedURL, err)
-		return
+		return sentWebmentions
 	}
 	req.Header.Set("User-Agent", userAgent)
 
 	resp, err := client.Do(req)
 	if err != nil {
 		log.Printf("Error fetching RSS feed %s: %v", feedURL, err)
-		return
+		return sentWebmentions
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		log.Printf("Non-200 status code for RSS feed %s: %d", feedURL, resp.StatusCode)
-		return
+		return sentWebmentions
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Printf("Error reading RSS feed body %s: %v", feedURL, err)
-		return
+		return sentWebmentions
 	}
 
 	var rss RSS
 	if err := xml.Unmarshal(body, &rss); err != nil {
 		log.Printf("Error parsing RSS feed %s: %v", feedURL, err)
-		return
+		return sentWebmentions
 	}
 
 	count := 0
 	alreadyCheckdeItems := make(map[string]struct{})
+
 	for _, item := range rss.Channel.Items {
 		if count >= maxRSSEntriesToCheck {
 			break
 		}
-		if _, exists := alreadyCheckdeItems[item.Link]; exists {
-			alreadyCheckdeItems[item.Link] = struct{}{}
+
+		itemUrl, err := StandardizeURL(item.Link)
+		if err != nil {
+			log.Printf("Error standardizing URL %s: %v", itemUrl, err)
 			continue
 		}
-		if item.Link != "" {
-			pageLinks := getLinksInPageForWhichWeHaventSentWebmentionsTo(item.Link)
+
+		if _, exists := alreadyCheckdeItems[itemUrl]; exists {
+			alreadyCheckdeItems[itemUrl] = struct{}{}
+			continue
+		}
+		if itemUrl != "" {
+			pageLinks := getLinksInPageForWhichWeHaventSentWebmentionsTo(itemUrl)
 
 			for _, targetURL := range pageLinks {
 				if _, exists := alreadyCheckdeItems[targetURL]; exists {
@@ -132,25 +142,38 @@ func ProcessRSSFeed(monitoredURL *shared_database.MonitoredURL, skipSave bool) {
 				}
 
 				log.Printf("Processing link: %s", targetURL)
-				webmentionResult, err := SendWebmention(item.Link, targetURL)
+				webmentionResult, err := SendWebmention(itemUrl, targetURL)
 				if err != nil {
 					log.Printf("Error sending webmention: %v", err)
-					return
+					continue
 				}
 
+				sentWebmentions = append(sentWebmentions, shared_database.SentWebmention{
+					MonitoredURLID: monitoredURL.ID,
+					SourceURL:      itemUrl,
+					TargetURL:      targetURL,
+					StatusCode:     webmentionResult.StatusCode,
+					ResponseBody:   webmentionResult.ResponseBody,
+					UniqueSource:   "",
+					UniqueTarget:   "",
+				})
+
 				if !skipSave {
-					RecordSentWebmention(monitoredURL, item.Link, targetURL, webmentionResult.StatusCode, webmentionResult.ResponseBody)
+					RecordSentWebmention(monitoredURL, itemUrl, targetURL, webmentionResult.StatusCode, webmentionResult.ResponseBody)
 				}
 			}
 
 			count++
 		}
 	}
+
+	return sentWebmentions
 }
 
 // ProcessSingleURL processes a single URL for webmentions
-func ProcessSingleURL(monitoredURL *shared_database.MonitoredURL, skipSave bool) {
+func ProcessSingleURL(monitoredURL *shared_database.MonitoredURL, skipSave bool) []shared_database.SentWebmention {
 	pageURL := monitoredURL.URL
+	sentWebmentions := []shared_database.SentWebmention{}
 	pageLinks := getLinksInPageForWhichWeHaventSentWebmentionsTo(pageURL)
 
 	for _, targetURL := range pageLinks {
@@ -158,13 +181,25 @@ func ProcessSingleURL(monitoredURL *shared_database.MonitoredURL, skipSave bool)
 		webmentionResult, err := SendWebmention(pageURL, targetURL)
 		if err != nil {
 			log.Printf("Error sending webmention: %v", err)
-			return
+			continue
 		}
+
+		sentWebmentions = append(sentWebmentions, shared_database.SentWebmention{
+			MonitoredURLID: monitoredURL.ID,
+			SourceURL:      pageURL,
+			TargetURL:      targetURL,
+			UniqueSource:   "",
+			UniqueTarget:   "",
+			StatusCode:     webmentionResult.StatusCode,
+			ResponseBody:   webmentionResult.ResponseBody,
+		})
 
 		if !skipSave {
 			RecordSentWebmention(monitoredURL, pageURL, targetURL, webmentionResult.StatusCode, webmentionResult.ResponseBody)
 		}
 	}
+
+	return sentWebmentions
 }
 
 func getLinksInPageForWhichWeHaventSentWebmentionsTo(pageURL string) []string {
