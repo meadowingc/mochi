@@ -19,7 +19,21 @@
 
   <!-- Process single URL immediately -->
   <div class="mt-6 p-4 bg-gray-50 rounded-lg">
-    <h2 class="text-lg font-medium text-gray-900">Process URL Now</h2>
+    <div class="flex items-center">
+      <h2 class="text-lg font-medium text-gray-900">Process URL Now</h2>
+
+      <!-- Tooltip container -->
+      <div class="relative ml-2 group">
+        <div class="flex items-center justify-center w-5 h-5 bg-gray-200 rounded-full cursor-help">
+          <span class="text-xs font-bold text-gray-600">?</span>
+        </div>
+
+        <!-- Tooltip content -->
+        <div class="absolute z-10 invisible group-hover:visible w-64 bg-black text-white text-xs rounded p-2 -mt-2 left-7">
+          Immediately checks a URL for links and sends webmentions to those links. Use this for one-time processing without adding the URL to your monitored list. Toggle the RSS Feed option if processing a feed instead of a regular web page.
+        </div>
+      </div>
+    </div>
     <p class="mt-1 text-sm text-gray-500">Check a URL for links and send webmentions immediately. Note that this will take a while.</p>
 
     <form method="POST" action="/dashboard/webmention-sender/process" class="mt-4">
@@ -66,8 +80,22 @@
     {% end %}
     <!-- RSS Feeds -->
     <div class="p-4 bg-gray-50 rounded-lg">
-      <h2 class="text-lg font-medium text-gray-900">RSS Feeds</h2>
-      <p class="mt-1 text-sm text-gray-500">Add RSS feeds to monitor for new posts</p>
+      <div class="flex items-center">
+        <h2 class="text-lg font-medium text-gray-900">RSS Feeds</h2>
+
+        <!-- Tooltip container -->
+        <div class="relative ml-2 group">
+          <div class="flex items-center justify-center w-5 h-5 bg-gray-200 rounded-full cursor-help">
+            <span class="text-xs font-bold text-gray-600">?</span>
+          </div>
+
+          <!-- Tooltip content -->
+          <div class="absolute z-10 invisible group-hover:visible w-64 bg-black text-white text-xs rounded p-2 -mt-2 left-7">
+            RSS feeds are monitored for new posts. When a new post is found, all links in that post are checked for potential webmentions. This is useful for automatically sending webmentions whenever new content is published.
+          </div>
+        </div>
+      </div>
+      <p class="mt-1 text-sm text-gray-500">Add RSS feeds to monitor for new posts.</p>
 
       <form method="POST" action="/dashboard/webmention-sender/add" class="mt-4">
         <input type="hidden" name="is-rss" value="true">
@@ -94,7 +122,21 @@
 
     <!-- Web Pages -->
     <div class="p-4 bg-gray-50 rounded-lg sm:max-sm:mt-8">
-      <h2 class="text-lg font-medium text-gray-900">Web Pages</h2>
+      <div class="flex items-center">
+        <h2 class="text-lg font-medium text-gray-900">Web Pages</h2>
+
+        <!-- Tooltip container -->
+        <div class="relative ml-2 group">
+          <div class="flex items-center justify-center w-5 h-5 bg-gray-200 rounded-full cursor-help">
+            <span class="text-xs font-bold text-gray-600">?</span>
+          </div>
+
+          <!-- Tooltip content -->
+          <div class="absolute z-10 invisible group-hover:visible w-64 bg-black text-white text-xs rounded p-2 -mt-2 left-7">
+            Web pages are checked individually for links that may need webmentions. Add specific blog posts or pages here that contain links to other sites you'd like to notify.
+          </div>
+        </div>
+      </div>
       <p class="mt-1 text-sm text-gray-500">Add individual web pages to monitor for links</p>
 
       <form method="POST" action="/dashboard/webmention-sender/add" class="mt-4">
