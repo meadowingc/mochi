@@ -15,6 +15,9 @@
       <a href="/dashboard/webmention-sender" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
         Webmention Sender
       </a>
+      <a href="/dashboard/settings" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+        Settings
+      </a>
     </nav>
   </div>
 
@@ -22,30 +25,97 @@
     <button
       id="create-site-button"
       onclick="toggleCreateSiteForm()"
-      class="py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+      class="flex items-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
     >
-      Add Site
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+      </svg>
+      Add New Site
     </button>
   </div>
 
-  <!-- inline site creaton form because I'm lazy -->
+  <!-- inline site creation form because I'm lazy -->
   <form id="create-site-form" method="POST" class="mt-6 hidden" action="/dashboard/create-site">
-    <!-- ...existing form... -->
+    <div class="shadow sm:rounded-md sm:overflow-hidden">
+      <div class="px-4 py-5 bg-white space-y-6 sm:p-6">
+        <div>
+          <label for="url" class="block text-sm font-medium text-gray-700">Site URL</label>
+          <div class="mt-1">
+            <input type="url" name="url" id="url" required
+                   placeholder="https://example.com"
+                   class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md">
+          </div>
+          <p class="mt-2 text-sm text-gray-500">Enter the full URL including http:// or https://</p>
+        </div>
+      </div>
+      <div class="px-4 py-3 bg-gray-50 text-right sm:px-6 flex justify-end space-x-3">
+        <button type="button" onclick="toggleCreateSiteForm()"
+                class="py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+          Cancel
+        </button>
+        <button type="submit"
+                class="py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+          Add Site
+        </button>
+      </div>
+    </div>
   </form>
 
-  <!-- list of user sites -->
+  <!-- Grid layout for sites -->
   {% if len(userSites) > 0 %}
-  <div>
-    <hr class="my-6 border-gray-200" />
-    <h2 class="text-xl font-bold leading-tight text-gray-900">Sites</h2>
-    <ul class="mt-4">
+  <div class="mt-6">
+    <h2 class="text-xl font-bold leading-tight text-gray-900">Your Sites</h2>
+    <div class="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
       {% for site in userSites %}
-      <li class="flex items-center justify-between py-2 border-b border-gray-200">
-        <a href="/dashboard/{{ site.ID }}/analytics" class="text-blue-600 hover:underline">{{ site.URL }}</a>
-        <span class="text-gray-500">{{ site.URL }}</span>
-      </li>
+      <div class="bg-white overflow-hidden shadow rounded-lg">
+        <div class="px-4 py-5 sm:p-6">
+          <div class="flex items-center">
+            <div class="flex-shrink-0 bg-indigo-500 rounded-md p-3">
+              <svg class="h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+              </svg>
+            </div>
+            <div class="ml-5 w-0 flex-1">
+              <dl>
+                <dt class="text-sm font-medium text-gray-500 truncate">Site URL</dt>
+                <dd class="text-lg font-semibold text-gray-900 truncate">
+                  <a href="{{ site.URL }}" target="_blank" class="hover:text-indigo-600">{{ site.URL }}</a>
+                </dd>
+              </dl>
+            </div>
+          </div>
+          <div class="mt-4">
+            <dl class="grid grid-cols-2 gap-x-4 gap-y-2">
+              <div class="col-span-1">
+                <dt class="text-sm font-medium text-gray-500">Created</dt>
+                <dd class="mt-1 text-sm text-gray-900">{{ site.CreatedAt.Format("Jan 02, 2006") }}</dd>
+              </div>
+              <div class="col-span-1">
+                <dt class="text-sm font-medium text-gray-500">ID</dt>
+                <dd class="mt-1 text-sm text-gray-900">{{ site.ID }}</dd>
+              </div>
+            </dl>
+          </div>
+        </div>
+        <div class="bg-gray-50 px-4 py-4 sm:px-6 flex justify-between">
+          <a href="/dashboard/{{ site.ID }}/analytics" class="text-sm font-medium text-indigo-600 hover:text-indigo-500 flex items-center">
+            View Analytics
+            <svg class="ml-1 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd" />
+            </svg>
+          </a>
+        </div>
+      </div>
       {% end %}
-    </ul>
+    </div>
+  </div>
+  {% else %}
+  <div class="mt-10 text-center">
+    <svg class="mx-auto h-12 w-12 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+    </svg>
+    <h3 class="mt-2 text-sm font-medium text-gray-900">No sites</h3>
+    <p class="mt-1 text-sm text-gray-500">Get started by adding your first site.</p>
   </div>
   {% end %}
 
