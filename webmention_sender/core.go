@@ -80,7 +80,7 @@ func CheckAllMonitoredURLs() {
 
 	for _, monitoredURL := range monitoredURLs {
 		// only check if the URL is older than 24 hours
-		if monitoredURL.LastCheckedAt != nil && time.Since(*monitoredURL.LastCheckedAt) < 24*time.Hour {
+		if monitoredURL.LastCheckedAt != nil && time.Since(*monitoredURL.LastCheckedAt) < 7*24*time.Hour {
 			log.Printf("Skipping %s, last checked at %s", monitoredURL.URL, monitoredURL.LastCheckedAt)
 			continue
 		}

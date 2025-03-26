@@ -547,6 +547,125 @@ func SiteEmbedInstructions(w http.ResponseWriter, r *http.Request) {
 	)
 }
 
+func SiteSettingsPage(w http.ResponseWriter, r *http.Request) {
+	siteFromContext := GetSiteFromContextOrFail(r)
+	if siteFromContext == nil {
+		http.Error(w, "Site not found", http.StatusNotFound)
+		return
+	}
+
+	// Get user DB
+	signedInUser := GetSignedInUserOrFail(r)
+	userDb := user_database.GetDbOrFatal(signedInUser.Username)
+
+	// Calculate total hits for the site
+	var totalHits int64
+	userDb.Db.Model(&user_database.Hit{}).Where("site_id = ?", siteFromContext.ID).Count(&totalHits)
+
+	// Get flash messages (success/error) from session, if you have a session mechanism
+	var success, errorMsg string
+
+	// Otherwise, you can use URL parameters temporarily:
+	success = r.URL.Query().Get("success")
+	errorMsg = r.URL.Query().Get("error")
+
+	RenderTemplate(w, r, "pages/dashboard/site_settings.html",
+		&map[string]CustomDeclaration{
+			"site":      {(*user_database.Site)(nil), siteFromContext},
+			"totalHits": {(*int64)(nil), &totalHits},
+			"success":   {(*string)(nil), &success},
+			"error":     {(*string)(nil), &errorMsg},
+		},
+	)
+}
+
+func UpdateSiteSettings(w http.ResponseWriter, r *http.Request) {
+	siteFromContext := GetSiteFromContextOrFail(r)
+	if siteFromContext == nil {
+		http.Error(w, "Site not found", http.StatusNotFound)
+		return
+	}
+
+	// Get form values
+	pageUrl := strings.TrimSpace(r.FormValue("url"))
+
+	// Basic validation
+	if pageUrl == "" {
+		// Redirect with error
+		redirectURL := fmt.Sprintf("/dashboard/%d/settings?error=%s",
+			siteFromContext.ID, url.QueryEscape("URL cannot be empty"))
+		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+		return
+	}
+
+	// Validate URL format
+	if _, err := url.Parse(pageUrl); err != nil {
+		redirectURL := fmt.Sprintf("/dashboard/%d/settings?error=%s",
+			siteFromContext.ID, url.QueryEscape("Invalid URL format"))
+		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+		return
+	}
+
+	// Get user DB
+	signedInUser := GetSignedInUserOrFail(r)
+	userDb := user_database.GetDbOrFatal(signedInUser.Username)
+
+	// Update site
+	siteFromContext.URL = pageUrl
+	result := userDb.Db.Save(siteFromContext)
+	if result.Error != nil {
+		redirectURL := fmt.Sprintf("/dashboard/%d/settings?error=%s",
+			siteFromContext.ID, url.QueryEscape("Error updating site: "+result.Error.Error()))
+		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+		return
+	}
+
+	// Redirect with success message
+	redirectURL := fmt.Sprintf("/dashboard/%d/settings?success=%s",
+		siteFromContext.ID, url.QueryEscape("Site updated successfully"))
+	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+}
+
+func DeleteSite(w http.ResponseWriter, r *http.Request) {
+	signedInUser := GetSignedInUserOrFail(r)
+	site := GetSiteFromContextOrFail(r)
+
+	// Parse form
+	if err := r.ParseForm(); err != nil {
+		http.Redirect(w, r, fmt.Sprintf("/dashboard/%d/settings?error=Failed to parse form", site.ID), http.StatusSeeOther)
+		return
+	}
+
+	// Confirm deletion with a confirmation field
+	confirmation := r.FormValue("confirm_deletion")
+	if confirmation != "DELETE" {
+		http.Redirect(w, r, fmt.Sprintf("/dashboard/%d/settings?error=Please type DELETE to confirm site deletion", site.ID), http.StatusSeeOther)
+		return
+	}
+
+	userDb := user_database.GetDbOrFatal(signedInUser.Username)
+
+	// First delete related records (hits and webmentions)
+	if err := userDb.Db.Where("site_id = ?", site.ID).Delete(&user_database.Hit{}).Error; err != nil {
+		http.Redirect(w, r, fmt.Sprintf("/dashboard/%d/settings?error=Failed to delete site hits: %s", site.ID, err), http.StatusSeeOther)
+		return
+	}
+
+	if err := userDb.Db.Where("site_id = ?", site.ID).Delete(&user_database.WebMention{}).Error; err != nil {
+		http.Redirect(w, r, fmt.Sprintf("/dashboard/%d/settings?error=Failed to delete site webmentions: %s", site.ID, err), http.StatusSeeOther)
+		return
+	}
+
+	// Now delete the site itself
+	if err := userDb.Db.Delete(site).Error; err != nil {
+		http.Redirect(w, r, fmt.Sprintf("/dashboard/%d/settings?error=Failed to delete site: %s", site.ID, err), http.StatusSeeOther)
+		return
+	}
+
+	// Redirect to dashboard with success message
+	http.Redirect(w, r, "/dashboard?success=Site deleted successfully", http.StatusSeeOther)
+}
+
 func ReaperGetEmbedJs(w http.ResponseWriter, r *http.Request) {
 	escapedUsername := chi.URLParam(r, "username")
 	escapedUsername = strings.TrimSpace(escapedUsername)

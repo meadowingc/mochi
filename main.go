@@ -125,6 +125,10 @@ func initRouter() *chi.Mux {
 
 			r.Get("/webmentions", site.WebmentionsDetails)
 			r.Get("/webmentions/setup-instructions", site.WebmentionSetupInstructions)
+
+			r.Get("/settings", site.SiteSettingsPage)
+			r.Post("/settings/update", site.UpdateSiteSettings)
+			r.Post("/settings/delete", site.DeleteSite)
 		})
 
 		r.Route("/webmention-sender", func(r chi.Router) {
