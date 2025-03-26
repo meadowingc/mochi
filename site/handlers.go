@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"mochi/constants"
+	"mochi/notifier"
 	"mochi/shared_database"
 	"mochi/user_database"
 	"mochi/webmention_sender"
@@ -168,6 +169,121 @@ func UserDashboardHome(w http.ResponseWriter, r *http.Request) {
 			"userSites": {(*[]user_database.Site)(nil), &userSites},
 		},
 	)
+}
+
+func SettingsPage(w http.ResponseWriter, r *http.Request) {
+	signedInUser := GetSignedInUserOrFail(r)
+
+	userSites := []user_database.Site{}
+
+	result := user_database.GetDbOrFatal(signedInUser.Username).Db.Where(&user_database.Site{
+		UserID: signedInUser.ID,
+	}).Find(&userSites)
+
+	if result.Error != nil {
+		http.Error(w, "Error fetching sites", http.StatusInternalServerError)
+		return
+	}
+
+	// Get Discord settings for the user
+	discordSettings, err := notifier.GetDiscordSettingsByUsername(signedInUser.Username)
+	if err != nil {
+		log.Printf("Error fetching Discord settings: %v", err)
+		http.Error(w, "Error fetching Discord settings", http.StatusInternalServerError)
+		return
+	}
+
+	// Get flash messages (success/error) from session, if you have a session mechanism
+	var success, errorMsg string
+
+	// If you have FlashMessage functionality, use it:
+	// success := GetFlashMessage(r, "success")
+	// errorMsg := GetFlashMessage(r, "error")
+
+	// Otherwise, you can use URL parameters temporarily:
+	success = r.URL.Query().Get("success")
+	errorMsg = r.URL.Query().Get("error")
+
+	RenderTemplate(w, r, "pages/dashboard/settings.html",
+		&map[string]CustomDeclaration{
+			"userSites":       {(*[]user_database.Site)(nil), &userSites},
+			"discordSettings": {(*shared_database.UserDiscordSettings)(nil), discordSettings},
+			"success":         {(*string)(nil), &success},
+			"error":           {(*string)(nil), &errorMsg},
+		},
+	)
+}
+
+// DiscordVerifyGenerate generates a verification code for Discord integration
+func DiscordVerifyGenerate(w http.ResponseWriter, r *http.Request) {
+	signedInUser := GetSignedInUserOrFail(r)
+
+	_, err := notifier.GenerateDiscordVerifyCode(signedInUser.Username)
+	if err != nil {
+		http.Redirect(w, r, "/dashboard/settings?error="+url.QueryEscape("Failed to generate verification code"), http.StatusSeeOther)
+		return
+	}
+
+	http.Redirect(w, r, "/dashboard/settings?success="+url.QueryEscape("Verification code generated successfully"), http.StatusSeeOther)
+}
+
+// DiscordVerifyRefresh refreshes an existing verification code
+func DiscordVerifyRefresh(w http.ResponseWriter, r *http.Request) {
+	signedInUser := GetSignedInUserOrFail(r)
+
+	_, err := notifier.GenerateDiscordVerifyCode(signedInUser.Username)
+	if err != nil {
+		http.Redirect(w, r, "/dashboard/settings?error="+url.QueryEscape("Failed to refresh verification code"), http.StatusSeeOther)
+		return
+	}
+
+	http.Redirect(w, r, "/dashboard/settings?success="+url.QueryEscape("Verification code refreshed successfully"), http.StatusSeeOther)
+}
+
+// DiscordToggle toggles Discord notifications
+func DiscordToggle(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Redirect(w, r, "/dashboard/settings?error="+url.QueryEscape("Failed to parse form"), http.StatusSeeOther)
+		return
+	}
+
+	signedInUser := GetSignedInUserOrFail(r)
+
+	settings, err := notifier.GetDiscordSettingsByUsername(signedInUser.Username)
+	if err != nil {
+		http.Redirect(w, r, "/dashboard/settings?error="+url.QueryEscape("Failed to get Discord settings"), http.StatusSeeOther)
+		return
+	}
+
+	// Check if the user has verified their Discord account
+	if !settings.DiscordVerified {
+		http.Redirect(w, r, "/dashboard/settings?error="+url.QueryEscape("You must verify your Discord account first"), http.StatusSeeOther)
+		return
+	}
+
+	// Toggle notifications based on checkbox value
+	settings.NotificationsEnabled = r.FormValue("discord-notifications") == "on"
+
+	err = notifier.UpdateDiscordSettings(settings)
+	if err != nil {
+		http.Redirect(w, r, "/dashboard/settings?error="+url.QueryEscape("Failed to update settings"), http.StatusSeeOther)
+		return
+	}
+
+	http.Redirect(w, r, "/dashboard/settings?success="+url.QueryEscape("Notification settings updated successfully"), http.StatusSeeOther)
+}
+
+// DiscordDisconnect disconnects Discord integration
+func DiscordDisconnect(w http.ResponseWriter, r *http.Request) {
+	signedInUser := GetSignedInUserOrFail(r)
+
+	err := notifier.DisconnectDiscord(signedInUser.Username)
+	if err != nil {
+		http.Redirect(w, r, "/dashboard/settings?error="+url.QueryEscape("Failed to disconnect Discord"), http.StatusSeeOther)
+		return
+	}
+
+	http.Redirect(w, r, "/dashboard/settings?success="+url.QueryEscape("Discord account disconnected successfully"), http.StatusSeeOther)
 }
 
 func CreateNewSite(w http.ResponseWriter, r *http.Request) {

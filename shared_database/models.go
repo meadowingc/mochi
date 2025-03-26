@@ -27,3 +27,13 @@ type SentWebmention struct {
 	StatusCode     int
 	ResponseBody   string
 }
+
+type UserDiscordSettings struct {
+	gorm.Model
+	Username                   string    `gorm:"uniqueIndex"` // Username from the user database
+	DiscordUsername            string    // Discord username of the connected account
+	DiscordVerified            bool      // Whether Discord integration is verified
+	DiscordVerifyCode          string    `gorm:"index"` // Temporary verification code
+	DiscordVerifyCodeExpiresAt time.Time // When the verification code expires
+	NotificationsEnabled       bool      // Whether to send Discord notifications
+}

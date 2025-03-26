@@ -23,6 +23,7 @@ func InitSharedDb() {
 		&MonitoredURL{},
 		&SentWebmention{},
 		&UserMonitoredURL{},
+		&UserDiscordSettings{},
 	)
 	if err != nil {
 		log.Fatalf("failed to migrate database: %v", err)

@@ -1,7 +1,7 @@
 package notifier
 
 import (
-	"log"
+	"fmt"
 	"os"
 
 	"github.com/bwmarrin/discordgo"
@@ -16,20 +16,28 @@ func getDiscordBotHandle() *discordgo.Session {
 	return discord
 }
 
-func SendMessageToUsername(username string, message string) {
+func SendMessageToUsername(username string, message string) error {
+	// First check if the user has discord notifications enabled
+	settings, err := GetDiscordSettingsByUsername(username)
+	if err != nil {
+		return fmt.Errorf("error getting discord settings: %v", err)
+	}
+
+	if !settings.DiscordVerified || !settings.NotificationsEnabled || settings.DiscordUsername == "" {
+		return fmt.Errorf("user has not enabled discord notifications")
+	}
+
 	discord := getDiscordBotHandle()
 
 	// Search for the user in the guild
 	// bot needs to be in the guild first
-	members, err := discord.GuildMembersSearch(os.Getenv("DISCORD_NOTIFIER_GUILD_ID"), username, 1)
+	members, err := discord.GuildMembersSearch(os.Getenv("DISCORD_NOTIFIER_GUILD_ID"), settings.DiscordUsername, 1)
 	if err != nil {
-		log.Printf("Error searching for user: %v", err)
-		return
+		return fmt.Errorf("error searching for user: %v", err)
 	}
 
 	if len(members) == 0 {
-		log.Printf("User not found")
-		return
+		return fmt.Errorf("user not found in guild")
 	}
 
 	userID := members[0].User.ID
@@ -37,14 +45,14 @@ func SendMessageToUsername(username string, message string) {
 	// Create a DM channel with the user
 	channel, err := discord.UserChannelCreate(userID)
 	if err != nil {
-		log.Printf("Error creating DM channel: %v", err)
-		return
+		return fmt.Errorf("error creating DM channel: %v", err)
 	}
 
 	// Send a message to the DM channel
 	_, err = discord.ChannelMessageSend(channel.ID, message)
 	if err != nil {
-		log.Printf("Error sending message: %v", err)
-		return
+		return fmt.Errorf("error sending message: %v", err)
 	}
+
+	return nil
 }

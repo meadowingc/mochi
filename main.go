@@ -116,6 +116,16 @@ func initRouter() *chi.Mux {
 		r.Get("/", site.UserDashboardHome)
 		r.Post("/create-site", site.CreateNewSite)
 
+		r.Route("/settings", func(r chi.Router) {
+			r.Get("/", site.SettingsPage)
+			r.Route("/discord", func(r chi.Router) {
+				r.Post("/verify/generate", site.DiscordVerifyGenerate)
+				r.Post("/verify/refresh", site.DiscordVerifyRefresh)
+				r.Post("/toggle", site.DiscordToggle)
+				r.Post("/disconnect", site.DiscordDisconnect)
+			})
+		})
+
 		r.With(site.UserSiteDashboardMiddleware).Route("/{siteID}", func(r chi.Router) {
 			r.Get("/analytics", site.SiteAnalytics)
 			r.Get("/analytics/embed-instructions", site.SiteEmbedInstructions)
