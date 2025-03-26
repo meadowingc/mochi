@@ -658,10 +658,18 @@ func GetMonitoredURLsForUser(username string) ([]shared_database.MonitoredURL, e
 	return urls, err
 }
 
-func RemoveAllUserMonitoredURLs(username string) error {
-	// NOTE: this leaves orphaned entries in the MonitoredURL table
-	// which is acceptable for this use case
-	return shared_database.Db.Exec("DELETE FROM user_monitored_urls WHERE username = ?", username).Error
+// RemoveUserMonitoredURLsByType removes all monitored URLs of a specific type (RSS or regular pages)
+// Set isRSS=true to remove only RSS feed subscriptions
+// Set isRSS=false to remove only regular page subscriptions
+func RemoveUserMonitoredURLsByType(username string, isRSS bool) error {
+	// We need to join with monitored_urls to filter by the IsRSS field
+	query := `DELETE FROM user_monitored_urls 
+              WHERE username = ? 
+              AND monitored_url_id IN (
+                  SELECT id FROM monitored_urls WHERE is_rss = ?
+              )`
+
+	return shared_database.Db.Exec(query, username, isRSS).Error
 }
 
 // RecordSentWebmention saves a record of a webmention that has been sent

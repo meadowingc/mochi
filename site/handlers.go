@@ -654,18 +654,24 @@ func WebmentionSenderAddURLs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	pageUrlsText := r.FormValue("page-urls")
+	rssUrlsText := r.FormValue("rss-urls")
+	isRss := r.FormValue("is-rss") == "true"
+
+	var urlsList []string
+	if isRss {
+		urlsList = strings.Split(rssUrlsText, "\n")
+	} else {
+		urlsList = strings.Split(pageUrlsText, "\n")
+	}
+
 	// First, get all currently monitored URLs of this type for the user
-	if err := webmention_sender.RemoveAllUserMonitoredURLs(user.Username); err != nil {
+	if err := webmention_sender.RemoveUserMonitoredURLsByType(user.Username, isRss); err != nil {
 		log.Printf("Error removing monitored URLs: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	pageUrlsText := r.FormValue("page-urls")
-	rssUrlsText := r.FormValue("rss-urls")
-
-	// Split by newline and process each URL
-	urlsList := strings.Split(pageUrlsText, "\n")
 	for _, urlStr := range urlsList {
 		urlStr = strings.TrimSpace(urlStr)
 		if urlStr == "" {
@@ -679,27 +685,7 @@ func WebmentionSenderAddURLs(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Add URL to database
-		err = webmention_sender.AddURLToMonitor(user.Username, urlStr, false)
-		if err != nil {
-			log.Printf("Error adding URL %s: %v", urlStr, err)
-		}
-	}
-
-	// Split RSS URLs by newline and process each URL
-	rssUrlsList := strings.Split(rssUrlsText, "\n")
-	for _, urlStr := range rssUrlsList {
-		urlStr = strings.TrimSpace(urlStr)
-		if urlStr == "" {
-			continue
-		}
-
-		urlStr, err := webmention_sender.StandardizeURL(urlStr)
-		if err != nil {
-			log.Printf("Error standardizing URL %s: %v", urlStr, err)
-			continue
-		}
-
-		err = webmention_sender.AddURLToMonitor(user.Username, urlStr, true)
+		err = webmention_sender.AddURLToMonitor(user.Username, urlStr, isRss)
 		if err != nil {
 			log.Printf("Error adding URL %s: %v", urlStr, err)
 		}
