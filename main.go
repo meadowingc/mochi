@@ -28,10 +28,6 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
-	if !constants.DEBUG_MODE {
-		notifier.SendMessageToUsername("meadow_37", "Mochi is starting up")
-	}
-
 	shared_database.InitSharedDb()
 	user_database.InitDb()
 
@@ -59,9 +55,6 @@ func main() {
 	user_database.CleanupOnAppClose()
 	shared_database.CleanupOnAppClose()
 
-	if !constants.DEBUG_MODE {
-		notifier.SendMessageToUsername("meadow_37", "Mochi is shutting down")
-	}
 }
 
 func initRouter() *chi.Mux {
