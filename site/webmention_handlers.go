@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"mochi/notifier"
 	"mochi/user_database"
 	"net"
 	"net/http"
@@ -96,15 +97,15 @@ func WebmentionReceive(w http.ResponseWriter, r *http.Request) {
 	// Execute the rest of the logic in a goroutine
 	go func() {
 
-		useruser_database := user_database.GetDbIfExists(username)
+		user_db := user_database.GetDbIfExists(username)
 
-		if useruser_database == nil {
+		if user_db == nil {
 			log.Printf("WebmentionPost: User not found: '%s'", username)
 			return
 		}
 
 		var site user_database.Site
-		result := useruser_database.Db.First(&site, siteID)
+		result := user_db.Db.First(&site, siteID)
 		if result.Error != nil {
 			log.Printf("WebmentionPost: Site '%s' not found for user '%s'", siteID, username)
 			return
@@ -249,7 +250,7 @@ func WebmentionReceive(w http.ResponseWriter, r *http.Request) {
 
 		// Check if the webmention already exists
 		var existingWebmention user_database.WebMention
-		result = useruser_database.Db.Where(&user_database.WebMention{
+		result = user_db.Db.Where(&user_database.WebMention{
 			SiteID:    site.ID,
 			SourceURL: sourceUrlStr,
 			TargetURL: targetUrlStr,
@@ -268,11 +269,36 @@ func WebmentionReceive(w http.ResponseWriter, r *http.Request) {
 			Status:    "pending",
 		}
 
-		result = useruser_database.Db.Create(&webmention)
+		result = user_db.Db.Create(&webmention)
 		if result.Error != nil {
 			log.Printf("WebmentionPost: Error creating webmention for user '%s': %v", username, result.Error)
 			return
 		}
+
+		// Send a Discord notification
+		go func() {
+			// Extract target path for better context
+			targetPath := targetUrl.Path
+			if targetPath == "" {
+				targetPath = "/"
+			}
+
+			// Create a nicely formatted message
+			message := fmt.Sprintf(":bell: **New Webmention Received!**\n\n"+
+				"Your page has been mentioned by another site.\n\n"+
+				":link: **From:** %s\n"+
+				":page_facing_up: **To:** %s%s\n\n"+
+				"View all webmentions in your dashboard: https://mochi.meadow.cafe/dashboard/%d/webmentions",
+				sourceUrlStr, targetUrl.Hostname(), targetPath, site.ID)
+
+			err := notifier.SendMessageToUsername(username, message)
+			if err != nil {
+				// Just log the error but don't interrupt the flow
+				log.Printf("Failed to send Discord notification for webmention: %v", err)
+			} else {
+				log.Printf("Discord notification sent to %s for new webmention", username)
+			}
+		}()
 
 	}()
 }
