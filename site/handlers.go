@@ -645,25 +645,25 @@ func DeleteSite(w http.ResponseWriter, r *http.Request) {
 
 	userDb := user_database.GetDbOrFatal(signedInUser.Username)
 
-	// First delete related records (hits and webmentions)
-	if err := userDb.Db.Where("site_id = ?", site.ID).Delete(&user_database.Hit{}).Error; err != nil {
+	// First delete related records (hits and webmentions) - PERMANENT DELETE
+	if err := userDb.Db.Unscoped().Where("site_id = ?", site.ID).Delete(&user_database.Hit{}).Error; err != nil {
 		http.Redirect(w, r, fmt.Sprintf("/dashboard/%d/settings?error=Failed to delete site hits: %s", site.ID, err), http.StatusSeeOther)
 		return
 	}
 
-	if err := userDb.Db.Where("site_id = ?", site.ID).Delete(&user_database.WebMention{}).Error; err != nil {
+	if err := userDb.Db.Unscoped().Where("site_id = ?", site.ID).Delete(&user_database.WebMention{}).Error; err != nil {
 		http.Redirect(w, r, fmt.Sprintf("/dashboard/%d/settings?error=Failed to delete site webmentions: %s", site.ID, err), http.StatusSeeOther)
 		return
 	}
 
-	// Now delete the site itself
-	if err := userDb.Db.Delete(site).Error; err != nil {
+	// Now delete the site itself - PERMANENT DELETE
+	if err := userDb.Db.Unscoped().Delete(site).Error; err != nil {
 		http.Redirect(w, r, fmt.Sprintf("/dashboard/%d/settings?error=Failed to delete site: %s", site.ID, err), http.StatusSeeOther)
 		return
 	}
 
 	// Redirect to dashboard with success message
-	http.Redirect(w, r, "/dashboard?success=Site deleted successfully", http.StatusSeeOther)
+	http.Redirect(w, r, "/dashboard?success=Site permanently deleted", http.StatusSeeOther)
 }
 
 func ReaperGetEmbedJs(w http.ResponseWriter, r *http.Request) {

@@ -170,10 +170,17 @@
               <div class="mt-2">
                 <p class="text-sm text-gray-500">Are you sure you want to delete this site? All analytics data and webmentions will be permanently removed. This action cannot be undone.</p>
                 <div class="mt-4">
-                  <label class="inline-flex items-center">
-                    <input id="confirmDelete" type="checkbox" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
-                    <span class="ml-2 text-sm text-gray-700">I understand that this action is irreversible</span>
+                  <label class="block text-sm font-medium text-gray-700">
+                    Type <span class="font-mono font-bold text-red-600">DELETE</span> to confirm:
                   </label>
+                  <input
+                    type="text"
+                    name="confirm_deletion"
+                    id="confirm_deletion"
+                    class="mt-1 focus:ring-red-500 focus:border-red-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
+                    placeholder="DELETE"
+                    autocomplete="off"
+                  />
                 </div>
               </div>
             </div>
@@ -181,6 +188,7 @@
         </div>
         <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
           <form id="deleteForm" method="POST" action="/dashboard/{{site.ID}}/settings/delete">
+            <input type="hidden" id="hidden_confirm_deletion" name="confirm_deletion" value="" />
             <button
               type="submit"
               id="confirmDeleteButton"
@@ -215,8 +223,24 @@
       document.getElementById('deleteModal').classList.add('hidden');
     });
 
-    document.getElementById('confirmDelete').addEventListener('change', function() {
-      document.getElementById('confirmDeleteButton').disabled = !this.checked;
+    document.getElementById('confirm_deletion').addEventListener('input', function() {
+      const deleteButton = document.getElementById('confirmDeleteButton');
+      const hiddenInput = document.getElementById('hidden_confirm_deletion');
+
+      // Update hidden input value
+      hiddenInput.value = this.value;
+
+      // Enable button only if text is exactly "DELETE"
+      deleteButton.disabled = this.value !== "DELETE";
+    });
+
+    // Ensure form submission includes the confirmation text
+    document.getElementById('deleteForm').addEventListener('submit', function(event) {
+      const confirmationText = document.getElementById('confirm_deletion').value;
+      if (confirmationText !== "DELETE") {
+        event.preventDefault();
+        alert("Please type DELETE to confirm deletion");
+      }
     });
   </script>
 {% end %}
