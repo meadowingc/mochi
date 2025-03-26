@@ -305,8 +305,6 @@ func processEntryURL(entryURL string, monitoredURL *shared_database.MonitoredURL
 			TargetURL:      targetURL,
 			StatusCode:     webmentionResult.StatusCode,
 			ResponseBody:   webmentionResult.ResponseBody,
-			UniqueSource:   entryURL,
-			UniqueTarget:   targetURL,
 		})
 
 		if !skipSave {
@@ -335,8 +333,6 @@ func ProcessSingleURL(monitoredURL *shared_database.MonitoredURL, skipSave bool)
 			MonitoredURLID: monitoredURL.ID,
 			SourceURL:      pageURL,
 			TargetURL:      targetURL,
-			UniqueSource:   "",
-			UniqueTarget:   "",
 			StatusCode:     webmentionResult.StatusCode,
 			ResponseBody:   webmentionResult.ResponseBody,
 		})
@@ -618,8 +614,6 @@ func AddURLToMonitor(username string, urlToMonitor string, isRSS bool) error {
 	userURL := shared_database.UserMonitoredURL{
 		Username:       username,
 		MonitoredURLID: monitoredURL.ID,
-		UniqueUsername: username,
-		UniqueURLID:    monitoredURL.ID,
 	}
 
 	// Use FirstOrCreate to handle cases where the relationship already exists
@@ -658,17 +652,16 @@ func GetMonitoredURLsForUser(username string) ([]shared_database.MonitoredURL, e
 		Select("monitored_urls.*").
 		Joins("JOIN user_monitored_urls ON monitored_urls.id = user_monitored_urls.monitored_url_id").
 		Where("user_monitored_urls.username = ?", username).
+		Where("monitored_urls.deleted_at IS NULL").
 		Find(&urls).Error
 
 	return urls, err
 }
 
-// RemoveURLMonitor removes a URL from a user's monitoring list
-func RemoveURLMonitor(username string, monitoredURLID uint) error {
+func RemoveAllUserMonitoredURLs(username string) error {
 	// NOTE: this leaves orphaned entries in the MonitoredURL table
 	// which is acceptable for this use case
-	return shared_database.Db.Where("username = ? AND monitored_url_id = ?", username, monitoredURLID).
-		Delete(&shared_database.UserMonitoredURL{}).Error
+	return shared_database.Db.Exec("DELETE FROM user_monitored_urls WHERE username = ?", username).Error
 }
 
 // RecordSentWebmention saves a record of a webmention that has been sent
@@ -680,14 +673,12 @@ func RecordSentWebmention(monitoredURL *shared_database.MonitoredURL, sourceURL,
 		TargetURL:      targetURL,
 		StatusCode:     statusCode,
 		ResponseBody:   responseBody,
-		UniqueSource:   sourceURL,
-		UniqueTarget:   targetURL,
 	}
 
 	// Use FirstOrCreate to avoid duplicates based on source and target URLs
 	result := shared_database.Db.FirstOrCreate(&webmention, shared_database.SentWebmention{
-		UniqueSource: sourceURL,
-		UniqueTarget: targetURL,
+		SourceURL: sourceURL,
+		TargetURL: targetURL,
 	})
 
 	// If found existing, update the status and response

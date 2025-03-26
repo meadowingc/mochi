@@ -654,6 +654,13 @@ func WebmentionSenderAddURLs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// First, get all currently monitored URLs of this type for the user
+	if err := webmention_sender.RemoveAllUserMonitoredURLs(user.Username); err != nil {
+		log.Printf("Error removing monitored URLs: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
 	pageUrlsText := r.FormValue("page-urls")
 	rssUrlsText := r.FormValue("rss-urls")
 
