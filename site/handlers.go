@@ -153,9 +153,11 @@ func UserLogout(w http.ResponseWriter, r *http.Request) {
 func UserDashboardHome(w http.ResponseWriter, r *http.Request) {
 	signedInUser := GetSignedInUserOrFail(r)
 
+	userDb := user_database.GetDbOrFatal(signedInUser.Username)
 	userSites := []user_database.Site{}
 
-	result := user_database.GetDbOrFatal(signedInUser.Username).Db.Where(&user_database.Site{
+	// Get all sites for this user
+	result := userDb.Db.Where(&user_database.Site{
 		UserID: signedInUser.ID,
 	}).Find(&userSites)
 
@@ -164,9 +166,65 @@ func UserDashboardHome(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Calculate today's hits and total hits for each site
+	today := time.Now().Truncate(24 * time.Hour) // Start of today
+
+	type SiteStats struct {
+		SiteID    uint
+		TodayHits int
+		TotalHits int
+	}
+
+	siteStats := make(map[uint]SiteStats)
+
+	// Initialize stats for all sites
+	for _, site := range userSites {
+		siteStats[site.ID] = SiteStats{
+			SiteID:    site.ID,
+			TodayHits: 0,
+			TotalHits: 0,
+		}
+	}
+
+	// Calculate today's hits
+	var todayResults []struct {
+		SiteID uint
+		Count  int
+	}
+	userDb.Db.Model(&user_database.Hit{}).
+		Select("site_id, count(*) as count").
+		Where("date >= ?", today).
+		Group("site_id").
+		Scan(&todayResults)
+
+	for _, result := range todayResults {
+		if stats, ok := siteStats[result.SiteID]; ok {
+			stats.TodayHits = result.Count
+			siteStats[result.SiteID] = stats
+		}
+	}
+
+	// Calculate total hits
+	var totalResults []struct {
+		SiteID uint
+		Count  int
+	}
+	userDb.Db.Model(&user_database.Hit{}).
+		Select("site_id, count(*) as count").
+		Group("site_id").
+		Scan(&totalResults)
+
+	for _, result := range totalResults {
+		if stats, ok := siteStats[result.SiteID]; ok {
+			stats.TotalHits = result.Count
+			siteStats[result.SiteID] = stats
+		}
+	}
+
 	RenderTemplate(w, r, "pages/dashboard/dashboard.html",
 		&map[string]CustomDeclaration{
 			"userSites": {(*[]user_database.Site)(nil), &userSites},
+			"siteStats": {(*map[uint]SiteStats)(nil), &siteStats},
 		},
 	)
 }

@@ -3,7 +3,6 @@
 {% macro Title %}Dashboard{% end %}
 
 {% macro Body %}
-
   <h1 class="text-3xl font-bold leading-tight text-gray-900">Dashboard</h1>
 
   <!-- Navigation tabs -->
@@ -34,7 +33,7 @@
     </button>
   </div>
 
-  <!-- inline site creation form because I'm lazy -->
+  <!-- Create site form -->
   <form id="create-site-form" method="POST" class="mt-6 hidden" action="/dashboard/create-site">
     <div class="shadow sm:rounded-md sm:overflow-hidden">
       <div class="px-4 py-5 bg-white space-y-6 sm:p-6">
@@ -64,45 +63,73 @@
   <!-- Grid layout for sites -->
   {% if len(userSites) > 0 %}
   <div class="mt-6">
-    <h2 class="text-xl font-bold leading-tight text-gray-900">Your Sites</h2>
+    <h2 class="sr-only">Your Sites</h2>
     <div class="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
       {% for site in userSites %}
-      <div class="bg-white overflow-hidden shadow rounded-lg">
+      <div class="bg-white overflow-hidden shadow rounded-lg border border-gray-200 transition-all hover:shadow-md">
         <div class="px-4 py-5 sm:p-6">
+          <!-- Site header with icon and URL -->
           <div class="flex items-center">
-            <div class="flex-shrink-0 bg-indigo-500 rounded-md p-3">
-              <svg class="h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+            <div class="flex-shrink-0 bg-indigo-500 rounded-md p-2">
+              <svg class="h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <div class="ml-5 w-0 flex-1">
-              <dl>
-                <dt class="text-sm font-medium text-gray-500 truncate">Site URL</dt>
-                <dd class="text-lg font-semibold text-gray-900 truncate">
-                  <a href="{{ site.URL }}" target="_blank" class="hover:text-indigo-600">{{ site.URL }}</a>
-                </dd>
-              </dl>
+            <div class="ml-3 w-0 flex-1">
+              <a href="{{ site.URL }}" target="_blank" class="text-lg font-medium text-gray-900 truncate hover:text-indigo-600 flex items-center">
+                {{ site.URL }}
+                <svg class="ml-1 h-4 w-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
+                  <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
+                </svg>
+              </a>
             </div>
           </div>
-          <div class="mt-4">
-            <dl class="grid grid-cols-2 gap-x-4 gap-y-2">
-              <div class="col-span-1">
-                <dt class="text-sm font-medium text-gray-500">Created</dt>
-                <dd class="mt-1 text-sm text-gray-900">{{ site.CreatedAt.Format("Jan 02, 2006") }}</dd>
+
+          <!-- Site statistics -->
+          <div class="mt-6 grid grid-cols-2 gap-5 border-t border-gray-100 pt-4">
+            <div class="col-span-1">
+              <div class="flex items-center">
+                <div class="flex-shrink-0 bg-blue-50 rounded-md p-2">
+                  <svg class="h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                </div>
+                <div class="ml-3">
+                  <p class="text-xs font-medium text-gray-500">TODAY'S</p>
+                  <p class="text-lg font-semibold text-gray-900">{{ siteStats[site.ID].TodayHits }}</p>                </div>
               </div>
-              <div class="col-span-1">
-                <dt class="text-sm font-medium text-gray-500">ID</dt>
-                <dd class="mt-1 text-sm text-gray-900">{{ site.ID }}</dd>
+            </div>
+            <div class="col-span-1">
+              <div class="flex items-center">
+                <div class="flex-shrink-0 bg-green-50 rounded-md p-2">
+                  <svg class="h-5 w-5 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                </div>
+                <div class="ml-3">
+                  <p class="text-xs font-medium text-gray-500">TOTAL</p>
+                  <p class="text-lg font-semibold text-gray-900">{{ siteStats[site.ID].TotalHits }}</p>
+                </div>
               </div>
-            </dl>
+            </div>
           </div>
         </div>
-        <div class="bg-gray-50 px-4 py-4 sm:px-6 flex justify-between">
-          <a href="/dashboard/{{ site.ID }}/analytics" class="text-sm font-medium text-indigo-600 hover:text-indigo-500 flex items-center">
-            View Analytics
-            <svg class="ml-1 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd" />
+
+        <!-- Action buttons -->
+        <div class="bg-gray-50 px-4 py-3 sm:px-6 flex flex-wrap gap-2 justify-between">
+          <a href="/dashboard/{{ site.ID }}/analytics" class="flex items-center text-sm font-medium text-indigo-600 hover:text-indigo-500">
+            <svg class="mr-1.5 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
             </svg>
+            Analytics
+          </a>
+
+          <a href="/dashboard/webmention-sender?site={{ site.ID }}" class="flex items-center text-sm font-medium text-gray-600 hover:text-gray-900">
+            <svg class="mr-1.5 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clip-rule="evenodd" />
+            </svg>
+            Webmentions
           </a>
         </div>
       </div>
@@ -110,12 +137,25 @@
     </div>
   </div>
   {% else %}
+  <!-- Empty state -->
   <div class="mt-10 text-center">
     <svg class="mx-auto h-12 w-12 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
     </svg>
     <h3 class="mt-2 text-sm font-medium text-gray-900">No sites</h3>
     <p class="mt-1 text-sm text-gray-500">Get started by adding your first site.</p>
+    <div class="mt-6">
+      <button
+        type="button"
+        onclick="toggleCreateSiteForm()"
+        class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+      >
+        <svg class="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+        </svg>
+        Add Your First Site
+      </button>
+    </div>
   </div>
   {% end %}
 
