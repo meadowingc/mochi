@@ -17,7 +17,7 @@ import (
 
 const (
 	maxFeedEntriesToCheck = 20
-	userAgent             = "Mochi Webmention Sender (https://mochi.meadow.cafe)"
+	userAgent             = "Mochi (https://mochi.meadow.cafe)"
 )
 
 // RSS feed structures
@@ -52,7 +52,7 @@ type AtomLink struct {
 
 // StartPeriodicChecker starts the periodic checking of monitored URLs
 func StartPeriodicChecker() {
-	ticker := time.NewTicker(24 * time.Hour) // Check once per day
+	ticker := time.NewTicker(7 * 24 * time.Hour) // Check once a week
 	go func() {
 		for {
 			log.Println("Running scheduled webmention checks")
@@ -499,7 +499,15 @@ func SendWebmention(sourceURL, targetURL string) (*SendWebmentionResult, error) 
 
 // discoverWebmentionEndpoint discovers the webmention endpoint for a given URL
 func discoverWebmentionEndpoint(targetURL string) (string, error) {
-	client := &http.Client{Timeout: 30 * time.Second}
+	// Create a custom HTTP client that doesn't follow redirects
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			// Don't follow redirects (eg, important for webring links and the like)
+			return http.ErrUseLastResponse
+		},
+	}
+
 	req, err := http.NewRequest("GET", targetURL, nil)
 	if err != nil {
 		return "", err
@@ -508,9 +516,20 @@ func discoverWebmentionEndpoint(targetURL string) (string, error) {
 
 	resp, err := client.Do(req)
 	if err != nil {
+		// Check if this is a redirect error
+		if resp != nil && (resp.StatusCode >= 300 && resp.StatusCode < 400) {
+			redirectURL := resp.Header.Get("Location")
+			log.Printf("Target URL %s redirects to %s - skipping webmention", targetURL, redirectURL)
+			return "", fmt.Errorf("target URL redirects to another location: %s", redirectURL)
+		}
 		return "", err
 	}
 	defer resp.Body.Close()
+
+	// Only proceed with 2xx success status codes
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return "", fmt.Errorf("non-success status code: %d", resp.StatusCode)
+	}
 
 	// Check HTTP Link headers
 	linkHeaders := resp.Header.Values("Link")
@@ -519,6 +538,13 @@ func discoverWebmentionEndpoint(targetURL string) (string, error) {
 			parts := strings.Split(header, ";")
 			if len(parts) > 0 {
 				url := strings.Trim(parts[0], " <>")
+				// Resolve relative URLs in headers
+				if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
+					url, err = resolveURL(targetURL, url)
+					if err != nil {
+						return "", err
+					}
+				}
 				return url, nil
 			}
 		}
