@@ -66,10 +66,17 @@ func StartPeriodicChecker() {
 func CheckAllMonitoredURLs() {
 	var monitoredURLs []shared_database.MonitoredURL
 
-	if err := shared_database.Db.Find(&monitoredURLs).Error; err != nil {
+	// only select URLs that have at least one user monitoring them
+	if err := shared_database.Db.
+		Distinct("monitored_urls.*").
+		Joins("INNER JOIN user_monitored_urls ON monitored_urls.id = user_monitored_urls.monitored_url_id").
+		Where("monitored_urls.deleted_at IS NULL").
+		Find(&monitoredURLs).Error; err != nil {
 		log.Printf("Error querying monitored URLs: %v", err)
 		return
 	}
+
+	log.Printf("Processing %d monitored URLs", len(monitoredURLs))
 
 	for _, monitoredURL := range monitoredURLs {
 		// only check if the URL is older than 24 hours
