@@ -22,7 +22,7 @@ type Site struct {
 	CreatedAt           time.Time
 	URL                 string
 	DataRetentionMonths int       `gorm:"default:6"`
-	LastDataCleanupDate time.Time // The last time data was cleaned up for this site
+	LastDataCleanupDate time.Time `gorm:"default:0"`
 	Hits                []Hit     `gorm:"foreignKey:SiteID"`
 }
 
