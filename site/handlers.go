@@ -1015,12 +1015,13 @@ func WebmentionSenderProcessURL(w http.ResponseWriter, r *http.Request) {
 	if isRSS {
 		sentWebmentions = webmention_sender.ProcessFeed(&shared_database.MonitoredURL{
 			URL: urlBeingProcessed,
-		}, true)
+		})
 	} else {
 		sentWebmentions = webmention_sender.ProcessSingleURL(&shared_database.MonitoredURL{
 			URL: urlBeingProcessed,
-		}, true)
+		})
 	}
+
 	RenderTemplate(w, r, "pages/dashboard/webmention_sender/process_single_webmention_results.html",
 		&map[string]CustomDeclaration{
 			"urlBeingProcessed": {(*string)(nil), &urlBeingProcessed},

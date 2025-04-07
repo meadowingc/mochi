@@ -97,15 +97,15 @@ func CheckAllMonitoredURLs() {
 		}
 
 		if monitoredURL.IsRSS {
-			ProcessFeed(&monitoredURL, false)
+			ProcessFeed(&monitoredURL)
 		} else {
-			ProcessSingleURL(&monitoredURL, false)
+			ProcessSingleURL(&monitoredURL)
 		}
 	}
 }
 
 // ProcessFeed fetches a feed (RSS or Atom) and processes recent entries
-func ProcessFeed(monitoredURL *shared_database.MonitoredURL, skipSave bool) []shared_database.SentWebmention {
+func ProcessFeed(monitoredURL *shared_database.MonitoredURL) []shared_database.SentWebmention {
 	feedURL := monitoredURL.URL
 	log.Printf("Processing feed: %s", feedURL)
 
@@ -142,7 +142,7 @@ func ProcessFeed(monitoredURL *shared_database.MonitoredURL, skipSave bool) []sh
 	rssErr := xml.Unmarshal(body, &rss)
 	if rssErr == nil && len(rss.Channel.Items) > 0 {
 		// Successfully parsed as RSS
-		return processRSSItems(rss.Channel.Items, monitoredURL, skipSave)
+		return processRSSItems(rss.Channel.Items, monitoredURL)
 	}
 
 	// If RSS parsing failed, try Atom
@@ -150,7 +150,7 @@ func ProcessFeed(monitoredURL *shared_database.MonitoredURL, skipSave bool) []sh
 	atomErr := xml.Unmarshal(body, &atom)
 	if atomErr == nil && len(atom.Entries) > 0 {
 		// Successfully parsed as Atom
-		return processAtomEntries(atom.Entries, monitoredURL, skipSave)
+		return processAtomEntries(atom.Entries, monitoredURL)
 	}
 
 	// Neither format worked
@@ -221,7 +221,7 @@ func ProcessFeed(monitoredURL *shared_database.MonitoredURL, skipSave bool) []sh
 }
 
 // processRSSItems processes items from an RSS feed
-func processRSSItems(items []RssItem, monitoredURL *shared_database.MonitoredURL, skipSave bool) []shared_database.SentWebmention {
+func processRSSItems(items []RssItem, monitoredURL *shared_database.MonitoredURL) []shared_database.SentWebmention {
 	sentWebmentions := []shared_database.SentWebmention{}
 	count := 0
 	alreadyCheckedItems := make(map[string]struct{})
@@ -243,7 +243,7 @@ func processRSSItems(items []RssItem, monitoredURL *shared_database.MonitoredURL
 		alreadyCheckedItems[itemURL] = struct{}{}
 
 		if itemURL != "" {
-			itemWebmentions := processEntryURL(itemURL, monitoredURL, skipSave)
+			itemWebmentions := processEntryURL(itemURL, monitoredURL)
 			sentWebmentions = append(sentWebmentions, itemWebmentions...)
 			count++
 		}
@@ -253,7 +253,7 @@ func processRSSItems(items []RssItem, monitoredURL *shared_database.MonitoredURL
 }
 
 // processAtomEntries processes entries from an Atom feed
-func processAtomEntries(entries []AtomEntry, monitoredURL *shared_database.MonitoredURL, skipSave bool) []shared_database.SentWebmention {
+func processAtomEntries(entries []AtomEntry, monitoredURL *shared_database.MonitoredURL) []shared_database.SentWebmention {
 	sentWebmentions := []shared_database.SentWebmention{}
 	count := 0
 	alreadyCheckedItems := make(map[string]struct{})
@@ -289,7 +289,7 @@ func processAtomEntries(entries []AtomEntry, monitoredURL *shared_database.Monit
 		alreadyCheckedItems[itemURL] = struct{}{}
 
 		if itemURL != "" {
-			itemWebmentions := processEntryURL(itemURL, monitoredURL, skipSave)
+			itemWebmentions := processEntryURL(itemURL, monitoredURL)
 			sentWebmentions = append(sentWebmentions, itemWebmentions...)
 			count++
 		}
@@ -299,7 +299,7 @@ func processAtomEntries(entries []AtomEntry, monitoredURL *shared_database.Monit
 }
 
 // processEntryURL handles a single entry URL from any feed type
-func processEntryURL(entryURL string, monitoredURL *shared_database.MonitoredURL, skipSave bool) []shared_database.SentWebmention {
+func processEntryURL(entryURL string, monitoredURL *shared_database.MonitoredURL) []shared_database.SentWebmention {
 	sentWebmentions := []shared_database.SentWebmention{}
 	pageLinks := getLinksInPageForWhichWeHaventSentWebmentionsTo(entryURL)
 
@@ -319,16 +319,14 @@ func processEntryURL(entryURL string, monitoredURL *shared_database.MonitoredURL
 			ResponseBody:   webmentionResult.ResponseBody,
 		})
 
-		if !skipSave {
-			RecordSentWebmention(monitoredURL, entryURL, targetURL, webmentionResult.StatusCode, webmentionResult.ResponseBody)
-		}
+		RecordSentWebmention(monitoredURL, entryURL, targetURL, webmentionResult.StatusCode, webmentionResult.ResponseBody)
 	}
 
 	return sentWebmentions
 }
 
 // ProcessSingleURL processes a single URL for webmentions
-func ProcessSingleURL(monitoredURL *shared_database.MonitoredURL, skipSave bool) []shared_database.SentWebmention {
+func ProcessSingleURL(monitoredURL *shared_database.MonitoredURL) []shared_database.SentWebmention {
 	pageURL := monitoredURL.URL
 	sentWebmentions := []shared_database.SentWebmention{}
 	pageLinks := getLinksInPageForWhichWeHaventSentWebmentionsTo(pageURL)
@@ -349,9 +347,7 @@ func ProcessSingleURL(monitoredURL *shared_database.MonitoredURL, skipSave bool)
 			ResponseBody:   webmentionResult.ResponseBody,
 		})
 
-		if !skipSave {
-			RecordSentWebmention(monitoredURL, pageURL, targetURL, webmentionResult.StatusCode, webmentionResult.ResponseBody)
-		}
+		RecordSentWebmention(monitoredURL, pageURL, targetURL, webmentionResult.StatusCode, webmentionResult.ResponseBody)
 	}
 
 	return sentWebmentions
@@ -701,27 +697,32 @@ func RecordSentWebmention(monitoredURL *shared_database.MonitoredURL, sourceURL,
 		TargetURL: targetURL,
 	})
 
-	// If found existing, update the status and response
+	// If found existing record (RowsAffected would be 0), update the status and response
 	if result.RowsAffected == 0 {
 		return shared_database.Db.Model(&shared_database.SentWebmention{}).
-			Where("unique_source = ? AND unique_target = ?", sourceURL, targetURL).
-			Updates(map[string]interface{}{
-				"status_code":   statusCode,
-				"response_body": responseBody,
+			Where(&shared_database.SentWebmention{
+				SourceURL: sourceURL,
+				TargetURL: targetURL,
+			}).
+			Updates(shared_database.SentWebmention{
+				StatusCode:   statusCode,
+				ResponseBody: responseBody,
 			}).Error
 	}
 
 	return result.Error
 }
 
-// HasWebmentionBeenSent checks if a webmention has already been sent from source to target
+// HasWebmentionBeenSent checks if a webmention has already been sent from source to target URL
+// Returns true if the webmention exists in the database, false otherwise
 func HasWebmentionBeenSent(sourceURL, targetURL string) (bool, error) {
 	var count int64
 
-	// Check for existing webmention based on unique source and target combination
-	err := shared_database.Db.Model(&shared_database.SentWebmention{}).
-		Where("unique_source = ? AND unique_target = ?", sourceURL, targetURL).
-		Count(&count).Error
+	// Check for existing webmention based on source and target URL combination
+	err := shared_database.Db.Model(&shared_database.SentWebmention{}).Where(&shared_database.SentWebmention{
+		SourceURL: sourceURL,
+		TargetURL: targetURL,
+	}).Count(&count).Error
 
 	return count > 0, err
 }
