@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"mochi/constants"
 	"mochi/shared_database"
 	"net/http"
 	"net/url"
@@ -52,14 +53,18 @@ type AtomLink struct {
 
 // StartPeriodicChecker starts the periodic checking of monitored URLs
 func StartPeriodicChecker() {
-	ticker := time.NewTicker(7 * 24 * time.Hour) // Check once a week
-	go func() {
-		for {
-			log.Println("Running scheduled webmention checks")
-			CheckAllMonitoredURLs()
-			<-ticker.C
-		}
-	}()
+	if !constants.DEBUG_MODE {
+		ticker := time.NewTicker(7 * 24 * time.Hour) // Check once a week
+		go func() {
+			for {
+				log.Println("Running scheduled webmention checks")
+				CheckAllMonitoredURLs()
+				<-ticker.C
+			}
+		}()
+	} else {
+		log.Println("Skipping scheduled webmention checks in DEBUG_MODE")
+	}
 }
 
 // CheckAllMonitoredURLs processes all monitored URLs

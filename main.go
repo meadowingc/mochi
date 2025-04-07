@@ -111,6 +111,7 @@ func initRouter() *chi.Mux {
 
 		r.Route("/settings", func(r chi.Router) {
 			r.Get("/", site.SettingsPage)
+			r.Post("/change-password", site.ChangePassword)
 			r.Route("/discord", func(r chi.Router) {
 				r.Post("/verify/generate", site.DiscordVerifyGenerate)
 				r.Post("/verify/refresh", site.DiscordVerifyRefresh)

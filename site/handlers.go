@@ -13,12 +13,14 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/mileusna/useragent"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/datatypes"
 )
 
 func UserLogin(w http.ResponseWriter, r *http.Request) {
@@ -1024,4 +1026,90 @@ func WebmentionSenderProcessURL(w http.ResponseWriter, r *http.Request) {
 			"urlBeingProcessed": {(*string)(nil), &urlBeingProcessed},
 			"sentWebmentions":   {(*[]shared_database.SentWebmention)(nil), &sentWebmentions},
 		})
+}
+
+// ChangePassword handles the password change functionality
+func ChangePassword(w http.ResponseWriter, r *http.Request) {
+	// Get the current signed-in user
+	signedInUser := GetSignedInUserOrFail(r)
+	if signedInUser == nil {
+		http.Redirect(w, r, "/user/login", http.StatusSeeOther)
+		return
+	}
+
+	// Parse the form
+	if err := r.ParseForm(); err != nil {
+		http.Redirect(w, r, "/dashboard/settings?error="+url.QueryEscape("Error processing form"), http.StatusSeeOther)
+		return
+	}
+
+	// Get the form values
+	currentPassword := r.FormValue("current-password")
+	newPassword := r.FormValue("new-password")
+	confirmPassword := r.FormValue("confirm-password")
+
+	// Validate input
+	if currentPassword == "" || newPassword == "" || confirmPassword == "" {
+		http.Redirect(w, r, "/dashboard/settings?error="+url.QueryEscape("All fields are required"), http.StatusSeeOther)
+		return
+	}
+
+	// Check if new password and confirmation match
+	if newPassword != confirmPassword {
+		http.Redirect(w, r, "/dashboard/settings?error="+url.QueryEscape("New password and confirmation do not match"), http.StatusSeeOther)
+		return
+	}
+
+	// Minimum password length check
+	const minPasswordLength = 4
+	if len(newPassword) < minPasswordLength {
+		http.Redirect(w, r, "/dashboard/settings?error="+url.QueryEscape("New password must be at least "+strconv.Itoa(minPasswordLength)+" characters long"), http.StatusSeeOther)
+		return
+	}
+
+	// Get the user DB
+	userDb := user_database.GetDbOrFatal(signedInUser.Username)
+
+	// Verify current password
+	err := bcrypt.CompareHashAndPassword([]byte(signedInUser.PasswordHash), []byte(currentPassword))
+	if err != nil {
+		http.Redirect(w, r, "/dashboard/settings?error="+url.QueryEscape("Current password is incorrect"), http.StatusSeeOther)
+		return
+	}
+
+	// Hash the new password
+	newPasswordHash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		http.Redirect(w, r, "/dashboard/settings?error="+url.QueryEscape("Error updating password: "+err.Error()), http.StatusSeeOther)
+		return
+	}
+
+	// Update the user's password
+	signedInUser.PasswordHash = datatypes.JSON(newPasswordHash)
+	result := userDb.Db.Save(signedInUser)
+	if result.Error != nil {
+		http.Redirect(w, r, "/dashboard/settings?error="+url.QueryEscape("Error saving password: "+result.Error.Error()), http.StatusSeeOther)
+		return
+	}
+
+	// Generate a new session token to force login on other devices
+	token, err := generateAuthToken()
+	if err != nil {
+		http.Redirect(w, r, "/dashboard/settings?error="+url.QueryEscape("Error updating session: "+err.Error()), http.StatusSeeOther)
+		return
+	}
+
+	// Update the session token
+	signedInUser.SessionToken = token
+	result = userDb.Db.Save(signedInUser)
+	if result.Error != nil {
+		http.Redirect(w, r, "/dashboard/settings?error="+url.QueryEscape("Error updating session: "+result.Error.Error()), http.StatusSeeOther)
+		return
+	}
+
+	// Update the cookie
+	setUserSession(w, signedInUser.Username, token)
+
+	// Redirect with success message
+	http.Redirect(w, r, "/dashboard/settings?success="+url.QueryEscape("Password changed successfully"), http.StatusSeeOther)
 }
