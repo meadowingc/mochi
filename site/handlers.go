@@ -87,6 +87,20 @@ func UserRegister(w http.ResponseWriter, r *http.Request) {
 		}
 
 	} else {
+		if constants.MAX_USERS > 0 {
+			// Check if the maximum user limit has been reached
+			usernames, err := user_database.GetAllUsernames()
+			if err != nil {
+				http.Error(w, "Error checking user limit: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			if len(usernames) >= constants.MAX_USERS {
+				http.Error(w, "Registration is currently closed. We've reached the maximum number of allowed users. Please reach out to meadowingc@proton.me to be informed when registrations are opened up again!", http.StatusForbidden)
+				return
+			}
+		}
+
 		username := strings.TrimSpace(r.FormValue("username"))
 		password := r.FormValue("password")
 

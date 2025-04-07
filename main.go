@@ -237,10 +237,7 @@ func startDataCleanupScheduler() {
 	// Run an initial cleanup on startup
 	cleanupOldData()
 
-	for {
-		select {
-		case <-ticker.C:
-			cleanupOldData()
-		}
+	for range ticker.C {
+		cleanupOldData()
 	}
 }
