@@ -111,7 +111,7 @@
           <button onclick="setPreset('pastYear')" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 cursor-pointer">
             Past Year
           </button>
-          <button onclick="clearAllFilters()" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 cursor-pointer">
+          <button id="clearFiltersButton" onclick="clearAllFilters()" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 cursor-pointer">
             Clear All Filters
           </button>
         </div>
@@ -172,8 +172,40 @@
   {{ MetricsCountTable(sortedCountsForDevice, "Visits by device", "Device", "deviceFilter", false) }}
 
   <script>
+    function hasActiveFilters() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const filters = ['pagePathFilter', 'referrerFilter', 'countryFilter', 'osFilter', 'browserFilter', 'deviceFilter', 'minDate', 'maxDate'];
+
+      // Check if any filter is active
+      for (const filter of filters) {
+        if (urlParams.has(filter)) {
+          console.log("Active filter found:", filter);
+          return true;
+        }
+      }
+      return false;
+    }
+
+    function updateClearFiltersButton() {
+      const clearButton = document.getElementById('clearFiltersButton');
+      const hasFilters = hasActiveFilters();
+      console.log("Has active filters:", hasFilters);
+
+      if (!hasFilters) {
+        clearButton.classList.remove('bg-red-600', 'hover:bg-red-700');
+        clearButton.classList.add('bg-gray-400', 'cursor-not-allowed');
+        clearButton.disabled = true;
+      } else {
+        clearButton.classList.remove('bg-gray-400', 'cursor-not-allowed');
+        clearButton.classList.add('bg-red-600', 'hover:bg-red-700', 'cursor-pointer');
+        clearButton.disabled = false;
+      }
+    }
+
     function clearAllFilters() {
-      window.location.search = '';
+      if (hasActiveFilters()) {
+        window.location.search = '';
+      }
     }
 
     function addFilter(filterName, filterValue) {
@@ -211,6 +243,9 @@
           });
         }
       });
+
+      // Update the clear filters button state
+      updateClearFiltersButton();
     });
 
     function setPreset(preset) {

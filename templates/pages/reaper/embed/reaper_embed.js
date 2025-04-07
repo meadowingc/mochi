@@ -28,6 +28,8 @@
   }
 
   function setupHumanInteractionDetection() {
+    if (!shouldTrack) return;
+
     document.addEventListener('mousemove', handlePotentialHumanInteraction, { once: true });
     document.addEventListener('keydown', handlePotentialHumanInteraction, { once: true });
     document.addEventListener('touchstart', handlePotentialHumanInteraction, { once: true });
@@ -47,7 +49,7 @@
       sendTrackingRequest();
     }
   }
-  
+
   setupHumanInteractionDetection();
 
   const countriesElement = document.querySelector(".mochi_countries");

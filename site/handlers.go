@@ -508,6 +508,15 @@ func SiteAnalytics(w http.ResponseWriter, r *http.Request) {
 		graphVisits = append(graphVisits, visitsByDay[day])
 	}
 
+	countryCountsWithEmoji := make(map[string]int)
+	for countryCode, count := range countsForCountry {
+		emoji := countryCodeToFlagEmoji(countryCode)
+
+		countryCodeWithFlag := fmt.Sprintf("%s %s", emoji, countryCode)
+
+		countryCountsWithEmoji[countryCodeWithFlag] = count
+	}
+
 	makeSortedDeclaration := func(m map[string]int) CustomDeclaration {
 		sortedMap := sortMapByValue(m)
 
@@ -529,7 +538,7 @@ func SiteAnalytics(w http.ResponseWriter, r *http.Request) {
 			"numUniqueVisitors":       {(*int)(nil), &numUniqueVisitors},
 			"sortedCountsForPath":     makeSortedDeclaration(countsForPath),
 			"sortedCountsForReferrer": makeSortedDeclaration(countsForReferrer),
-			"sortedCountsForCountry":  makeSortedDeclaration(countsForCountry),
+			"sortedCountsForCountry":  makeSortedDeclaration(countryCountsWithEmoji),
 			"sortedCountsForOS":       makeSortedDeclaration(countsForOS),
 			"sortedCountsForBrowser":  makeSortedDeclaration(countsForBrowser),
 			"sortedCountsForDevice":   makeSortedDeclaration(countsForDevice),
