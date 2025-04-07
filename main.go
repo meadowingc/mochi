@@ -35,6 +35,7 @@ func main() {
 
 	go notifier.StartInteractionHandler()
 	go webmention_sender.StartPeriodicChecker()
+	go startDataCleanupScheduler()
 
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
@@ -151,4 +152,95 @@ func initRouter() *chi.Mux {
 	})
 
 	return r
+}
+
+// cleanupOldData deletes data older than the retention period for each site
+func cleanupOldData() {
+	log.Println("Starting scheduled data cleanup check...")
+
+	// Get all usernames
+	usernames, err := user_database.GetAllUsernames()
+	if err != nil {
+		log.Printf("Error getting usernames: %v", err)
+		return
+	}
+
+	now := time.Now()
+	sitesUpdated := 0
+	totalHitsDeleted := int64(0)
+
+	for _, username := range usernames {
+		userDB := user_database.GetDbIfExists(username)
+		if userDB == nil {
+			continue
+		}
+
+		// Get all sites for the user
+		var sites []user_database.Site
+		if err := userDB.Db.Find(&sites).Error; err != nil {
+			log.Printf("Error fetching sites for user %s: %v", username, err)
+			continue
+		}
+
+		for _, siteData := range sites {
+			// Default to 6 months if not set
+			retentionMonths := siteData.DataRetentionMonths
+			if retentionMonths <= 0 {
+				retentionMonths = 6
+			}
+
+			// Check if it's time to run cleanup for this site
+			// We'll clean up if LastDataCleanupDate is zero time (never cleaned up before)
+			// or if it's been at least 7 days since the last cleanup
+			shouldCleanup := siteData.LastDataCleanupDate.IsZero() ||
+				now.Sub(siteData.LastDataCleanupDate) >= 7*24*time.Hour
+
+			if !shouldCleanup {
+				continue
+			}
+
+			// Calculate the cutoff date based on retention period
+			cutoffDate := now.AddDate(0, -retentionMonths, 0)
+
+			// Delete hits older than the cutoff date
+			var hitsDeleted int64
+			if result := userDB.Db.Where("site_id = ? AND date < ?", siteData.ID, cutoffDate).Delete(&user_database.Hit{}); result.Error != nil {
+				log.Printf("Error deleting old hits for site %d: %v", siteData.ID, result.Error)
+			} else {
+				hitsDeleted = result.RowsAffected
+				totalHitsDeleted += hitsDeleted
+			}
+
+			// Update the LastDataCleanupDate field
+			siteData.LastDataCleanupDate = now
+			if err := userDB.Db.Save(&siteData).Error; err != nil {
+				log.Printf("Error updating LastDataCleanupDate for site %d: %v", siteData.ID, err)
+			} else {
+				sitesUpdated++
+				if hitsDeleted > 0 {
+					log.Printf("Site %d (user: %s): Deleted %d hits older than %s",
+						siteData.ID, username, hitsDeleted, cutoffDate.Format("2006-01-02"))
+				}
+			}
+		}
+	}
+
+	log.Printf("Data cleanup completed: processed %d sites, deleted %d hits",
+		sitesUpdated, totalHitsDeleted)
+}
+
+// startDataCleanupScheduler runs the data cleanup process on a regular schedule
+func startDataCleanupScheduler() {
+	ticker := time.NewTicker(2 * 7 * 24 * time.Hour) // Run once every 2 weeks
+	defer ticker.Stop()
+
+	// Run an initial cleanup on startup
+	cleanupOldData()
+
+	for {
+		select {
+		case <-ticker.C:
+			cleanupOldData()
+		}
+	}
 }

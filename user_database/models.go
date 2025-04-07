@@ -18,10 +18,12 @@ type User struct {
 
 type Site struct {
 	gorm.Model
-	UserID    uint `gorm:"index"`
-	CreatedAt time.Time
-	URL       string
-	Hits      []Hit `gorm:"foreignKey:SiteID"`
+	UserID              uint `gorm:"index"`
+	CreatedAt           time.Time
+	URL                 string
+	DataRetentionMonths int       `gorm:"default:6"`
+	LastDataCleanupDate time.Time // The last time data was cleaned up for this site
+	Hits                []Hit     `gorm:"foreignKey:SiteID"`
 }
 
 type Hit struct {

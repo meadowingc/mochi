@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -113,6 +114,48 @@ func cleanupCache() {
 			delete(dbCache, username)
 		}
 	}
+}
+
+// GetAllUsernames returns a list of all usernames that have databases
+func GetAllUsernames() ([]string, error) {
+	// Create the database folder if it doesn't exist
+	if _, err := os.Stat(databaseFolder); os.IsNotExist(err) {
+		return []string{}, nil
+	}
+
+	// Get all files in the database folder
+	files, err := os.ReadDir(databaseFolder)
+	if err != nil {
+		return nil, fmt.Errorf("error reading database directory: %v", err)
+	}
+
+	// Extract usernames from database filenames
+	uniqueUsernames := make(map[string]struct{})
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+
+		if !strings.HasSuffix(file.Name(), ".db") {
+			continue
+		}
+
+		username := file.Name()
+		usernameParts := strings.Split(username, ".db")
+
+		username = usernameParts[0]
+		username = strings.TrimPrefix(username, "mochi_")
+		username = strings.TrimSpace(username)
+
+		uniqueUsernames[username] = struct{}{}
+	}
+
+	usernames := make([]string, 0, len(uniqueUsernames))
+	for username := range uniqueUsernames {
+		usernames = append(usernames, username)
+	}
+
+	return usernames, nil
 }
 
 func getCachedOrCreateDB(username string) *UserDb {

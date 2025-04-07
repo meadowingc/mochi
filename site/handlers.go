@@ -599,6 +599,7 @@ func UpdateSiteSettings(w http.ResponseWriter, r *http.Request) {
 
 	// Get form values
 	pageUrl := strings.TrimSpace(r.FormValue("url"))
+	dataRetentionMonthsStr := r.FormValue("dataRetentionMonths")
 
 	// Basic validation
 	if pageUrl == "" {
@@ -617,12 +618,22 @@ func UpdateSiteSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Parse and validate data retention months
+	dataRetentionMonths, err := strconv.Atoi(dataRetentionMonthsStr)
+	if err != nil || dataRetentionMonths < 1 || dataRetentionMonths > 12 {
+		redirectURL := fmt.Sprintf("/dashboard/%d/settings?error=%s",
+			siteFromContext.ID, url.QueryEscape("(Data retention period) must be between 1 and 12 months"))
+		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+		return
+	}
+
 	// Get user DB
 	signedInUser := GetSignedInUserOrFail(r)
 	userDb := user_database.GetDbOrFatal(signedInUser.Username)
 
 	// Update site
 	siteFromContext.URL = pageUrl
+	siteFromContext.DataRetentionMonths = dataRetentionMonths
 	result := userDb.Db.Save(siteFromContext)
 	if result.Error != nil {
 		redirectURL := fmt.Sprintf("/dashboard/%d/settings?error=%s",

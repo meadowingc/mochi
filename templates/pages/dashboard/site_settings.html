@@ -100,6 +100,25 @@
             Enter the full URL including https://
           </p>
         </div>
+
+        <div class="mb-4">
+          <label for="dataRetentionMonths" class="block text-sm font-medium text-gray-700">Data Retention Period</label>
+          <div class="mt-1">
+            <select
+              id="dataRetentionMonths"
+              name="dataRetentionMonths"
+              class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            >
+              {% for i := 1; i <= 12; i++ %}
+                <option value="{{i}}" {% if site.DataRetentionMonths == i %}selected{% end %}>{{i}} month{% if i > 1 %}s{% end %}</option>
+              {% end %}
+            </select>
+          </div>
+          <p class="mt-2 text-sm text-gray-500">
+            Select how long to keep analytics (hits) data. Older data will be automatically deleted.
+          </p>
+        </div>
+
         <div class="py-3 text-right">
           <button
             type="submit"
