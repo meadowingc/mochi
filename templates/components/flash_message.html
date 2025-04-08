@@ -1,13 +1,71 @@
-{%  if flashMessage %}
-<div class="flash-message-container mb-4">
-  <div class="{% if flashMessage.Type == "error" %}bg-red-100 border border-red-400 text-red-700{% else if flashMessage.Type == "success" %}bg-green-100 border border-green-400 text-green-700{% else if flashMessage.Type == "warning" %}bg-yellow-100 border border-yellow-400 text-yellow-700{% else %}bg-blue-100 border border-blue-400 text-blue-700{% end %} px-4 py-3 rounded relative" role="alert">
-    <span class="block sm:inline">{{ flashMessage.Message }}</span>
-    <button onclick="this.parentElement.style.display='none'" class="absolute top-0 bottom-0 right-0 px-4 py-3">
-      <svg class="fill-current h-6 w-6 {% if flashMessage.Type == "error" %}text-red-500{% else if flashMessage.Type == "success" %}text-green-500{% else if flashMessage.Type == "warning" %}text-yellow-500{% else %}text-blue-500{% end %}" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-        <title>Close</title>
-        <path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"/>
+{% if flashMessage %}
+<div class="fixed top-4 right-4 z-50 max-w-md" id="flash-toast">
+  <div class="flex items-center overflow-hidden bg-white rounded-lg shadow-lg border-l-4 {% if flashMessage.Type == "error" %}border-red-500{% else if flashMessage.Type == "success" %}border-green-500{% else if flashMessage.Type == "warning" %}border-yellow-500{% else %}border-blue-500{% end %}">
+
+    <!-- Icon section based on message type -->
+    <div class="flex items-center justify-center w-12 h-full {% if flashMessage.Type == "error" %}text-red-500{% else if flashMessage.Type == "success" %}text-green-500{% else if flashMessage.Type == "warning" %}text-yellow-500{% else %}text-blue-500{% end %}">
+      {% if flashMessage.Type == "error" %}
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      {% else if flashMessage.Type == "success" %}
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      {% else if flashMessage.Type == "warning" %}
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+      {% else %}
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      {% end %}
+    </div>
+
+    <!-- Message content -->
+    <div class="px-4 py-3 flex-1">
+      <div class="font-medium {% if flashMessage.Type == "error" %}text-red-800{% else if flashMessage.Type == "success" %}text-green-800{% else if flashMessage.Type == "warning" %}text-yellow-800{% else %}text-blue-800{% end %}">
+        {{ flashMessage.Message }}
+      </div>
+    </div>
+
+    <!-- Close button -->
+    <div class="px-3 py-3 cursor-pointer" onclick="dismissFlashToast()">
+      <svg class="h-5 w-5 text-gray-400 hover:text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
       </svg>
-    </button>
+    </div>
   </div>
 </div>
+
+<script>
+  // Add animation using JavaScript rather than CSS
+  const toast = document.getElementById('flash-toast');
+
+  // Initial state - slide in
+  toast.style.transform = 'translateX(100%)';
+  toast.style.opacity = '0';
+  toast.style.transition = 'transform 0.3s ease-out, opacity 0.3s ease-out';
+
+  // Slide in after a small delay
+  setTimeout(() => {
+    toast.style.transform = 'translateX(0)';
+    toast.style.opacity = '1';
+  }, 10);
+
+  function dismissFlashToast() {
+    const toast = document.getElementById('flash-toast');
+    toast.style.transform = 'translateX(100%)';
+    toast.style.opacity = '0';
+    setTimeout(() => {
+      toast.style.display = 'none';
+    }, 300);
+  }
+
+  // Auto-dismiss after 5 seconds
+  setTimeout(() => {
+    dismissFlashToast();
+  }, 5000);
+</script>
 {% end %}
