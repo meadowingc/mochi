@@ -122,15 +122,6 @@ func WebmentionsDetails(w http.ResponseWriter, r *http.Request) {
 	)
 }
 
-func WebmentionSetupInstructions(w http.ResponseWriter, r *http.Request) {
-	site := GetSiteFromContextOrFail(r)
-	RenderTemplate(w, r, "pages/dashboard/webmentions/setup_instructions.html",
-		&map[string]CustomDeclaration{
-			"site": {(*user_database.Site)(nil), site},
-		},
-	)
-}
-
 // WebmentionApprove handles approving a webmention
 func WebmentionApprove(w http.ResponseWriter, r *http.Request) {
 	signedInUser := GetSignedInUserOrFail(r)

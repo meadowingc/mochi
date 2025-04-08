@@ -24,19 +24,39 @@
     </nav>
   </div>
 
-  <div class="mt-2">
-    <a
-      href="/dashboard/{{site.ID}}/webmentions/setup-instructions"
-      class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-    >
-      Setup your site to receive webmentions
-    </a>
+  <!-- Setup Instructions Accordion -->
+  <div class="mt-4 border border-gray-200 rounded-lg overflow-hidden">
+    <details class="group">
+      <summary class="flex justify-between items-center p-2 bg-gray-50 cursor-pointer">
+        <div class="flex items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-indigo-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+          <h3 class="text-lg font-medium text-gray-900">Setup Instructions</h3>
+        </div>
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500 group-open:transform group-open:rotate-180 transition-transform duration-200" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+        </svg>
+      </summary>
+
+      <div class="p-4 border-t border-gray-200 bg-white">
+        <p class="mb-2 text-sm text-gray-700">
+          To set up webmentions on your site, you need to add the following link tag to your site's <code class="bg-gray-200 text-red-600 px-1 rounded">&lt;head&gt;</code> section.
+        </p>
+        <div class="bg-gray-800 text-white p-4 rounded-lg block overflow-x-auto mb-4 mt-4">
+          <code>&lt;link rel="webmention" href="{{webmentionsURL}}/webmention/{{escapePath(signedInUser.Username)}}/{{site.ID}}/receive" /&gt;</code>
+        </div>
+        <p class="mb-4 text-sm text-gray-700">
+          This will make it so that anyone that wants to send webmentions to your site can do so by sending them to <code>mochi</code>!
+        </p>
+      </div>
+    </details>
   </div>
 
   <!-- API Information Accordion -->
-  <div class="mt-4 border border-gray-200 rounded-lg overflow-hidden">
+  <div class="border border-gray-200 rounded-lg overflow-hidden">
     <details class="group">
-      <summary class="flex justify-between items-center p-4 bg-gray-50 cursor-pointer">
+      <summary class="flex justify-between items-center p-2 bg-gray-50 cursor-pointer">
         <div class="flex items-center">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-indigo-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
