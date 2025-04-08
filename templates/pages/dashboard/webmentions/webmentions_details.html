@@ -33,6 +33,34 @@
     </a>
   </div>
 
+  <!-- API Information Box -->
+  <div class="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+    <h3 class="text-lg font-medium text-gray-900">API Access</h3>
+    <p class="mt-1 text-sm text-gray-600">
+      You can access your approved webmentions programmatically via our JSON API. This is useful for displaying webmentions on your website.
+    </p>
+    <div class="mt-2">
+      <div class="bg-gray-100 p-3 rounded font-mono text-sm overflow-x-auto">
+        {{publicURL}}/api/webmentions/{{signedInUser.Username}}/{{site.ID}}
+      </div>
+      <p class="mt-2 text-sm text-gray-500">
+        This endpoint returns a JSON array of your approved webmentions. It's public and CORS-enabled, so you can fetch it directly from your website's frontend.
+      </p>
+    </div>
+    <div class="mt-3">
+      <details class="text-sm">
+        <summary class="cursor-pointer text-indigo-600 hover:text-indigo-900">View example response format</summary>
+        <pre class="mt-2 p-3 bg-gray-800 text-white rounded-lg overflow-x-auto text-xs">[
+  {
+    "source": "https://othersite.com/post-referencing-you",
+    "target": "https://yoursite.com/your-post",
+    "created_at": "2025-04-01T12:34:56Z"
+  }
+]</pre>
+      </details>
+    </div>
+  </div>
+
   <hr class="my-4 border-t border-gray-200" />
 
   <!-- Webmentions to process section -->

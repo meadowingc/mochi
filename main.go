@@ -152,6 +152,10 @@ func initRouter() *chi.Mux {
 		r.Route("/webmention/{username}/{siteId}", func(r chi.Router) {
 			r.Post("/receive", site.WebmentionReceive)
 		})
+
+		r.Route("/api", func(r chi.Router) {
+			r.Get("/webmentions/{username}/{siteID}", site.WebmentionPublicAPI)
+		})
 	})
 
 	return r

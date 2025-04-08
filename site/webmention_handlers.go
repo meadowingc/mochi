@@ -1,6 +1,7 @@
 package site
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -16,6 +17,63 @@ import (
 
 	"github.com/go-chi/chi/v5"
 )
+
+// PublicWebMention represents the public-facing structure of a webmention
+type PublicWebMention struct {
+	SourceURL string    `json:"source"`
+	TargetURL string    `json:"target"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// WebmentionPublicAPI handles serving approved webmentions as JSON
+func WebmentionPublicAPI(w http.ResponseWriter, r *http.Request) {
+	username := chi.URLParam(r, "username")
+	siteID := chi.URLParam(r, "siteID")
+
+	// Get the user database
+	userDB := user_database.GetDbIfExists(username)
+	if userDB == nil {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	// Get the site
+	var site user_database.Site
+	result := userDB.Db.First(&site, siteID)
+	if result.Error != nil {
+		http.Error(w, "Site not found", http.StatusNotFound)
+		return
+	}
+
+	// Get approved webmentions for the site
+	var webmentions []user_database.WebMention
+	result = userDB.Db.Where(&user_database.WebMention{
+		SiteID: site.ID,
+		Status: "approved",
+	}).Find(&webmentions)
+
+	if result.Error != nil {
+		http.Error(w, "Error fetching webmentions", http.StatusInternalServerError)
+		return
+	}
+
+	// Convert to public-facing structure
+	publicWebmentions := make([]PublicWebMention, len(webmentions))
+	for i, wm := range webmentions {
+		publicWebmentions[i] = PublicWebMention{
+			SourceURL: wm.SourceURL,
+			TargetURL: wm.TargetURL,
+			CreatedAt: wm.CreatedAt,
+		}
+	}
+
+	// Set headers
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	// Return JSON response
+	json.NewEncoder(w).Encode(publicWebmentions)
+}
 
 func WebmentionsDetails(w http.ResponseWriter, r *http.Request) {
 	signedInUser := GetSignedInUserOrFail(r)
