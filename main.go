@@ -101,23 +101,38 @@ func initRouter() *chi.Mux {
 	}
 
 	r.With(httprate.LimitByIP(30, time.Minute)).Route("/user", func(r chi.Router) {
+		r.Use(site.CSRFMiddleware())
+		r.Use(site.CSRFTokenMiddleware)
 		r.HandleFunc("/login", site.UserLogin)
 		r.HandleFunc("/register", site.UserRegister)
 		r.HandleFunc("/logout", site.UserLogout)
 	})
 
 	r.With(site.AuthProtectedMiddleware).Route("/dashboard", func(r chi.Router) {
+		r.Use(site.CSRFMiddleware())
+		r.Use(site.CSRFTokenMiddleware)
 		r.Get("/", site.UserDashboardHome)
-		r.Post("/create-site", site.CreateNewSite)
+
+		r.With(httprate.LimitByIP(10, time.Hour)).Post("/create-site", site.CreateNewSite)
+
+		r.Route("/webmention-sender", func(r chi.Router) {
+			r.Get("/", site.WebmentionSenderDashboard)
+			r.With(httprate.LimitByIP(20, time.Hour)).Group(func(r chi.Router) {
+				r.Post("/add", site.WebmentionSenderAddURLs)
+				r.Post("/process", site.WebmentionSenderProcessURL)
+			})
+		})
 
 		r.Route("/settings", func(r chi.Router) {
 			r.Get("/", site.SettingsPage)
-			r.Post("/change-password", site.ChangePassword)
+			r.With(httprate.LimitByIP(5, time.Hour)).Post("/change-password", site.ChangePassword)
 			r.Route("/discord", func(r chi.Router) {
-				r.Post("/verify/generate", site.DiscordVerifyGenerate)
-				r.Post("/verify/refresh", site.DiscordVerifyRefresh)
-				r.Post("/toggle", site.DiscordToggle)
-				r.Post("/disconnect", site.DiscordDisconnect)
+				r.With(httprate.LimitByIP(10, time.Hour)).Group(func(r chi.Router) {
+					r.Post("/verify/generate", site.DiscordVerifyGenerate)
+					r.Post("/verify/refresh", site.DiscordVerifyRefresh)
+					r.Post("/toggle", site.DiscordToggle)
+					r.Post("/disconnect", site.DiscordDisconnect)
+				})
 			})
 		})
 
@@ -126,19 +141,18 @@ func initRouter() *chi.Mux {
 			r.Get("/analytics/embed-instructions", site.SiteEmbedInstructions)
 
 			r.Get("/webmentions", site.WebmentionsDetails)
-			r.Post("/webmentions/{webmentionID}/approve", site.WebmentionApprove)
-			r.Post("/webmentions/{webmentionID}/reject", site.WebmentionReject)
-			r.Post("/webmentions/{webmentionID}/status/{status}", site.WebmentionChangeStatus)
+
+			r.With(httprate.LimitByIP(30, time.Minute)).Group(func(r chi.Router) {
+				r.Post("/webmentions/{webmentionID}/approve", site.WebmentionApprove)
+				r.Post("/webmentions/{webmentionID}/reject", site.WebmentionReject)
+				r.Post("/webmentions/{webmentionID}/status/{status}", site.WebmentionChangeStatus)
+			})
 
 			r.Get("/settings", site.SiteSettingsPage)
-			r.Post("/settings/update", site.UpdateSiteSettings)
-			r.Post("/settings/delete", site.DeleteSite)
-		})
-
-		r.Route("/webmention-sender", func(r chi.Router) {
-			r.Get("/", site.WebmentionSenderDashboard)
-			r.Post("/add", site.WebmentionSenderAddURLs)
-			r.Post("/process", site.WebmentionSenderProcessURL)
+			r.With(httprate.LimitByIP(10, time.Hour)).Group(func(r chi.Router) {
+				r.Post("/settings/update", site.UpdateSiteSettings)
+				r.Post("/settings/delete", site.DeleteSite)
+			})
 		})
 	})
 

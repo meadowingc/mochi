@@ -40,6 +40,7 @@
     <p class="mt-1 text-sm text-gray-500">Check a URL for links and send webmentions immediately. Note that this will take a while.</p>
 
     <form method="POST" action="/dashboard/webmention-sender/process" class="mt-4">
+      {{ csrfField }}
       <div>
         <div class="flex-grow mb-3">
           <label for="process-url" class="block text-sm font-medium text-gray-700">URL to process</label>
@@ -101,6 +102,7 @@
       <p class="mt-1 text-sm text-gray-500">Add RSS feeds to monitor for new posts.</p>
 
       <form method="POST" action="/dashboard/webmention-sender/add" class="mt-4">
+        {{ csrfField }}
         <input type="hidden" name="is-rss" value="true">
         <div>
           <label for="rss-urls" class="block text-sm font-medium text-gray-700">URLs (one per line)</label>
@@ -143,6 +145,7 @@
       <p class="mt-1 text-sm text-gray-500">Add individual web pages to monitor for links</p>
 
       <form method="POST" action="/dashboard/webmention-sender/add" class="mt-4">
+        {{ csrfField }}
         <input type="hidden" name="is-rss" value="false">
         <div>
           <label for="page-urls" class="block text-sm font-medium text-gray-700">URLs (one per line)</label>

@@ -30,6 +30,7 @@
     <div class="mb-8 p-4 bg-gray-50 rounded-lg">
       <h2 class="text-xl font-semibold mb-4">Change Password</h2>
       <form method="POST" action="/dashboard/settings/change-password">
+        {{ csrfField }}
         <div class="mb-4">
           <label for="current-password" class="block text-sm font-medium text-gray-700">Current Password</label>
           <input
@@ -96,6 +97,7 @@
 
           <div class="mt-3">
             <form method="POST" action="/dashboard/settings/discord/toggle">
+              {{ csrfField }}
               <div class="flex items-center">
                 <input
                   type="checkbox"
@@ -119,6 +121,7 @@
 
           <div class="mt-4 pt-4 border-t border-gray-200">
             <form method="POST" action="/dashboard/settings/discord/disconnect">
+              {{ csrfField }}
               <button
                 type="submit"
                 class="py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
@@ -152,6 +155,7 @@
             </div>
 
             <form method="POST" action="/dashboard/settings/discord/verify/refresh">
+              {{ csrfField }}
               <button
                 type="submit"
                 class="py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -161,6 +165,7 @@
             </form>
           {% else %}
             <form method="POST" action="/dashboard/settings/discord/verify/generate">
+              {{ csrfField }}
               <button
                 type="submit"
                 class="py-2 mt-4 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"

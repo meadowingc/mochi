@@ -3,16 +3,20 @@ package site
 import (
 	"context"
 	"log"
+	"mochi/constants"
 	"mochi/user_database"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/gorilla/csrf"
 )
 
 // Add the site to the context
 type contextKey string
 
+const CSRFTokenKey contextKey = "csrf_token"
 const siteKey contextKey = "site"
 const userKey contextKey = "user"
 
@@ -140,4 +144,34 @@ func GetSiteFromContextOrFail(r *http.Request) *user_database.Site {
 		log.Fatalf("Site not found in context")
 	}
 	return site
+}
+
+// CSRFMiddleware adds CSRF protection to form submissions
+func CSRFMiddleware() func(http.Handler) http.Handler {
+	// Get CSRF key from environment or use a default for dev (should be set in production)
+	csrfKey := os.Getenv("CSRF_KEY")
+
+	if constants.DEBUG_MODE {
+		log.Println("Warning: CSRF key is not set. This is insecure and should only be used in development.")
+		csrfKey = "32-byte-long-auth-key-for-dev-only"
+		log.Println("Warning: Using default CSRF key. Set CSRF_KEY environment variable in production.")
+	} else if csrfKey == "" {
+		log.Panic("CSRF key is not set. This is required for CSRF protection. Please set the CSRF_KEY environment variable. You can generate a key using `openssl rand -base64 32`.")
+	}
+
+	return csrf.Protect(
+		[]byte(csrfKey),
+		csrf.Secure(!constants.DEBUG_MODE), // Secure cookie in production
+		csrf.Path("/"),
+		csrf.SameSite(csrf.SameSiteStrictMode),
+	)
+}
+
+// CSRFTokenMiddleware injects the CSRF token into the request context and template data
+func CSRFTokenMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		token := csrf.Token(r)
+		ctx := context.WithValue(r.Context(), CSRFTokenKey, token)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }

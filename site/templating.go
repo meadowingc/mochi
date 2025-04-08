@@ -60,6 +60,7 @@ func RenderTemplate(
 				"publicURL":      constants.PUBLIC_URL,
 				"webmentionsURL": constants.WEBMENTIONS_URL,
 				"appName":        constants.APP_NAME,
+				"csrfField":      (*native.HTML)(nil),
 				"min":            builtin.Min,
 				"max":            builtin.Max,
 				"escapePath": func(path string) string {
@@ -153,6 +154,11 @@ func RenderTemplate(
 
 	runTemplateData := map[string]any{
 		"signedInUser": GetSignedInUserOrNil(r),
+	}
+
+	// Add CSRF token to template data if available in the context
+	if token, ok := r.Context().Value(CSRFTokenKey).(string); ok {
+		runTemplateData["csrfField"] = native.HTML(`<input type="hidden" name="gorilla.csrf.Token" value="` + token + `">`)
 	}
 
 	if extraDeclarations != nil {

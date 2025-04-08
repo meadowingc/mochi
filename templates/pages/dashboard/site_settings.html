@@ -83,6 +83,7 @@
     </div>
     <div class="border-t border-gray-200 p-4">
       <form method="POST" action="/dashboard/{{site.ID}}/settings/update">
+        {{ csrfField }}
         <div class="mb-4">
           <label for="url" class="block text-sm font-medium text-gray-700">Site URL</label>
           <div class="mt-1 flex rounded-md shadow-sm">
@@ -207,6 +208,7 @@
         </div>
         <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
           <form id="deleteForm" method="POST" action="/dashboard/{{site.ID}}/settings/delete">
+            {{ csrfField }}
             <input type="hidden" id="hidden_confirm_deletion" name="confirm_deletion" value="" />
             <button
               type="submit"
