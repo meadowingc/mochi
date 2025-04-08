@@ -186,6 +186,7 @@ func cleanupOldData() {
 	}
 
 	now := time.Now()
+	sitesChecked := 0
 	sitesUpdated := 0
 	totalHitsDeleted := int64(0)
 
@@ -208,6 +209,8 @@ func cleanupOldData() {
 			if retentionMonths <= 0 {
 				retentionMonths = 6
 			}
+
+			sitesChecked++
 
 			// Check if it's time to run cleanup for this site
 			// We'll clean up if LastDataCleanupDate is zero time (never cleaned up before)
@@ -245,8 +248,8 @@ func cleanupOldData() {
 		}
 	}
 
-	log.Printf("Data cleanup completed: processed %d sites, deleted %d hits",
-		sitesUpdated, totalHitsDeleted)
+	log.Printf("Data cleanup completed: checked %d and updated %d sites, deleted %d hits",
+		sitesChecked, sitesUpdated, totalHitsDeleted)
 }
 
 // startDataCleanupScheduler runs the data cleanup process on a regular schedule

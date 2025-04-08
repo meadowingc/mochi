@@ -136,11 +136,12 @@ func GetAllUsernames() ([]string, error) {
 			continue
 		}
 
+		username := strings.TrimSpace(file.Name())
+
 		if !strings.HasSuffix(file.Name(), ".db") {
 			continue
 		}
 
-		username := file.Name()
 		usernameParts := strings.Split(username, ".db")
 
 		username = usernameParts[0]
