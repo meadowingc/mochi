@@ -483,7 +483,21 @@ func SiteAnalytics(w http.ResponseWriter, r *http.Request) {
 	pagePathFilter := r.URL.Query().Get("pagePathFilter")
 
 	referrerFilter := stringWithValueOrNil(r.URL.Query().Get("referrerFilter"))
-	countryFilter := stringWithValueOrNil(r.URL.Query().Get("countryFilter"))
+
+	// Get countryFilter and clean it if it contains an emoji
+	countryFilterRaw := r.URL.Query().Get("countryFilter")
+	var countryFilter *string
+	if countryFilterRaw != "" {
+		// Extract just the country code part, assuming format is "🇺🇸 US"
+		// If the country code contains an emoji (typically followed by a space and the code)
+		parts := strings.Split(countryFilterRaw, " ")
+		if len(parts) > 1 {
+			// Use the last part which should be just the country code
+			countryFilterRaw = parts[len(parts)-1]
+		}
+		countryFilter = stringWithValueOrNil(countryFilterRaw)
+	}
+
 	osFilter := stringWithValueOrNil(r.URL.Query().Get("osFilter"))
 	browserFilter := stringWithValueOrNil(r.URL.Query().Get("browserFilter"))
 	deviceFilter := stringWithValueOrNil(r.URL.Query().Get("deviceFilter"))
