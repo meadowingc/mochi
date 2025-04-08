@@ -36,4 +36,6 @@ type UserDiscordSettings struct {
 	DiscordVerifyCode          string    `gorm:"index"` // Temporary verification code
 	DiscordVerifyCodeExpiresAt time.Time // When the verification code expires
 	NotificationsEnabled       bool      // Whether to send Discord notifications
+	Timezone                   string    `gorm:"default:'UTC'"` // User's preferred timezone for notifications
+	NotificationTime           int       `gorm:"default:19"`    // Hour of the day to send notifications (0-23, default is 7PM)
 }

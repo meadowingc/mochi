@@ -325,7 +325,7 @@ func SendSiteMetricsReport(username string, site user_database.Site) error {
 }
 
 // CheckAndSendScheduledMetricsReports checks if users need metrics reports sent
-// based on their notification frequency settings
+// based on their notification frequency settings and timezone preferences
 func CheckAndSendScheduledMetricsReports() {
 	log.Println("Checking for scheduled metrics reports...")
 
@@ -344,6 +344,33 @@ func CheckAndSendScheduledMetricsReports() {
 	}
 
 	for _, settings := range allSettings {
+		// Skip users with notifications disabled
+		if !settings.NotificationsEnabled {
+			continue
+		}
+
+		// Check if it's the right time to send notifications based on user's timezone
+		tzLocation, err := time.LoadLocation(settings.Timezone)
+		if err != nil {
+			log.Printf("Invalid timezone %s for user %s: %v", settings.Timezone, settings.Username, err)
+			tzLocation = time.UTC // Default to UTC if timezone is invalid
+		}
+
+		// Get current time in user's timezone
+		userLocalTime := now.In(tzLocation)
+		userLocalHour := userLocalTime.Hour()
+
+		// Check if it's notification hour (default to 7PM if not set)
+		notificationHour := settings.NotificationTime
+		if notificationHour < 0 || notificationHour > 23 {
+			notificationHour = 19 // Default to 7PM
+		}
+
+		// Only send notifications during the preferred hour
+		if userLocalHour != notificationHour {
+			continue
+		}
+
 		// Get the user's database and sites
 		userDb := user_database.GetDbIfExists(settings.Username)
 		if userDb == nil {
@@ -365,6 +392,10 @@ func CheckAndSendScheduledMetricsReports() {
 				continue
 			}
 
+			// Get the previous send date in the user's timezone to ensure consistent timing
+			lastSentInUserTZ := site.LastMetricsSentAt.In(tzLocation)
+			todayInUserTZ := userLocalTime.Truncate(24 * time.Hour) // Start of today in user's timezone
+
 			// Determine if it's time to send a report based on frequency and last sent time
 			shouldSend := false
 
@@ -372,15 +403,24 @@ func CheckAndSendScheduledMetricsReports() {
 				// If never sent before, send it now
 				shouldSend = true
 			} else {
-				timeSinceLast := now.Sub(site.LastMetricsSentAt)
+				// Calculate days since last notification
+				daysSinceLastSent := userLocalTime.Sub(lastSentInUserTZ) / (24 * time.Hour)
+
+				// Round to account for daylight savings time
+				daysSinceLastSentInt := int(daysSinceLastSent)
 
 				switch site.MetricsNotificationFreq {
 				case "daily":
-					shouldSend = timeSinceLast >= 24*time.Hour
+					// Send if last sent was yesterday or earlier
+					shouldSend = lastSentInUserTZ.Day() != todayInUserTZ.Day() ||
+						lastSentInUserTZ.Month() != todayInUserTZ.Month() ||
+						lastSentInUserTZ.Year() != todayInUserTZ.Year()
 				case "weekly":
-					shouldSend = timeSinceLast >= 7*24*time.Hour
+					// Send once a week (if 7+ days have passed since last notification)
+					shouldSend = daysSinceLastSentInt >= 7
 				case "monthly":
-					shouldSend = timeSinceLast >= 30*24*time.Hour
+					// Send once a month (if 30+ days have passed since last notification)
+					shouldSend = daysSinceLastSentInt >= 30
 				}
 			}
 
@@ -392,14 +432,15 @@ func CheckAndSendScheduledMetricsReports() {
 					continue
 				}
 
-				// Update the last notification time
-				site.LastMetricsSentAt = now
+				// Update the last notification time to now
+				site.LastMetricsSentAt = time.Now()
 				if err := userDb.Db.Save(&site).Error; err != nil {
 					log.Printf("Error updating LastMetricsSentAt for site %s: %v",
 						site.URL, err)
 				} else {
-					log.Printf("Sent %s metrics report to %s for site %s",
-						site.MetricsNotificationFreq, settings.Username, site.URL)
+					log.Printf("Sent %s metrics report to %s for site %s at their local time (%s %d:00)",
+						site.MetricsNotificationFreq, settings.Username, site.URL,
+						settings.Timezone, notificationHour)
 				}
 			}
 		}

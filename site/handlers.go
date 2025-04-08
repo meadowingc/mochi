@@ -1290,3 +1290,56 @@ func MetricsNotificationSettings(w http.ResponseWriter, r *http.Request) {
 	SetFlashMessage(w, "success", "Metrics notification settings updated successfully")
 	http.Redirect(w, r, fmt.Sprintf("/dashboard/%d/settings", site.ID), http.StatusSeeOther)
 }
+
+// DiscordTimezoneUpdate handles updating timezone preferences for notifications
+func DiscordTimezoneUpdate(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		SetFlashMessage(w, "error", "Failed to parse form")
+		http.Redirect(w, r, "/dashboard/settings", http.StatusSeeOther)
+		return
+	}
+
+	signedInUser := GetSignedInUserOrFail(r)
+
+	// Get timezone and notification time from form
+	timezone := r.FormValue("timezone")
+	notificationTimeStr := r.FormValue("notification_time")
+
+	// Convert notification time to int
+	notificationTime, err := strconv.Atoi(notificationTimeStr)
+	if err != nil || notificationTime < 0 || notificationTime > 23 {
+		SetFlashMessage(w, "error", "Invalid notification time")
+		http.Redirect(w, r, "/dashboard/settings", http.StatusSeeOther)
+		return
+	}
+
+	// Validate timezone
+	_, err = time.LoadLocation(timezone)
+	if err != nil {
+		SetFlashMessage(w, "error", "Invalid timezone")
+		http.Redirect(w, r, "/dashboard/settings", http.StatusSeeOther)
+		return
+	}
+
+	// Get current Discord settings
+	settings, err := notifier.GetDiscordSettingsByUsername(signedInUser.Username)
+	if err != nil {
+		SetFlashMessage(w, "error", "Failed to get Discord settings")
+		http.Redirect(w, r, "/dashboard/settings", http.StatusSeeOther)
+		return
+	}
+
+	// Update settings
+	settings.Timezone = timezone
+	settings.NotificationTime = notificationTime
+
+	err = notifier.UpdateDiscordSettings(settings)
+	if err != nil {
+		SetFlashMessage(w, "error", "Failed to update settings")
+		http.Redirect(w, r, "/dashboard/settings", http.StatusSeeOther)
+		return
+	}
+
+	SetFlashMessage(w, "success", "Timezone settings updated successfully")
+	http.Redirect(w, r, "/dashboard/settings", http.StatusSeeOther)
+}

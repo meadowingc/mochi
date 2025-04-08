@@ -134,6 +134,7 @@ func initRouter() *chi.Mux {
 					r.Post("/verify/refresh", site.DiscordVerifyRefresh)
 					r.Post("/toggle", site.DiscordToggle)
 					r.Post("/disconnect", site.DiscordDisconnect)
+					r.Post("/timezone", site.DiscordTimezoneUpdate)
 				})
 			})
 		})
@@ -273,10 +274,10 @@ func startMetricsReportScheduler() {
 	// Check for metrics reports to send every hour
 	ticker := time.NewTicker(1 * time.Hour)
 	defer ticker.Stop()
-	
+
 	// Run an initial check on startup
 	notifier.CheckAndSendScheduledMetricsReports()
-	
+
 	for range ticker.C {
 		notifier.CheckAndSendScheduledMetricsReports()
 	}
