@@ -1,71 +1,116 @@
 {% if flashMessage %}
-<div class="fixed top-4 right-4 z-50 max-w-md" id="flash-toast">
-  <div class="flex items-center overflow-hidden bg-white rounded-lg shadow-lg border-l-4 {% if flashMessage.Type == "error" %}border-red-500{% else if flashMessage.Type == "success" %}border-green-500{% else if flashMessage.Type == "warning" %}border-yellow-500{% else %}border-blue-500{% end %}">
+<div aria-live="assertive" class="fixed inset-0 flex items-end px-4 py-6 pointer-events-none sm:p-6 sm:items-start z-50">
+  <div class="w-full flex flex-col items-center space-y-4 sm:items-end">
+    <!-- Toast notification -->
+    <div id="flash-toast"
+         class="max-w-sm w-full bg-white shadow-lg rounded-lg pointer-events-auto overflow-hidden transform transition-all duration-300 ease-in-out translate-y-2 opacity-0 sm:translate-y-0 sm:translate-x-2 backdrop-filter backdrop-blur-sm">
 
-    <!-- Icon section based on message type -->
-    <div class="flex items-center justify-center w-12 h-full {% if flashMessage.Type == "error" %}text-red-500{% else if flashMessage.Type == "success" %}text-green-500{% else if flashMessage.Type == "warning" %}text-yellow-500{% else %}text-blue-500{% end %}">
-      {% if flashMessage.Type == "error" %}
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      {% else if flashMessage.Type == "success" %}
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      {% else if flashMessage.Type == "warning" %}
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-        </svg>
-      {% else %}
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      {% end %}
-    </div>
+      <div class="rounded-lg shadow-xs overflow-hidden">
+        <div class="p-4">
+          <div class="flex items-start">
+            <!-- Icon based on message type -->
+            <div class="flex-shrink-0 {% if flashMessage.Type == "error" %}text-red-500{% else if flashMessage.Type == "success" %}text-green-500{% else if flashMessage.Type == "warning" %}text-yellow-500{% else %}text-blue-500{% end %}">
+              {% if flashMessage.Type == "error" %}
+                <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              {% else if flashMessage.Type == "success" %}
+                <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              {% else if flashMessage.Type == "warning" %}
+                <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              {% else %}
+                <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              {% end %}
+            </div>
 
-    <!-- Message content -->
-    <div class="px-4 py-3 flex-1">
-      <div class="font-medium {% if flashMessage.Type == "error" %}text-red-800{% else if flashMessage.Type == "success" %}text-green-800{% else if flashMessage.Type == "warning" %}text-yellow-800{% else %}text-blue-800{% end %}">
-        {{ flashMessage.Message }}
+            <!-- Message content -->
+            <div class="ml-3 w-0 flex-1 pt-0.5">
+              <p class="text-sm font-medium {% if flashMessage.Type == "error" %}text-red-800{% else if flashMessage.Type == "success" %}text-green-800{% else if flashMessage.Type == "warning" %}text-yellow-800{% else %}text-blue-800{% end %}">
+                {% if flashMessage.Type == "error" %}Error{% else if flashMessage.Type == "success" %}Success{% else if flashMessage.Type == "warning" %}Warning{% else %}Information{% end %}
+              </p>
+              <p class="mt-1 text-sm text-gray-700">
+                {{ flashMessage.Message }}
+              </p>
+            </div>
+
+            <!-- Close button with hover effect -->
+            <div class="ml-4 flex-shrink-0 flex">
+              <button
+                class="inline-flex text-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200 ease-in-out rounded-md hover:text-gray-500"
+                onclick="dismissFlashToast()"
+                aria-label="Close notification">
+                <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Progress bar for auto-dismiss countdown -->
+        <div id="flash-progress"
+             class="h-1 transition-all duration-[5000ms] ease-linear w-full {% if flashMessage.Type == "error" %}bg-red-400{% else if flashMessage.Type == "success" %}bg-green-400{% else if flashMessage.Type == "warning" %}bg-yellow-400{% else %}bg-blue-400{% end %}">
+        </div>
       </div>
-    </div>
-
-    <!-- Close button -->
-    <div class="px-3 py-3 cursor-pointer" onclick="dismissFlashToast()">
-      <svg class="h-5 w-5 text-gray-400 hover:text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-      </svg>
     </div>
   </div>
 </div>
 
 <script>
-  // Add animation using JavaScript rather than CSS
-  const toast = document.getElementById('flash-toast');
+  // Toast animation logic
+  (function() {
+    const toast = document.getElementById('flash-toast');
+    const progressBar = document.getElementById('flash-progress');
 
-  // Initial state - slide in
-  toast.style.transform = 'translateX(100%)';
-  toast.style.opacity = '0';
-  toast.style.transition = 'transform 0.3s ease-out, opacity 0.3s ease-out';
+    // Initial state - wait for DOM to be ready
+    setTimeout(() => {
+      // Show the toast with subtle slide and scale effect
+      toast.classList.remove('opacity-0', 'translate-y-2', 'sm:translate-x-2');
+      toast.classList.add('opacity-100');
 
-  // Slide in after a small delay
-  setTimeout(() => {
-    toast.style.transform = 'translateX(0)';
-    toast.style.opacity = '1';
-  }, 10);
+      // Add a slight bounce effect at the end of the animation
+      setTimeout(() => {
+        toast.classList.add('scale-[1.02]');
+        setTimeout(() => {
+          toast.classList.remove('scale-[1.02]');
+        }, 50);
+      }, 300);
+
+      // Start progress bar animation (shrinking)
+      progressBar.style.width = '0%';
+    }, 100);
+
+    // Auto-dismiss after animation completes
+    setTimeout(() => {
+      dismissFlashToast();
+    }, 5100); // Slightly longer than the progress bar animation
+  })();
 
   function dismissFlashToast() {
     const toast = document.getElementById('flash-toast');
-    toast.style.transform = 'translateX(100%)';
+
+    // Ensure smooth fade-out with both transform and opacity transitions
+    toast.style.transition = 'opacity 300ms ease-out, transform 300ms ease-out';
     toast.style.opacity = '0';
+
+    // Apply slide-out direction based on screen size (like the Tailwind classes do)
+    if (window.innerWidth >= 640) { // sm breakpoint
+      toast.style.transform = 'translateX(1rem)';
+    } else {
+      toast.style.transform = 'translateY(0.5rem)';
+    }
+
+    // Remove from DOM after animation completes
     setTimeout(() => {
-      toast.style.display = 'none';
+      const container = toast.closest('[aria-live="assertive"]');
+      if (container) container.remove();
     }, 300);
   }
-
-  // Auto-dismiss after 5 seconds
-  setTimeout(() => {
-    dismissFlashToast();
-  }, 5000);
 </script>
 {% end %}

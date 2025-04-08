@@ -57,9 +57,6 @@ func FlashMiddleware(next http.Handler) http.Handler {
 		// Check for flash messages in the cookie
 		cookie, err := r.Cookie(FlashMessageCookieName)
 		if err == nil && cookie.Value != "" {
-			// Cookie exists, extract the flash message
-			log.Printf("Found encoded cookie value: %s", cookie.Value)
-
 			// Decode the base64-encoded value
 			decodedBytes, err := base64.StdEncoding.DecodeString(cookie.Value)
 			if err != nil {
@@ -72,8 +69,6 @@ func FlashMiddleware(next http.Handler) http.Handler {
 					// Add flash message to context
 					ctx := context.WithValue(r.Context(), flashMessageKey, &flashMessage)
 					r = r.WithContext(ctx)
-
-					log.Printf("Successfully decoded flash message: %s - %s", flashMessage.Type, flashMessage.Message)
 
 					// Clear the flash message by setting an expired cookie
 					http.SetCookie(w, &http.Cookie{
