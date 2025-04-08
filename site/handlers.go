@@ -37,35 +37,40 @@ func UserLogin(w http.ResponseWriter, r *http.Request) {
 		username := strings.TrimSpace(r.FormValue("username"))
 		password := r.FormValue("password")
 
-		useruser_database := user_database.GetDbIfExists(username)
+		user_db := user_database.GetDbIfExists(username)
 
-		if useruser_database == nil {
-			http.Error(w, "You're trying to sign in, but perhaps you still need to sign up?", http.StatusUnauthorized)
+		if user_db == nil {
+			SetFlashMessage(w, "error", "User not found. You're trying to sign in, but perhaps you still need to sign up?")
+			http.Redirect(w, r, "/user/login", http.StatusSeeOther)
 			return
 		}
 
 		var admin user_database.User
-		result := useruser_database.Db.Where(&user_database.User{Username: username}).First(&admin)
+		result := user_db.Db.Where(&user_database.User{Username: username}).First(&admin)
 		if result.Error != nil {
-			http.Error(w, "Invalid username. You're trying to sign in, but perhaps you still need to sign up?", http.StatusUnauthorized)
+			SetFlashMessage(w, "error", "User not found. You're trying to sign in, but perhaps you still need to sign up?")
+			http.Redirect(w, r, "/user/login", http.StatusSeeOther)
 			return
 		}
 
 		err := bcrypt.CompareHashAndPassword([]byte(admin.PasswordHash), []byte(password))
 		if err != nil {
-			http.Error(w, "Invalid password", http.StatusUnauthorized)
+			SetFlashMessage(w, "error", "Invalid password")
+			http.Redirect(w, r, "/user/login", http.StatusSeeOther)
 			return
 		}
 
 		// Generate a new token for the session
 		token, err := generateAuthToken()
 		if err != nil {
-			http.Error(w, "Error signing in", http.StatusInternalServerError)
+			log.Printf("Error generating auth token: %v", err)
+			SetFlashMessage(w, "error", "Error signing in")
+			http.Redirect(w, r, "/user/login", http.StatusSeeOther)
 			return
 		}
 
 		admin.SessionToken = token
-		useruser_database.Db.Save(&admin)
+		user_db.Db.Save(&admin)
 
 		setUserSession(
 			w, username, token,
@@ -163,6 +168,8 @@ func UserLogout(w http.ResponseWriter, r *http.Request) {
 		Path:   "/",
 		MaxAge: -1,
 	})
+
+	SetFlashMessage(w, "success", "You have been logged out successfully.")
 	http.Redirect(w, r, "/user/login", http.StatusSeeOther)
 }
 
@@ -294,11 +301,13 @@ func DiscordVerifyGenerate(w http.ResponseWriter, r *http.Request) {
 
 	_, err := notifier.GenerateDiscordVerifyCode(signedInUser.Username)
 	if err != nil {
-		http.Redirect(w, r, "/dashboard/settings?error="+url.QueryEscape("Failed to generate verification code"), http.StatusSeeOther)
+		SetFlashMessage(w, "error", "Failed to generate verification code")
+		http.Redirect(w, r, "/dashboard/settings", http.StatusSeeOther)
 		return
 	}
 
-	http.Redirect(w, r, "/dashboard/settings?success="+url.QueryEscape("Verification code generated successfully"), http.StatusSeeOther)
+	SetFlashMessage(w, "success", "Verification code generated successfully")
+	http.Redirect(w, r, "/dashboard/settings", http.StatusSeeOther)
 }
 
 // DiscordVerifyRefresh refreshes an existing verification code
@@ -307,17 +316,20 @@ func DiscordVerifyRefresh(w http.ResponseWriter, r *http.Request) {
 
 	_, err := notifier.GenerateDiscordVerifyCode(signedInUser.Username)
 	if err != nil {
-		http.Redirect(w, r, "/dashboard/settings?error="+url.QueryEscape("Failed to refresh verification code"), http.StatusSeeOther)
+		SetFlashMessage(w, "error", "Failed to refresh verification code")
+		http.Redirect(w, r, "/dashboard/settings", http.StatusSeeOther)
 		return
 	}
 
-	http.Redirect(w, r, "/dashboard/settings?success="+url.QueryEscape("Verification code refreshed successfully"), http.StatusSeeOther)
+	SetFlashMessage(w, "success", "Verification code refreshed successfully")
+	http.Redirect(w, r, "/dashboard/settings", http.StatusSeeOther)
 }
 
 // DiscordToggle toggles Discord notifications
 func DiscordToggle(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		http.Redirect(w, r, "/dashboard/settings?error="+url.QueryEscape("Failed to parse form"), http.StatusSeeOther)
+		SetFlashMessage(w, "error", "Failed to parse form")
+		http.Redirect(w, r, "/dashboard/settings", http.StatusSeeOther)
 		return
 	}
 
@@ -325,13 +337,15 @@ func DiscordToggle(w http.ResponseWriter, r *http.Request) {
 
 	settings, err := notifier.GetDiscordSettingsByUsername(signedInUser.Username)
 	if err != nil {
-		http.Redirect(w, r, "/dashboard/settings?error="+url.QueryEscape("Failed to get Discord settings"), http.StatusSeeOther)
+		SetFlashMessage(w, "error", "Failed to get Discord settings")
+		http.Redirect(w, r, "/dashboard/settings", http.StatusSeeOther)
 		return
 	}
 
 	// Check if the user has verified their Discord account
 	if !settings.DiscordVerified {
-		http.Redirect(w, r, "/dashboard/settings?error="+url.QueryEscape("You must verify your Discord account first"), http.StatusSeeOther)
+		SetFlashMessage(w, "error", "You must verify your Discord account first")
+		http.Redirect(w, r, "/dashboard/settings", http.StatusSeeOther)
 		return
 	}
 
@@ -340,11 +354,13 @@ func DiscordToggle(w http.ResponseWriter, r *http.Request) {
 
 	err = notifier.UpdateDiscordSettings(settings)
 	if err != nil {
-		http.Redirect(w, r, "/dashboard/settings?error="+url.QueryEscape("Failed to update settings"), http.StatusSeeOther)
+		SetFlashMessage(w, "error", "Failed to update settings")
+		http.Redirect(w, r, "/dashboard/settings", http.StatusSeeOther)
 		return
 	}
 
-	http.Redirect(w, r, "/dashboard/settings?success="+url.QueryEscape("Notification settings updated successfully"), http.StatusSeeOther)
+	SetFlashMessage(w, "success", "Notification settings updated successfully")
+	http.Redirect(w, r, "/dashboard/settings", http.StatusSeeOther)
 }
 
 // DiscordDisconnect disconnects Discord integration
@@ -353,11 +369,13 @@ func DiscordDisconnect(w http.ResponseWriter, r *http.Request) {
 
 	err := notifier.DisconnectDiscord(signedInUser.Username)
 	if err != nil {
-		http.Redirect(w, r, "/dashboard/settings?error="+url.QueryEscape("Failed to disconnect Discord"), http.StatusSeeOther)
+		SetFlashMessage(w, "error", "Failed to disconnect Discord")
+		http.Redirect(w, r, "/dashboard/settings", http.StatusSeeOther)
 		return
 	}
 
-	http.Redirect(w, r, "/dashboard/settings?success="+url.QueryEscape("Discord account disconnected successfully"), http.StatusSeeOther)
+	SetFlashMessage(w, "success", "Discord account disconnected successfully")
+	http.Redirect(w, r, "/dashboard/settings", http.StatusSeeOther)
 }
 
 func CreateNewSite(w http.ResponseWriter, r *http.Request) {
@@ -380,7 +398,8 @@ func CreateNewSite(w http.ResponseWriter, r *http.Request) {
 	}).First(&existingSite)
 
 	if result.Error == nil {
-		http.Error(w, "Site already exists", http.StatusBadRequest)
+		SetFlashMessage(w, "error", "Site already exists")
+		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 		return
 	}
 
@@ -617,27 +636,23 @@ func UpdateSiteSettings(w http.ResponseWriter, r *http.Request) {
 
 	// Basic validation
 	if pageUrl == "" {
-		// Redirect with error
-		redirectURL := fmt.Sprintf("/dashboard/%d/settings?error=%s",
-			siteFromContext.ID, url.QueryEscape("URL cannot be empty"))
-		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+		SetFlashMessage(w, "error", "URL cannot be empty")
+		http.Redirect(w, r, fmt.Sprintf("/dashboard/%d/settings", siteFromContext.ID), http.StatusSeeOther)
 		return
 	}
 
 	// Validate URL format
 	if _, err := url.Parse(pageUrl); err != nil {
-		redirectURL := fmt.Sprintf("/dashboard/%d/settings?error=%s",
-			siteFromContext.ID, url.QueryEscape("Invalid URL format"))
-		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+		SetFlashMessage(w, "error", "Invalid URL format")
+		http.Redirect(w, r, fmt.Sprintf("/dashboard/%d/settings", siteFromContext.ID), http.StatusSeeOther)
 		return
 	}
 
 	// Parse and validate data retention months
 	dataRetentionMonths, err := strconv.Atoi(dataRetentionMonthsStr)
 	if err != nil || dataRetentionMonths < 1 || dataRetentionMonths > 12 {
-		redirectURL := fmt.Sprintf("/dashboard/%d/settings?error=%s",
-			siteFromContext.ID, url.QueryEscape("(Data retention period) must be between 1 and 12 months"))
-		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+		SetFlashMessage(w, "error", "Data retention period must be between 1 and 12 months")
+		http.Redirect(w, r, fmt.Sprintf("/dashboard/%d/settings", siteFromContext.ID), http.StatusSeeOther)
 		return
 	}
 
@@ -650,16 +665,14 @@ func UpdateSiteSettings(w http.ResponseWriter, r *http.Request) {
 	siteFromContext.DataRetentionMonths = dataRetentionMonths
 	result := userDb.Db.Save(siteFromContext)
 	if result.Error != nil {
-		redirectURL := fmt.Sprintf("/dashboard/%d/settings?error=%s",
-			siteFromContext.ID, url.QueryEscape("Error updating site: "+result.Error.Error()))
-		http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+		SetFlashMessage(w, "error", "Error updating site: "+result.Error.Error())
+		http.Redirect(w, r, fmt.Sprintf("/dashboard/%d/settings", siteFromContext.ID), http.StatusSeeOther)
 		return
 	}
 
 	// Redirect with success message
-	redirectURL := fmt.Sprintf("/dashboard/%d/settings?success=%s",
-		siteFromContext.ID, url.QueryEscape("Site updated successfully"))
-	http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+	SetFlashMessage(w, "success", "Site updated successfully")
+	http.Redirect(w, r, fmt.Sprintf("/dashboard/%d/settings", siteFromContext.ID), http.StatusSeeOther)
 }
 
 func DeleteSite(w http.ResponseWriter, r *http.Request) {
@@ -668,14 +681,16 @@ func DeleteSite(w http.ResponseWriter, r *http.Request) {
 
 	// Parse form
 	if err := r.ParseForm(); err != nil {
-		http.Redirect(w, r, fmt.Sprintf("/dashboard/%d/settings?error=Failed to parse form", site.ID), http.StatusSeeOther)
+		SetFlashMessage(w, "error", "Failed to parse form")
+		http.Redirect(w, r, fmt.Sprintf("/dashboard/%d/settings", site.ID), http.StatusSeeOther)
 		return
 	}
 
 	// Confirm deletion with a confirmation field
 	confirmation := r.FormValue("confirm_deletion")
 	if confirmation != "DELETE" {
-		http.Redirect(w, r, fmt.Sprintf("/dashboard/%d/settings?error=Please type DELETE to confirm site deletion", site.ID), http.StatusSeeOther)
+		SetFlashMessage(w, "error", "Please type DELETE to confirm site deletion")
+		http.Redirect(w, r, fmt.Sprintf("/dashboard/%d/settings", site.ID), http.StatusSeeOther)
 		return
 	}
 
@@ -683,23 +698,27 @@ func DeleteSite(w http.ResponseWriter, r *http.Request) {
 
 	// First delete related records (hits and webmentions) - PERMANENT DELETE
 	if err := userDb.Db.Unscoped().Where("site_id = ?", site.ID).Delete(&user_database.Hit{}).Error; err != nil {
-		http.Redirect(w, r, fmt.Sprintf("/dashboard/%d/settings?error=Failed to delete site hits: %s", site.ID, err), http.StatusSeeOther)
+		SetFlashMessage(w, "error", fmt.Sprintf("Failed to delete site hits: %s", err))
+		http.Redirect(w, r, fmt.Sprintf("/dashboard/%d/settings", site.ID), http.StatusSeeOther)
 		return
 	}
 
 	if err := userDb.Db.Unscoped().Where("site_id = ?", site.ID).Delete(&user_database.WebMention{}).Error; err != nil {
-		http.Redirect(w, r, fmt.Sprintf("/dashboard/%d/settings?error=Failed to delete site webmentions: %s", site.ID, err), http.StatusSeeOther)
+		SetFlashMessage(w, "error", fmt.Sprintf("Failed to delete site webmentions: %s", err))
+		http.Redirect(w, r, fmt.Sprintf("/dashboard/%d/settings", site.ID), http.StatusSeeOther)
 		return
 	}
 
 	// Now delete the site itself - PERMANENT DELETE
 	if err := userDb.Db.Unscoped().Delete(site).Error; err != nil {
-		http.Redirect(w, r, fmt.Sprintf("/dashboard/%d/settings?error=Failed to delete site: %s", site.ID, err), http.StatusSeeOther)
+		SetFlashMessage(w, "error", fmt.Sprintf("Failed to delete site: %s", err))
+		http.Redirect(w, r, fmt.Sprintf("/dashboard/%d/settings", site.ID), http.StatusSeeOther)
 		return
 	}
 
 	// Redirect to dashboard with success message
-	http.Redirect(w, r, "/dashboard?success=Site permanently deleted", http.StatusSeeOther)
+	SetFlashMessage(w, "success", "Site permanently deleted")
+	http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 }
 
 func ReaperGetEmbedJs(w http.ResponseWriter, r *http.Request) {
@@ -1074,7 +1093,8 @@ func ChangePassword(w http.ResponseWriter, r *http.Request) {
 
 	// Parse the form
 	if err := r.ParseForm(); err != nil {
-		http.Redirect(w, r, "/dashboard/settings?error="+url.QueryEscape("Error processing form"), http.StatusSeeOther)
+		SetFlashMessage(w, "error", "Error processing form")
+		http.Redirect(w, r, "/dashboard/settings", http.StatusSeeOther)
 		return
 	}
 
@@ -1085,20 +1105,23 @@ func ChangePassword(w http.ResponseWriter, r *http.Request) {
 
 	// Validate input
 	if currentPassword == "" || newPassword == "" || confirmPassword == "" {
-		http.Redirect(w, r, "/dashboard/settings?error="+url.QueryEscape("All fields are required"), http.StatusSeeOther)
+		SetFlashMessage(w, "error", "All fields are required")
+		http.Redirect(w, r, "/dashboard/settings", http.StatusSeeOther)
 		return
 	}
 
 	// Check if new password and confirmation match
 	if newPassword != confirmPassword {
-		http.Redirect(w, r, "/dashboard/settings?error="+url.QueryEscape("New password and confirmation do not match"), http.StatusSeeOther)
+		SetFlashMessage(w, "error", "New password and confirmation do not match")
+		http.Redirect(w, r, "/dashboard/settings", http.StatusSeeOther)
 		return
 	}
 
 	// Minimum password length check
 	const minPasswordLength = 4
 	if len(newPassword) < minPasswordLength {
-		http.Redirect(w, r, "/dashboard/settings?error="+url.QueryEscape("New password must be at least "+strconv.Itoa(minPasswordLength)+" characters long"), http.StatusSeeOther)
+		SetFlashMessage(w, "error", "New password must be at least "+strconv.Itoa(minPasswordLength)+" characters long")
+		http.Redirect(w, r, "/dashboard/settings", http.StatusSeeOther)
 		return
 	}
 
@@ -1108,14 +1131,16 @@ func ChangePassword(w http.ResponseWriter, r *http.Request) {
 	// Verify current password
 	err := bcrypt.CompareHashAndPassword([]byte(signedInUser.PasswordHash), []byte(currentPassword))
 	if err != nil {
-		http.Redirect(w, r, "/dashboard/settings?error="+url.QueryEscape("Current password is incorrect"), http.StatusSeeOther)
+		SetFlashMessage(w, "error", "Current password is incorrect")
+		http.Redirect(w, r, "/dashboard/settings", http.StatusSeeOther)
 		return
 	}
 
 	// Hash the new password
 	newPasswordHash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
 	if err != nil {
-		http.Redirect(w, r, "/dashboard/settings?error="+url.QueryEscape("Error updating password: "+err.Error()), http.StatusSeeOther)
+		SetFlashMessage(w, "error", "Error updating password: "+err.Error())
+		http.Redirect(w, r, "/dashboard/settings", http.StatusSeeOther)
 		return
 	}
 
@@ -1123,14 +1148,16 @@ func ChangePassword(w http.ResponseWriter, r *http.Request) {
 	signedInUser.PasswordHash = datatypes.JSON(newPasswordHash)
 	result := userDb.Db.Save(signedInUser)
 	if result.Error != nil {
-		http.Redirect(w, r, "/dashboard/settings?error="+url.QueryEscape("Error saving password: "+result.Error.Error()), http.StatusSeeOther)
+		SetFlashMessage(w, "error", "Error saving password: "+result.Error.Error())
+		http.Redirect(w, r, "/dashboard/settings", http.StatusSeeOther)
 		return
 	}
 
 	// Generate a new session token to force login on other devices
 	token, err := generateAuthToken()
 	if err != nil {
-		http.Redirect(w, r, "/dashboard/settings?error="+url.QueryEscape("Error updating session: "+err.Error()), http.StatusSeeOther)
+		SetFlashMessage(w, "error", "Error updating session: "+err.Error())
+		http.Redirect(w, r, "/dashboard/settings", http.StatusSeeOther)
 		return
 	}
 
@@ -1138,7 +1165,8 @@ func ChangePassword(w http.ResponseWriter, r *http.Request) {
 	signedInUser.SessionToken = token
 	result = userDb.Db.Save(signedInUser)
 	if result.Error != nil {
-		http.Redirect(w, r, "/dashboard/settings?error="+url.QueryEscape("Error updating session: "+result.Error.Error()), http.StatusSeeOther)
+		SetFlashMessage(w, "error", "Error updating session: "+result.Error.Error())
+		http.Redirect(w, r, "/dashboard/settings", http.StatusSeeOther)
 		return
 	}
 
@@ -1146,5 +1174,6 @@ func ChangePassword(w http.ResponseWriter, r *http.Request) {
 	setUserSession(w, signedInUser.Username, token)
 
 	// Redirect with success message
-	http.Redirect(w, r, "/dashboard/settings?success="+url.QueryEscape("Password changed successfully"), http.StatusSeeOther)
+	SetFlashMessage(w, "success", "Password changed successfully")
+	http.Redirect(w, r, "/dashboard/settings", http.StatusSeeOther)
 }

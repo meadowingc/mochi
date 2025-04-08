@@ -61,6 +61,7 @@ func RenderTemplate(
 				"webmentionsURL": constants.WEBMENTIONS_URL,
 				"appName":        constants.APP_NAME,
 				"csrfField":      (*native.HTML)(nil),
+				"flashMessage":   (*FlashMessage)(nil),
 				"min":            builtin.Min,
 				"max":            builtin.Max,
 				"escapePath": func(path string) string {
@@ -154,6 +155,11 @@ func RenderTemplate(
 
 	runTemplateData := map[string]any{
 		"signedInUser": GetSignedInUserOrNil(r),
+	}
+
+	flashMessage := GetFlashMessage(r)
+	if flashMessage != nil {
+		runTemplateData["flashMessage"] = flashMessage
 	}
 
 	// Add CSRF token to template data if available in the context

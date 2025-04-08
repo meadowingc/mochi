@@ -2,12 +2,15 @@ package site
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"log"
 	"mochi/constants"
 	"mochi/user_database"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/csrf"
@@ -19,6 +22,16 @@ type contextKey string
 const CSRFTokenKey contextKey = "csrf_token"
 const siteKey contextKey = "site"
 const userKey contextKey = "user"
+const flashMessageKey contextKey = "flash_message"
+
+// FlashMessageCookieName is the name of the cookie that stores flash messages
+const FlashMessageCookieName = "mochi_flash"
+
+// FlashMessage represents a message to be displayed to the user
+type FlashMessage struct {
+	Type    string `json:"type"`    // "success", "error", "warning", "info"
+	Message string `json:"message"` // The message content
+}
 
 // RealIPMiddleware extracts the client's real IP address from the
 // X-Forwarded-For header and sets it on the request's RemoteAddr field. Useful
@@ -36,6 +49,91 @@ func RealIPMiddleware(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// FlashMiddleware extracts flash messages from cookies and adds them to context
+func FlashMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Check for flash messages in the cookie
+		cookie, err := r.Cookie(FlashMessageCookieName)
+		if err == nil && cookie.Value != "" {
+			// Cookie exists, extract the flash message
+			log.Printf("Found encoded cookie value: %s", cookie.Value)
+
+			// Decode the base64-encoded value
+			decodedBytes, err := base64.StdEncoding.DecodeString(cookie.Value)
+			if err != nil {
+				log.Printf("Error decoding base64 cookie: %v", err)
+			} else {
+				// Unmarshal the JSON data
+				var flashMessage FlashMessage
+				err = json.Unmarshal(decodedBytes, &flashMessage)
+				if err == nil {
+					// Add flash message to context
+					ctx := context.WithValue(r.Context(), flashMessageKey, &flashMessage)
+					r = r.WithContext(ctx)
+
+					log.Printf("Successfully decoded flash message: %s - %s", flashMessage.Type, flashMessage.Message)
+
+					// Clear the flash message by setting an expired cookie
+					http.SetCookie(w, &http.Cookie{
+						Name:     FlashMessageCookieName,
+						Value:    "",
+						Path:     "/",
+						Expires:  time.Now().Add(-1 * time.Hour),
+						MaxAge:   -1,
+						HttpOnly: true,
+						SameSite: http.SameSiteLaxMode,
+						Secure:   !constants.DEBUG_MODE,
+					})
+				} else {
+					log.Printf("Error unmarshaling flash message JSON: %v", err)
+				}
+			}
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+// SetFlashMessage sets a flash message in a cookie
+func SetFlashMessage(w http.ResponseWriter, messageType, message string) {
+	flashMessage := FlashMessage{
+		Type:    messageType,
+		Message: message,
+	}
+
+	// Serialize the flash message
+	flashData, err := json.Marshal(flashMessage)
+	if err != nil {
+		log.Printf("Error marshaling flash message: %v", err)
+		return
+	}
+
+	// Base64 encode the JSON to avoid issues with special characters in cookies
+	encodedValue := base64.StdEncoding.EncodeToString(flashData)
+	log.Printf("Setting flash message cookie with base64-encoded JSON: %s", encodedValue)
+
+	// Set the cookie - with a short expiration to ensure it persists
+	cookie := &http.Cookie{
+		Name:     FlashMessageCookieName,
+		Value:    encodedValue,
+		Path:     "/",
+		MaxAge:   120, // 2 minutes - enough time for the redirect to complete and page to load
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode, // Lax to allow redirects
+		Secure:   !constants.DEBUG_MODE,
+	}
+
+	http.SetCookie(w, cookie)
+}
+
+// GetFlashMessage returns the flash message from the request context
+func GetFlashMessage(r *http.Request) *FlashMessage {
+	if flash, ok := r.Context().Value(flashMessageKey).(*FlashMessage); ok {
+		return flash
+	}
+	return nil
 }
 
 func TryPutUserInContextMiddleware(next http.Handler) http.Handler {
@@ -152,9 +250,8 @@ func CSRFMiddleware() func(http.Handler) http.Handler {
 	csrfKey := os.Getenv("CSRF_KEY")
 
 	if constants.DEBUG_MODE {
-		log.Println("Warning: CSRF key is not set. This is insecure and should only be used in development.")
+		log.Println(">>> using dummy CSRF key for development")
 		csrfKey = "32-byte-long-auth-key-for-dev-only"
-		log.Println("Warning: Using default CSRF key. Set CSRF_KEY environment variable in production.")
 	} else if csrfKey == "" {
 		log.Panic("CSRF key is not set. This is required for CSRF protection. Please set the CSRF_KEY environment variable. You can generate a key using `openssl rand -base64 32`.")
 	}
