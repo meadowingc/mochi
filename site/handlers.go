@@ -90,18 +90,19 @@ func UserRegister(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 			return
 		}
-
 	} else {
 		if constants.MAX_USERS > 0 {
 			// Check if the maximum user limit has been reached
 			usernames, err := user_database.GetAllUsernames()
 			if err != nil {
-				http.Error(w, "Error checking user limit: "+err.Error(), http.StatusInternalServerError)
+				SetFlashMessage(w, "error", "Error checking user limit: "+err.Error())
+				http.Redirect(w, r, "/user/register", http.StatusSeeOther)
 				return
 			}
 
 			if len(usernames) >= constants.MAX_USERS {
-				http.Error(w, "Registration is currently closed. We've reached the maximum number of allowed users. Please reach out to meadowingc@proton.me to be informed when registrations are opened up again!", http.StatusForbidden)
+				SetFlashMessage(w, "error", "Registration is currently closed. We've reached the maximum number of allowed users. Please reach out to meadowingc@proton.me to be informed when registrations are opened up again!")
+				http.Redirect(w, r, "/user/register", http.StatusSeeOther)
 				return
 			}
 		}
@@ -110,25 +111,29 @@ func UserRegister(w http.ResponseWriter, r *http.Request) {
 		password := r.FormValue("password")
 
 		if username == "" || password == "" {
-			http.Error(w, "Username and password are required", http.StatusBadRequest)
+			SetFlashMessage(w, "error", "Username and password are required")
+			http.Redirect(w, r, "/user/register", http.StatusSeeOther)
 			return
 		}
 
 		if strings.Contains(username, "/") {
-			http.Error(w, "Username cannot contain a forward slash", http.StatusBadRequest)
+			SetFlashMessage(w, "error", "Username cannot contain a forward slash")
+			http.Redirect(w, r, "/user/register", http.StatusSeeOther)
 			return
 		}
 
 		passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 		if err != nil {
-			http.Error(w, "Error creating account: "+err.Error(), http.StatusInternalServerError)
+			SetFlashMessage(w, "error", "Error creating account: "+err.Error())
+			http.Redirect(w, r, "/user/register", http.StatusSeeOther)
 			return
 		}
 
 		// Create a new token and store it in a cookie
 		token, err := generateAuthToken()
 		if err != nil {
-			http.Error(w, "Error creating account: "+err.Error(), http.StatusInternalServerError)
+			SetFlashMessage(w, "error", "Error creating account: "+err.Error())
+			http.Redirect(w, r, "/user/register", http.StatusSeeOther)
 			return
 		}
 
@@ -140,7 +145,8 @@ func UserRegister(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if userDb != nil && userExistsInDb {
-			http.Error(w, "User already exists. You can sign in instead.", http.StatusUnauthorized)
+			SetFlashMessage(w, "error", "User already exists. You can sign in instead.")
+			http.Redirect(w, r, "/user/login", http.StatusSeeOther)
 			return
 		}
 
@@ -148,7 +154,8 @@ func UserRegister(w http.ResponseWriter, r *http.Request) {
 
 		result := user_database.GetOrCreateDB(username).Db.Create(&newAdmin)
 		if result.Error != nil {
-			http.Error(w, "Error creating account: "+result.Error.Error(), http.StatusInternalServerError)
+			SetFlashMessage(w, "error", "Error creating account: "+result.Error.Error())
+			http.Redirect(w, r, "/user/register", http.StatusSeeOther)
 			return
 		}
 
@@ -157,6 +164,7 @@ func UserRegister(w http.ResponseWriter, r *http.Request) {
 		)
 
 		// Redirect to the admin sign-in page after successful sign-up
+		SetFlashMessage(w, "success", "Account created successfully! Welcome to Mochi 🤗")
 		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 	}
 }
@@ -185,7 +193,8 @@ func UserDashboardHome(w http.ResponseWriter, r *http.Request) {
 	}).Find(&userSites)
 
 	if result.Error != nil {
-		http.Error(w, "Error fetching sites", http.StatusInternalServerError)
+		SetFlashMessage(w, "error", "Error fetching sites")
+		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 		return
 	}
 
@@ -384,15 +393,16 @@ func CreateNewSite(w http.ResponseWriter, r *http.Request) {
 
 	siteURL, err := url.Parse(urlParam)
 	if err != nil {
-		http.Error(w, "Unable to parse site URL", http.StatusBadRequest)
+		SetFlashMessage(w, "error", "Unable to parse site URL")
+		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 		return
 	}
 
 	// Check if the site already exists
-	useruser_database := user_database.GetDbOrFatal(user.Username)
+	user_db := user_database.GetDbOrFatal(user.Username)
 
 	var existingSite user_database.Site
-	result := useruser_database.Db.Where(&user_database.Site{
+	result := user_db.Db.Where(&user_database.Site{
 		URL:    siteURL.String(),
 		UserID: user.ID,
 	}).First(&existingSite)
@@ -405,12 +415,14 @@ func CreateNewSite(w http.ResponseWriter, r *http.Request) {
 
 	newSite := user_database.Site{URL: siteURL.String(), UserID: user.ID}
 
-	result = useruser_database.Db.Create(&newSite)
+	result = user_db.Db.Create(&newSite)
 	if result.Error != nil {
-		http.Error(w, "Error creating site: "+result.Error.Error(), http.StatusInternalServerError)
+		SetFlashMessage(w, "error", "Error creating site: "+result.Error.Error())
+		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 		return
 	}
 
+	SetFlashMessage(w, "success", "New site added successfully")
 	http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 }
 
