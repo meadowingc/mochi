@@ -398,12 +398,27 @@ func CreateNewSite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	hostname := siteURL.Hostname()
+	if hostname == "" {
+		// If no hostname was found, try again by prepending https:// and reparsing
+		siteURL, err = url.Parse("https://" + urlParam)
+		if err != nil || siteURL.Hostname() == "" {
+			SetFlashMessage(w, "error", "Unable to extract hostname from URL")
+			http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+			return
+		}
+		hostname = siteURL.Hostname()
+	}
+
+	// Create a standardized URL with just the hostname (using https://)
+	standardizedURL := "https://" + hostname
+
 	// Check if the site already exists
 	user_db := user_database.GetDbOrFatal(user.Username)
 
 	var existingSite user_database.Site
 	result := user_db.Db.Where(&user_database.Site{
-		URL:    siteURL.String(),
+		URL:    standardizedURL,
 		UserID: user.ID,
 	}).First(&existingSite)
 
@@ -413,7 +428,7 @@ func CreateNewSite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	newSite := user_database.Site{URL: siteURL.String(), UserID: user.ID}
+	newSite := user_database.Site{URL: standardizedURL, UserID: user.ID}
 
 	result = user_db.Db.Create(&newSite)
 	if result.Error != nil {
