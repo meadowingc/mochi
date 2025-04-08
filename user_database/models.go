@@ -18,12 +18,14 @@ type User struct {
 
 type Site struct {
 	gorm.Model
-	UserID              uint `gorm:"index"`
-	CreatedAt           time.Time
-	URL                 string
-	DataRetentionMonths int       `gorm:"default:6"`
-	LastDataCleanupDate time.Time `gorm:"default:0"`
-	Hits                []Hit     `gorm:"foreignKey:SiteID"`
+	UserID                  uint `gorm:"index"`
+	CreatedAt               time.Time
+	URL                     string
+	DataRetentionMonths     int       `gorm:"default:6"`
+	LastDataCleanupDate     time.Time `gorm:"default:0"`
+	Hits                    []Hit     `gorm:"foreignKey:SiteID"`
+	MetricsNotificationFreq string    // Frequency of site metrics notifications: "none", "daily", "weekly", "monthly"
+	LastMetricsSentAt       time.Time `gorm:"default:0"`
 }
 
 type Hit struct {

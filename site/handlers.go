@@ -631,7 +631,18 @@ func SiteSettingsPage(w http.ResponseWriter, r *http.Request) {
 
 	// Calculate total hits for the site
 	var totalHits int64
-	userDb.Db.Model(&user_database.Hit{}).Where("site_id = ?", siteFromContext.ID).Count(&totalHits)
+	userDb.Db.Model(&user_database.Hit{}).Where(
+		&user_database.Hit{
+			SiteID: siteFromContext.ID,
+		}).Count(&totalHits)
+
+	// Get Discord settings for the user
+	discordSettings, err := notifier.GetDiscordSettingsByUsername(signedInUser.Username)
+	if err != nil {
+		SetFlashMessage(w, "error", "Error fetching Discord settings")
+		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+		return
+	}
 
 	// Get flash messages (success/error) from session, if you have a session mechanism
 	var success, errorMsg string
@@ -642,10 +653,11 @@ func SiteSettingsPage(w http.ResponseWriter, r *http.Request) {
 
 	RenderTemplate(w, r, "pages/dashboard/site_settings.html",
 		&map[string]CustomDeclaration{
-			"site":      {(*user_database.Site)(nil), siteFromContext},
-			"totalHits": {(*int64)(nil), &totalHits},
-			"success":   {(*string)(nil), &success},
-			"error":     {(*string)(nil), &errorMsg},
+			"site":            {(*user_database.Site)(nil), siteFromContext},
+			"totalHits":       {(*int64)(nil), &totalHits},
+			"success":         {(*string)(nil), &success},
+			"error":           {(*string)(nil), &errorMsg},
+			"discordSettings": {(*shared_database.UserDiscordSettings)(nil), discordSettings},
 		},
 	)
 }
@@ -1203,4 +1215,78 @@ func ChangePassword(w http.ResponseWriter, r *http.Request) {
 	// Redirect with success message
 	SetFlashMessage(w, "success", "Password changed successfully")
 	http.Redirect(w, r, "/dashboard/settings", http.StatusSeeOther)
+}
+
+// MetricsNotificationSettings handles form submissions for site metrics notification settings
+func MetricsNotificationSettings(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		SetFlashMessage(w, "error", "Failed to parse form")
+		http.Redirect(w, r, r.Header.Get("Referer"), http.StatusSeeOther)
+		return
+	}
+
+	signedInUser := GetSignedInUserOrFail(r)
+	siteIDStr := chi.URLParam(r, "siteID")
+	siteID, err := strconv.Atoi(siteIDStr)
+	if err != nil {
+		SetFlashMessage(w, "error", "Invalid site ID")
+		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+		return
+	}
+
+	// Verify the site belongs to this user
+	userDb := user_database.GetDbOrFatal(signedInUser.Username)
+	var site user_database.Site
+	if err := userDb.Db.First(&site, siteID).Error; err != nil || site.UserID != signedInUser.ID {
+		SetFlashMessage(w, "error", "Site not found or you don't have permission")
+		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
+		return
+	}
+
+	// Get the user's Discord settings to verify they have Discord set up
+	discordSettings, err := notifier.GetDiscordSettingsByUsername(signedInUser.Username)
+	if err != nil {
+		SetFlashMessage(w, "error", "Error fetching Discord settings")
+		http.Redirect(w, r, fmt.Sprintf("/dashboard/%d/settings", site.ID), http.StatusSeeOther)
+		return
+	}
+
+	// Check if Discord is verified and notifications are enabled
+	if !discordSettings.DiscordVerified || !discordSettings.NotificationsEnabled {
+		SetFlashMessage(w, "error", "You must enable Discord notifications in your account settings first")
+		http.Redirect(w, r, fmt.Sprintf("/dashboard/%d/settings", site.ID), http.StatusSeeOther)
+		return
+	}
+
+	// Get the selected frequency from the form
+	frequency := r.FormValue("metricsFrequency")
+	// Validate frequency
+	validFrequencies := map[string]bool{
+		"none":    true,
+		"daily":   true,
+		"weekly":  true,
+		"monthly": true,
+	}
+
+	if !validFrequencies[frequency] {
+		SetFlashMessage(w, "error", "Invalid notification frequency")
+		http.Redirect(w, r, fmt.Sprintf("/dashboard/%d/settings", site.ID), http.StatusSeeOther)
+		return
+	}
+
+	// Update the site settings
+	site.MetricsNotificationFreq = frequency
+	// Reset last notification time if changing frequency
+	if frequency != "none" {
+		site.LastMetricsSentAt = time.Now()
+	}
+
+	if err := userDb.Db.Save(&site).Error; err != nil {
+		SetFlashMessage(w, "error", "Failed to update notification settings")
+		http.Redirect(w, r, fmt.Sprintf("/dashboard/%d/settings", site.ID), http.StatusSeeOther)
+		return
+	}
+
+	SetFlashMessage(w, "success", "Metrics notification settings updated successfully")
+	http.Redirect(w, r, fmt.Sprintf("/dashboard/%d/settings", site.ID), http.StatusSeeOther)
 }

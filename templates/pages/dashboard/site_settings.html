@@ -75,6 +75,54 @@
     </div>
   </div>
 
+  <!-- Discord Metrics Notifications -->
+  {% if discordSettings.DiscordVerified %}
+  <div class="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
+    <div class="px-4 py-5 sm:px-6">
+      <h3 class="text-lg leading-6 font-medium text-gray-900">Discord Metrics Notifications</h3>
+      <p class="mt-1 max-w-2xl text-sm text-gray-500">Receive site analytics reports via Discord.</p>
+    </div>
+    <div class="border-t border-gray-200 p-4">
+      <form method="POST" action="/dashboard/{{site.ID}}/settings/metrics-notification">
+        {{ csrfField }}
+        <div class="mb-4">
+          <label for="metricsFrequency" class="block text-sm font-medium text-gray-700">Notification Frequency</label>
+          <div class="mt-1">
+            <select
+              id="metricsFrequency"
+              name="metricsFrequency"
+              class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              {% if !discordSettings.NotificationsEnabled %}disabled{% end %}
+            >
+              <option value="none" {% if site.MetricsNotificationFreq == "none" || site.MetricsNotificationFreq == "" %}selected{% end %}>Don't send metrics</option>
+              <option value="daily" {% if site.MetricsNotificationFreq == "daily" %}selected{% end %}>Daily</option>
+              <option value="weekly" {% if site.MetricsNotificationFreq == "weekly" %}selected{% end %}>Weekly</option>
+              <option value="monthly" {% if site.MetricsNotificationFreq == "monthly" %}selected{% end %}>Monthly</option>
+            </select>
+          </div>
+          <p class="mt-2 text-sm text-gray-500">
+            {% if discordSettings.NotificationsEnabled %}
+              Choose how often you'd like to receive metrics summaries for this site.
+            {% else %}
+              You need to enable Discord notifications in your account settings to receive metrics reports.
+            {% end %}
+          </p>
+        </div>
+
+        <div class="py-3 text-right">
+          <button
+            type="submit"
+            class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            {% if !discordSettings.NotificationsEnabled %}disabled{% end %}
+          >
+            Save Notification Settings
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% end %}
+
   <!-- Site URL Form -->
   <div class="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
     <div class="px-4 py-5 sm:px-6">

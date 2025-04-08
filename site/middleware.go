@@ -107,7 +107,6 @@ func SetFlashMessage(w http.ResponseWriter, messageType, message string) {
 
 	// Base64 encode the JSON to avoid issues with special characters in cookies
 	encodedValue := base64.StdEncoding.EncodeToString(flashData)
-	log.Printf("Setting flash message cookie with base64-encoded JSON: %s", encodedValue)
 
 	cookie := &http.Cookie{
 		Name:     FlashMessageCookieName,

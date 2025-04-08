@@ -36,6 +36,7 @@ func main() {
 	go notifier.StartInteractionHandler()
 	go webmention_sender.StartPeriodicChecker()
 	go startDataCleanupScheduler()
+	go startMetricsReportScheduler()
 
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
@@ -153,6 +154,7 @@ func initRouter() *chi.Mux {
 			r.With(httprate.LimitByIP(10, time.Hour)).Group(func(r chi.Router) {
 				r.Post("/settings/update", site.UpdateSiteSettings)
 				r.Post("/settings/delete", site.DeleteSite)
+				r.Post("/settings/metrics-notification", site.MetricsNotificationSettings)
 			})
 		})
 	})
@@ -263,5 +265,19 @@ func startDataCleanupScheduler() {
 
 	for range ticker.C {
 		cleanupOldData()
+	}
+}
+
+// startMetricsReportScheduler runs the metrics reporting process on a regular schedule
+func startMetricsReportScheduler() {
+	// Check for metrics reports to send every hour
+	ticker := time.NewTicker(1 * time.Hour)
+	defer ticker.Stop()
+	
+	// Run an initial check on startup
+	notifier.CheckAndSendScheduledMetricsReports()
+	
+	for range ticker.C {
+		notifier.CheckAndSendScheduledMetricsReports()
 	}
 }

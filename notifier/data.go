@@ -5,7 +5,11 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log"
+	"mochi/constants"
 	"mochi/shared_database"
+	"mochi/user_database"
+	"sort"
 	"time"
 
 	"gorm.io/gorm"
@@ -103,4 +107,303 @@ func DisconnectDiscord(username string) error {
 			"discord_verified":      false,
 			"notifications_enabled": false,
 		}).Error
+}
+
+// SendSiteMetricsSummary sends a site metrics summary to a user
+func SendSiteMetricsSummary(username string, siteID uint) error {
+	// Check if the user has metrics notifications enabled
+	settings, err := GetDiscordSettingsByUsername(username)
+	if err != nil {
+		return fmt.Errorf("error getting discord settings: %v", err)
+	}
+
+	// Check if metrics notifications are enabled
+	if !settings.DiscordVerified || !settings.NotificationsEnabled {
+		return fmt.Errorf("user has not enabled metrics notifications")
+	}
+
+	// Get the user database
+	userDb := user_database.GetDbIfExists(username)
+	if userDb == nil {
+		return fmt.Errorf("user database not found")
+	}
+
+	// Get the site
+	var site user_database.Site
+	if err := userDb.Db.First(&site, siteID).Error; err != nil {
+		return fmt.Errorf("site not found: %v", err)
+	}
+
+	// Generate metrics report based on frequency
+	var startDate time.Time
+	reportType := ""
+
+	switch site.MetricsNotificationFreq {
+	case "daily":
+		startDate = time.Now().AddDate(0, 0, -1) // Yesterday
+		reportType = "Daily"
+	case "weekly":
+		startDate = time.Now().AddDate(0, 0, -7) // Last 7 days
+		reportType = "Weekly"
+	case "monthly":
+		startDate = time.Now().AddDate(0, -1, 0) // Last 30 days
+		reportType = "Monthly"
+	default:
+		return fmt.Errorf("invalid metrics notification frequency")
+	}
+
+	// Get hits within the date range
+	var hits []user_database.Hit
+	if err := userDb.Db.Where("site_id = ? AND date >= ?", siteID, startDate).
+		Find(&hits).Error; err != nil {
+		return fmt.Errorf("error fetching hits: %v", err)
+	}
+
+	// Count unique visitors
+	uniqueVisitors := make(map[string]bool)
+	for _, hit := range hits {
+		if hit.VisitorIpUaHash != nil {
+			uniqueVisitors[*hit.VisitorIpUaHash] = true
+		}
+	}
+
+	// Count visits by page
+	pageVisits := make(map[string]int)
+	for _, hit := range hits {
+		pageVisits[hit.Path]++
+	}
+
+	// Sort pages by visit count
+	type PageCount struct {
+		Path  string
+		Count int
+	}
+	sortedPages := []PageCount{}
+	for path, count := range pageVisits {
+		sortedPages = append(sortedPages, PageCount{Path: path, Count: count})
+	}
+	sort.Slice(sortedPages, func(i, j int) bool {
+		return sortedPages[i].Count > sortedPages[j].Count
+	})
+
+	// Prepare the message
+	var topPagesStr string
+	for i, page := range sortedPages {
+		if i >= 5 { // Show top 5 pages
+			break
+		}
+		topPagesStr += fmt.Sprintf("• %s: %d visits\n", page.Path, page.Count)
+	}
+	if topPagesStr == "" {
+		topPagesStr = "No page visits recorded in this period."
+	}
+
+	// Create the formatted message
+	message := fmt.Sprintf(":chart_with_upwards_trend: **%s Metrics Summary for %s**\n\n"+
+		":calendar: Period: %s to %s\n"+
+		":eyes: Total Page Views: %d\n"+
+		":bust_in_silhouette: Unique Visitors: %d\n\n"+
+		"**Top Pages:**\n%s\n\n"+
+		"View full analytics in your dashboard: %s/dashboard/%d/analytics",
+		reportType, site.URL,
+		startDate.Format("Jan 2"), time.Now().Format("Jan 2"),
+		len(hits),
+		len(uniqueVisitors),
+		topPagesStr,
+		constants.PUBLIC_URL, siteID,
+	)
+
+	// Send the message to the user
+	return SendMessageToUsername(username, message)
+}
+
+// SendSiteMetricsReport generates and sends a metrics report for a specific site
+func SendSiteMetricsReport(username string, site user_database.Site) error {
+	// Check if the user has Discord notifications enabled
+	settings, err := GetDiscordSettingsByUsername(username)
+	if err != nil {
+		return fmt.Errorf("error getting discord settings: %v", err)
+	}
+
+	// Check if Discord notifications are enabled
+	if !settings.DiscordVerified || !settings.NotificationsEnabled {
+		return fmt.Errorf("user has not enabled Discord notifications")
+	}
+
+	// Check if metrics notifications are enabled for this site
+	if site.MetricsNotificationFreq == "" || site.MetricsNotificationFreq == "none" {
+		return fmt.Errorf("metrics notifications not enabled for this site")
+	}
+
+	// Generate metrics report based on frequency
+	var startDate time.Time
+	reportType := ""
+
+	switch site.MetricsNotificationFreq {
+	case "daily":
+		startDate = time.Now().AddDate(0, 0, -1) // Yesterday
+		reportType = "Daily"
+	case "weekly":
+		startDate = time.Now().AddDate(0, 0, -7) // Last 7 days
+		reportType = "Weekly"
+	case "monthly":
+		startDate = time.Now().AddDate(0, -1, 0) // Last 30 days
+		reportType = "Monthly"
+	default:
+		return fmt.Errorf("invalid metrics notification frequency")
+	}
+
+	// Get the user database
+	userDb := user_database.GetDbIfExists(username)
+	if userDb == nil {
+		return fmt.Errorf("user database not found")
+	}
+
+	// Get hits within the date range
+	var hits []user_database.Hit
+	if err := userDb.Db.Where("site_id = ? AND date >= ?", site.ID, startDate).
+		Find(&hits).Error; err != nil {
+		return fmt.Errorf("error fetching hits: %v", err)
+	}
+
+	// Count unique visitors
+	uniqueVisitors := make(map[string]bool)
+	for _, hit := range hits {
+		if hit.VisitorIpUaHash != nil {
+			uniqueVisitors[*hit.VisitorIpUaHash] = true
+		}
+	}
+
+	// Count visits by page
+	pageVisits := make(map[string]int)
+	for _, hit := range hits {
+		pageVisits[hit.Path]++
+	}
+
+	// Sort pages by visit count
+	type PageCount struct {
+		Path  string
+		Count int
+	}
+	sortedPages := []PageCount{}
+	for path, count := range pageVisits {
+		sortedPages = append(sortedPages, PageCount{Path: path, Count: count})
+	}
+	sort.Slice(sortedPages, func(i, j int) bool {
+		return sortedPages[i].Count > sortedPages[j].Count
+	})
+
+	// Prepare the message
+	var topPagesStr string
+	for i, page := range sortedPages {
+		if i >= 5 { // Show top 5 pages
+			break
+		}
+		topPagesStr += fmt.Sprintf("• %s: %d visits\n", page.Path, page.Count)
+	}
+	if topPagesStr == "" {
+		topPagesStr = "No page visits recorded in this period."
+	}
+
+	// Create the formatted message
+	message := fmt.Sprintf(":chart_with_upwards_trend: **%s Metrics Summary for %s**\n\n"+
+		":calendar: Period: %s to %s\n"+
+		":eyes: Total Page Views: %d\n"+
+		":bust_in_silhouette: Unique Visitors: %d\n\n"+
+		"**Top Pages:**\n%s\n\n"+
+		"View full analytics in your dashboard: %s/dashboard/%d/analytics",
+		reportType, site.URL,
+		startDate.Format("Jan 2"), time.Now().Format("Jan 2"),
+		len(hits),
+		len(uniqueVisitors),
+		topPagesStr,
+		constants.PUBLIC_URL, site.ID,
+	)
+
+	// Send the message to the user
+	return SendMessageToUsername(username, message)
+}
+
+// CheckAndSendScheduledMetricsReports checks if users need metrics reports sent
+// based on their notification frequency settings
+func CheckAndSendScheduledMetricsReports() {
+	log.Println("Checking for scheduled metrics reports...")
+
+	now := time.Now()
+
+	// Get all users with verified Discord settings
+	var allSettings []shared_database.UserDiscordSettings
+	if err := shared_database.Db.Where(
+		&shared_database.UserDiscordSettings{
+			DiscordVerified:      true,
+			NotificationsEnabled: true,
+		},
+	).Find(&allSettings).Error; err != nil {
+		log.Printf("Error fetching Discord settings: %v", err)
+		return
+	}
+
+	for _, settings := range allSettings {
+		// Get the user's database and sites
+		userDb := user_database.GetDbIfExists(settings.Username)
+		if userDb == nil {
+			log.Printf("User database not found for %s", settings.Username)
+			continue
+		}
+
+		// Get all sites for this user
+		var sites []user_database.Site
+		if err := userDb.Db.Find(&sites).Error; err != nil {
+			log.Printf("Error fetching sites for user %s: %v", settings.Username, err)
+			continue
+		}
+
+		// Check each site for whether it needs a metrics report
+		for _, site := range sites {
+			// Skip sites with no metrics notifications
+			if site.MetricsNotificationFreq == "" || site.MetricsNotificationFreq == "none" {
+				continue
+			}
+
+			// Determine if it's time to send a report based on frequency and last sent time
+			shouldSend := false
+
+			if site.LastMetricsSentAt.IsZero() {
+				// If never sent before, send it now
+				shouldSend = true
+			} else {
+				timeSinceLast := now.Sub(site.LastMetricsSentAt)
+
+				switch site.MetricsNotificationFreq {
+				case "daily":
+					shouldSend = timeSinceLast >= 24*time.Hour
+				case "weekly":
+					shouldSend = timeSinceLast >= 7*24*time.Hour
+				case "monthly":
+					shouldSend = timeSinceLast >= 30*24*time.Hour
+				}
+			}
+
+			if shouldSend {
+				// Send the metrics report
+				if err := SendSiteMetricsReport(settings.Username, site); err != nil {
+					log.Printf("Error sending metrics report for user %s, site %s: %v",
+						settings.Username, site.URL, err)
+					continue
+				}
+
+				// Update the last notification time
+				site.LastMetricsSentAt = now
+				if err := userDb.Db.Save(&site).Error; err != nil {
+					log.Printf("Error updating LastMetricsSentAt for site %s: %v",
+						site.URL, err)
+				} else {
+					log.Printf("Sent %s metrics report to %s for site %s",
+						site.MetricsNotificationFreq, settings.Username, site.URL)
+				}
+			}
+		}
+	}
+
+	log.Println("Scheduled metrics reports check complete")
 }
