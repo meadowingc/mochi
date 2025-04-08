@@ -38,10 +38,28 @@ func WebmentionsDetails(w http.ResponseWriter, r *http.Request) {
 		return allWebmentions[i].CreatedAt.After(allWebmentions[j].CreatedAt)
 	})
 
+	// Group webmentions by status
+	pendingWebmentions := []user_database.WebMention{}
+	approvedWebmentions := []user_database.WebMention{}
+	rejectedWebmentions := []user_database.WebMention{}
+
+	for _, wm := range allWebmentions {
+		switch wm.Status {
+		case "approved":
+			approvedWebmentions = append(approvedWebmentions, wm)
+		case "rejected":
+			rejectedWebmentions = append(rejectedWebmentions, wm)
+		default:
+			pendingWebmentions = append(pendingWebmentions, wm)
+		}
+	}
+
 	RenderTemplate(w, r, "pages/dashboard/webmentions/webmentions_details.html",
 		&map[string]CustomDeclaration{
-			"site":        {(*user_database.Site)(nil), site},
-			"webmentions": {(*[]user_database.WebMention)(nil), &allWebmentions},
+			"site":                {(*user_database.Site)(nil), site},
+			"pendingWebmentions":  {(*[]user_database.WebMention)(nil), &pendingWebmentions},
+			"approvedWebmentions": {(*[]user_database.WebMention)(nil), &approvedWebmentions},
+			"rejectedWebmentions": {(*[]user_database.WebMention)(nil), &rejectedWebmentions},
 		},
 	)
 }
@@ -53,6 +71,118 @@ func WebmentionSetupInstructions(w http.ResponseWriter, r *http.Request) {
 			"site": {(*user_database.Site)(nil), site},
 		},
 	)
+}
+
+// WebmentionApprove handles approving a webmention
+func WebmentionApprove(w http.ResponseWriter, r *http.Request) {
+	signedInUser := GetSignedInUserOrFail(r)
+	userDb := user_database.GetDbOrFatal(signedInUser.Username)
+	site := GetSiteFromContextOrFail(r)
+
+	// Get the webmention ID from the URL path parameter
+	webmentionID := chi.URLParam(r, "webmentionID")
+
+	// Find the webmention
+	var webmention user_database.WebMention
+	result := userDb.Db.First(&webmention, webmentionID)
+	if result.Error != nil {
+		http.Error(w, "Webmention not found", http.StatusNotFound)
+		return
+	}
+
+	// Make sure the webmention belongs to the current site
+	if webmention.SiteID != site.ID {
+		http.Error(w, "Webmention does not belong to this site", http.StatusForbidden)
+		return
+	}
+
+	// Update the status to approved
+	webmention.Status = "approved"
+	result = userDb.Db.Save(&webmention)
+	if result.Error != nil {
+		http.Error(w, "Error updating webmention: "+result.Error.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Redirect back to the webmentions page
+	http.Redirect(w, r, fmt.Sprintf("/dashboard/%d/webmentions", site.ID), http.StatusSeeOther)
+}
+
+// WebmentionReject handles rejecting a webmention
+func WebmentionReject(w http.ResponseWriter, r *http.Request) {
+	signedInUser := GetSignedInUserOrFail(r)
+	userDb := user_database.GetDbOrFatal(signedInUser.Username)
+	site := GetSiteFromContextOrFail(r)
+
+	// Get the webmention ID from the URL path parameter
+	webmentionID := chi.URLParam(r, "webmentionID")
+
+	// Find the webmention
+	var webmention user_database.WebMention
+	result := userDb.Db.First(&webmention, webmentionID)
+	if result.Error != nil {
+		http.Error(w, "Webmention not found", http.StatusNotFound)
+		return
+	}
+
+	// Make sure the webmention belongs to the current site
+	if webmention.SiteID != site.ID {
+		http.Error(w, "Webmention does not belong to this site", http.StatusForbidden)
+		return
+	}
+
+	// Update the status to rejected
+	webmention.Status = "rejected"
+	result = userDb.Db.Save(&webmention)
+	if result.Error != nil {
+		http.Error(w, "Error updating webmention: "+result.Error.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Redirect back to the webmentions page
+	http.Redirect(w, r, fmt.Sprintf("/dashboard/%d/webmentions", site.ID), http.StatusSeeOther)
+}
+
+// WebmentionChangeStatus handles changing a webmention's status
+func WebmentionChangeStatus(w http.ResponseWriter, r *http.Request) {
+	signedInUser := GetSignedInUserOrFail(r)
+	userDb := user_database.GetDbOrFatal(signedInUser.Username)
+	site := GetSiteFromContextOrFail(r)
+
+	// Get the webmention ID and new status from the URL path parameters
+	webmentionID := chi.URLParam(r, "webmentionID")
+	newStatus := chi.URLParam(r, "status")
+
+	// Validate the new status
+	if newStatus != "pending" && newStatus != "approved" && newStatus != "rejected" {
+		http.Error(w, "Invalid status", http.StatusBadRequest)
+		return
+	}
+
+	// Find the webmention
+	var webmention user_database.WebMention
+	result := userDb.Db.First(&webmention, webmentionID)
+	if result.Error != nil {
+		http.Error(w, "Webmention not found", http.StatusNotFound)
+		return
+	}
+
+	// Make sure the webmention belongs to the current site
+	if webmention.SiteID != site.ID {
+		http.Error(w, "Webmention does not belong to this site", http.StatusForbidden)
+		return
+	}
+
+	// Update the status
+	webmention.Status = newStatus
+	result = userDb.Db.Save(&webmention)
+	if result.Error != nil {
+		http.Error(w, "Error updating webmention: "+result.Error.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Redirect back to the webmentions page
+	http.Redirect(w, r, fmt.Sprintf("/dashboard/%d/webmentions", site.ID), http.StatusSeeOther)
 }
 
 func WebmentionReceive(w http.ResponseWriter, r *http.Request) {

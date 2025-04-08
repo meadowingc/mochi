@@ -127,6 +127,9 @@ func initRouter() *chi.Mux {
 
 			r.Get("/webmentions", site.WebmentionsDetails)
 			r.Get("/webmentions/setup-instructions", site.WebmentionSetupInstructions)
+			r.Post("/webmentions/{webmentionID}/approve", site.WebmentionApprove)
+			r.Post("/webmentions/{webmentionID}/reject", site.WebmentionReject)
+			r.Post("/webmentions/{webmentionID}/status/{status}", site.WebmentionChangeStatus)
 
 			r.Get("/settings", site.SiteSettingsPage)
 			r.Post("/settings/update", site.UpdateSiteSettings)
