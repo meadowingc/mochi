@@ -1357,3 +1357,125 @@ func DiscordTimezoneUpdate(w http.ResponseWriter, r *http.Request) {
 	SetFlashMessage(w, "success", "Timezone settings updated successfully")
 	http.Redirect(w, r, "/dashboard/settings", http.StatusSeeOther)
 }
+
+// PasswordResetRequestPage renders the password reset request page
+func PasswordResetRequestPage(w http.ResponseWriter, r *http.Request) {
+	RenderTemplate(w, r, "pages/user/password_reset_request.html", nil)
+}
+
+// PasswordResetRequest handles form submissions for requesting a password reset
+func PasswordResetRequest(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		SetFlashMessage(w, "error", "Failed to parse form")
+		http.Redirect(w, r, "/forgot-password", http.StatusSeeOther)
+		return
+	}
+
+	username := r.FormValue("username")
+	if username == "" {
+		SetFlashMessage(w, "error", "Username is required")
+		http.Redirect(w, r, "/forgot-password", http.StatusSeeOther)
+		return
+	}
+
+	// Generate a password reset token
+	token, err := notifier.GeneratePasswordResetToken(username)
+	if err != nil {
+		// Don't reveal whether the user exists or not for security reasons
+		SetFlashMessage(w, "success", "If the account exists, a password reset link will be sent to your Discord account if connected")
+		http.Redirect(w, r, "/forgot-password", http.StatusSeeOther)
+		return
+	}
+
+	// Try to send the token via Discord
+	err = notifier.SendPasswordResetTokenViaDiscord(username, token)
+	if err != nil {
+		// User might not have Discord connected, but don't reveal that
+		log.Printf("Error sending password reset via Discord: %v", err)
+	}
+
+	// Always show success message, even if sending failed
+	SetFlashMessage(w, "success", "If the account exists, a password reset link will be sent to your Discord account if connected")
+	http.Redirect(w, r, "/forgot-password", http.StatusSeeOther)
+}
+
+// PasswordResetPage renders the password reset form with a provided token
+func PasswordResetPage(w http.ResponseWriter, r *http.Request) {
+	token := r.URL.Query().Get("token")
+	if token == "" {
+		SetFlashMessage(w, "error", "Missing reset token")
+		http.Redirect(w, r, "/forgot-password", http.StatusSeeOther)
+		return
+	}
+
+	// Validate token (but don't consume it yet)
+	resetToken, err := notifier.ValidatePasswordResetToken(token)
+	if err != nil {
+		SetFlashMessage(w, "error", "Invalid or expired reset token")
+		http.Redirect(w, r, "/forgot-password", http.StatusSeeOther)
+		return
+	}
+
+	// data := TemplateData{
+	// 	"Token":    token,
+	// 	"Username": resetToken.Username,
+	// }
+
+	// // Get any error messages from session
+	// if errorMsg := GetFlashMessage(r, "error"); errorMsg != "" {
+	// 	data["Error"] = errorMsg
+	// }
+
+	// RenderPage(w, "user/password_reset", data)
+
+	RenderTemplate(w, r, "pages/user/password_reset.html",
+		&map[string]CustomDeclaration{
+			"resetToken": {(*shared_database.PasswordResetToken)(nil), resetToken},
+		},
+	)
+
+}
+
+// PasswordResetSubmit handles form submissions for setting a new password
+func PasswordResetSubmit(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		SetFlashMessage(w, "error", "Failed to parse form")
+		http.Redirect(w, r, "/forgot-password", http.StatusSeeOther)
+		return
+	}
+
+	token := r.FormValue("token")
+	password := r.FormValue("password")
+	confirmPassword := r.FormValue("confirm_password")
+
+	// Validate inputs
+	if token == "" {
+		SetFlashMessage(w, "error", "Missing reset token")
+		http.Redirect(w, r, "/forgot-password", http.StatusSeeOther)
+		return
+	}
+
+	if password == "" {
+		SetFlashMessage(w, "error", "Password is required")
+		http.Redirect(w, r, fmt.Sprintf("/reset-password?token=%s", token), http.StatusSeeOther)
+		return
+	}
+
+	if password != confirmPassword {
+		SetFlashMessage(w, "error", "Passwords do not match")
+		http.Redirect(w, r, fmt.Sprintf("/reset-password?token=%s", token), http.StatusSeeOther)
+		return
+	}
+
+	// Reset the password
+	err := notifier.ResetUserPassword(token, password)
+	if err != nil {
+		SetFlashMessage(w, "error", "Failed to reset password: "+err.Error())
+		http.Redirect(w, r, fmt.Sprintf("/reset-password?token=%s", token), http.StatusSeeOther)
+		return
+	}
+
+	// Password reset successful
+	SetFlashMessage(w, "success", "Password has been reset successfully. You can now log in with your new password.")
+	http.Redirect(w, r, "/user/login", http.StatusSeeOther)
+}

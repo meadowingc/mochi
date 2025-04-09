@@ -110,6 +110,16 @@ func initRouter() *chi.Mux {
 		r.HandleFunc("/logout", site.UserLogout)
 	})
 
+	// Password recovery routes with rate limiting
+	r.With(httprate.LimitByIP(10, time.Hour)).Group(func(r chi.Router) {
+		r.Use(site.CSRFMiddleware())
+		r.Use(site.CSRFTokenMiddleware)
+		r.Get("/forgot-password", site.PasswordResetRequestPage)
+		r.Post("/forgot-password", site.PasswordResetRequest)
+		r.Get("/reset-password", site.PasswordResetPage)
+		r.Post("/reset-password", site.PasswordResetSubmit)
+	})
+
 	r.With(site.AuthProtectedMiddleware).Route("/dashboard", func(r chi.Router) {
 		r.Use(site.CSRFMiddleware())
 		r.Use(site.CSRFTokenMiddleware)

@@ -39,3 +39,11 @@ type UserDiscordSettings struct {
 	Timezone                   string    `gorm:"default:'UTC'"` // User's preferred timezone for notifications
 	NotificationTime           int       `gorm:"default:19"`    // Hour of the day to send notifications (0-23, default is 7PM)
 }
+
+type PasswordResetToken struct {
+	gorm.Model
+	Username  string `gorm:"index"`
+	Token     string `gorm:"index;uniqueIndex"`
+	ExpiresAt time.Time
+	Used      bool
+}
