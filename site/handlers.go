@@ -1378,7 +1378,6 @@ func PasswordResetRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Generate a password reset token
 	token, err := notifier.GeneratePasswordResetToken(username)
 	if err != nil {
 		// Don't reveal whether the user exists or not for security reasons
@@ -1394,7 +1393,6 @@ func PasswordResetRequest(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Error sending password reset via Discord: %v", err)
 	}
 
-	// Always show success message, even if sending failed
 	SetFlashMessage(w, "success", "If the account exists, a password reset link will be sent to your Discord account if connected")
 	http.Redirect(w, r, "/forgot-password", http.StatusSeeOther)
 }
@@ -1416,18 +1414,6 @@ func PasswordResetPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// data := TemplateData{
-	// 	"Token":    token,
-	// 	"Username": resetToken.Username,
-	// }
-
-	// // Get any error messages from session
-	// if errorMsg := GetFlashMessage(r, "error"); errorMsg != "" {
-	// 	data["Error"] = errorMsg
-	// }
-
-	// RenderPage(w, "user/password_reset", data)
-
 	RenderTemplate(w, r, "pages/user/password_reset.html",
 		&map[string]CustomDeclaration{
 			"resetToken": {(*shared_database.PasswordResetToken)(nil), resetToken},
@@ -1448,7 +1434,6 @@ func PasswordResetSubmit(w http.ResponseWriter, r *http.Request) {
 	password := r.FormValue("password")
 	confirmPassword := r.FormValue("confirm_password")
 
-	// Validate inputs
 	if token == "" {
 		SetFlashMessage(w, "error", "Missing reset token")
 		http.Redirect(w, r, "/forgot-password", http.StatusSeeOther)
@@ -1467,7 +1452,6 @@ func PasswordResetSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Reset the password
 	err := notifier.ResetUserPassword(token, password)
 	if err != nil {
 		SetFlashMessage(w, "error", "Failed to reset password: "+err.Error())
@@ -1475,7 +1459,6 @@ func PasswordResetSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Password reset successful
 	SetFlashMessage(w, "success", "Password has been reset successfully. You can now log in with your new password.")
 	http.Redirect(w, r, "/user/login", http.StatusSeeOther)
 }
