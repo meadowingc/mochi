@@ -436,6 +436,7 @@
           <ul class="list-disc list-inside ml-4 mb-4">
             <li>Your site receives new webmentions</li>
             <li>Important system announcements</li>
+            <li>Password recovery assistance should you misplace your credentials</li>
           </ul>
 
           {% if discordSettings.DiscordVerifyCode %}
@@ -446,9 +447,10 @@
                 {{ discordSettings.DiscordVerifyCode }}
               </div>
               <ol class="list-decimal list-inside mb-2">
-                <li>Send this code as a direct message to our Discord bot: <span class="font-semibold">MochiBot</span></li>
+                <li>First, <a href="https://discord.com/oauth2/authorize?client_id=1345854875514437673" target="_blank" class="text-blue-600 hover:text-blue-800 underline">authorize MochiBot to send you direct messages</a></li>
+                <li>Send this code as a direct message to the bot as a direct message</li>
                 <li>The bot will verify your identity and link your accounts</li>
-                <li>Return to this page to confirm the connection</li>
+                <li>Reload this page to confirm the connection</li>
               </ol>
               <p class="text-sm text-blue-600">Code expires in 30 minutes.</p>
             </div>

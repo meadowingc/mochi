@@ -34,8 +34,6 @@ func StartInteractionHandler() {
 			return
 		}
 
-		log.Printf("DM from %s: %s", r.Author.Username, r.Content)
-
 		// Check if message looks like a verification code (trim whitespace)
 		code := strings.TrimSpace(r.Content)
 		if len(code) >= 6 && len(code) <= 12 {
