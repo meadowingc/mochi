@@ -858,8 +858,8 @@ func ReaperPostHit(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// remove rightmost slash
-		if strings.HasSuffix(pagePathParam, "/") {
+		// remove rightmost slash, but keep "/" for root path
+		if len(pagePathParam) > 1 && strings.HasSuffix(pagePathParam, "/") {
 			pagePathParam = strings.TrimRight(pagePathParam, "/")
 		}
 
