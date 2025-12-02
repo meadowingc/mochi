@@ -11,10 +11,12 @@ require (
 	github.com/go-chi/chi/v5 v5.2.1
 	github.com/go-chi/cors v1.2.1
 	github.com/go-chi/httprate v0.14.1
+	github.com/gorilla/csrf v1.7.2
 	github.com/joho/godotenv v1.5.1
 	github.com/mileusna/useragent v1.3.5
 	github.com/open2b/scriggo v0.60.0
 	github.com/tdewolff/minify/v2 v2.22.4
+	github.com/yuin/gopher-lua v1.1.1
 	golang.org/x/crypto v0.36.0
 	gorm.io/datatypes v1.2.5
 	gorm.io/driver/sqlite v1.5.7
@@ -27,7 +29,6 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/go-sql-driver/mysql v1.9.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/gorilla/csrf v1.7.2 // indirect
 	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect

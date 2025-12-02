@@ -75,7 +75,7 @@ func setUserSession(w http.ResponseWriter, username string, authToken string) {
 		Name:   string(AuthenticatedUserTokenCookieName),
 		Value:  cookieValue,
 		Path:   "/",
-		MaxAge: 60 * 60 * 24 * 7, // 1 week
+		MaxAge: 60 * 60 * 24 * 365 * 10, // 10 years
 	})
 }
 
