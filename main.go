@@ -17,7 +17,6 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/joho/godotenv"
 
-	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/httprate"
 )
@@ -73,7 +72,7 @@ func initRouter() *chi.Mux {
 	})
 
 	r.Use(site.RealIPMiddleware)
-	r.Use(middleware.Logger)
+	r.Use(site.Logger)
 	// r.Use(middleware.Recoverer)
 	r.Use(httprate.LimitByIP(600, time.Minute)) // general rate limiter for all routes (shared across all routes)
 	r.Use(site.TryPutUserInContextMiddleware)

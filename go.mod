@@ -7,7 +7,7 @@ toolchain go1.23.5
 require (
 	github.com/PuerkitoBio/goquery v1.10.2
 	github.com/bwmarrin/discordgo v0.28.1
-	github.com/go-chi/chi v1.5.5
+	github.com/fatih/color v1.18.0
 	github.com/go-chi/chi/v5 v5.2.1
 	github.com/go-chi/cors v1.2.1
 	github.com/go-chi/httprate v0.14.1
@@ -16,7 +16,6 @@ require (
 	github.com/mileusna/useragent v1.3.5
 	github.com/open2b/scriggo v0.60.0
 	github.com/tdewolff/minify/v2 v2.22.4
-	github.com/yuin/gopher-lua v1.1.1
 	golang.org/x/crypto v0.36.0
 	gorm.io/datatypes v1.2.5
 	gorm.io/driver/sqlite v1.5.7
@@ -34,6 +33,8 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/kr/pretty v0.1.0 // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-sqlite3 v1.14.24 // indirect
 	github.com/tdewolff/parse/v2 v2.7.21 // indirect
 	golang.org/x/net v0.37.0 // indirect
