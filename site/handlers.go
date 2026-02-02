@@ -198,8 +198,18 @@ func UserDashboardHome(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Calculate today's hits and total hits for each site
-	today := time.Now().Truncate(24 * time.Hour) // Start of today
+	// Get user's timezone for calculating "today"
+	tzLocation := time.UTC // Default to UTC
+	discordSettings, err := notifier.GetDiscordSettingsByUsername(signedInUser.Username)
+	if err == nil && discordSettings.Timezone != "" {
+		if loc, err := time.LoadLocation(discordSettings.Timezone); err == nil {
+			tzLocation = loc
+		}
+	}
+
+	// Calculate today's hits and total hits for each site using user's timezone
+	userLocalTime := time.Now().In(tzLocation)
+	today := time.Date(userLocalTime.Year(), userLocalTime.Month(), userLocalTime.Day(), 0, 0, 0, 0, tzLocation)
 
 	type SiteStats struct {
 		SiteID    uint
@@ -442,10 +452,20 @@ func CreateNewSite(w http.ResponseWriter, r *http.Request) {
 }
 
 func SiteAnalytics(w http.ResponseWriter, r *http.Request) {
+	signedInUser := GetSignedInUserOrFail(r)
+
+	// Get user's timezone for date calculations
+	tzLocation := time.UTC // Default to UTC
+	discordSettings, err := notifier.GetDiscordSettingsByUsername(signedInUser.Username)
+	if err == nil && discordSettings.Timezone != "" {
+		if loc, err := time.LoadLocation(discordSettings.Timezone); err == nil {
+			tzLocation = loc
+		}
+	}
+
 	// Check for minDate in query params
 	minDateStr := r.URL.Query().Get("minDate")
 	var minDate time.Time
-	var err error
 	if minDateStr != "" {
 		minDate, err = time.Parse("2006-01-02", minDateStr)
 		if err != nil {
@@ -453,7 +473,8 @@ func SiteAnalytics(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		minDate = time.Now().AddDate(0, 0, -7) // 7 days ago
+		userLocalTime := time.Now().In(tzLocation)
+		minDate = userLocalTime.AddDate(0, 0, -7) // 7 days ago in user's timezone
 	}
 
 	// Check for maxDate in query params
@@ -466,14 +487,15 @@ func SiteAnalytics(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		maxDate = time.Now() // today
+		maxDate = time.Now().In(tzLocation) // today in user's timezone
 	}
 
 	// make sure min date is the very beginning of the day and max date is the very end of the day
-	minDate = time.Date(minDate.Year(), minDate.Month(), minDate.Day(), 0, 0, 0, 0, time.UTC)
-	maxDate = time.Date(maxDate.Year(), maxDate.Month(), maxDate.Day(), 23, 59, 59, 0, time.UTC)
+	// using the user's timezone for proper day boundaries
+	minDate = time.Date(minDate.Year(), minDate.Month(), minDate.Day(), 0, 0, 0, 0, tzLocation)
+	maxDate = time.Date(maxDate.Year(), maxDate.Month(), maxDate.Day(), 23, 59, 59, 0, tzLocation)
 
-	signedInUser := GetSignedInUserOrFail(r)
+	// Note: signedInUser already retrieved above for timezone lookup
 
 	useruser_database := user_database.GetDbOrFatal(signedInUser.Username)
 
