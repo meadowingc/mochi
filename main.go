@@ -78,6 +78,11 @@ func initRouter() *chi.Mux {
 	r.Use(site.TryPutUserInContextMiddleware)
 	r.Use(site.FlashMiddleware)
 
+	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		site.RenderTemplate(w, r, "pages/not_found.html", nil)
+	})
+
 	fileServer := http.FileServer(http.Dir("./assets"))
 	r.Handle("/assets/*", http.StripPrefix("/assets", fileServer))
 
@@ -173,6 +178,8 @@ func initRouter() *chi.Mux {
 		r.Route("/reaper/{username}", func(r chi.Router) {
 			r.Get("/embed/{siteID}.js", site.ReaperGetEmbedJs)
 			r.Post("/{siteID}", site.ReaperPostHit)
+			r.Get("/{siteID}/kudo", site.ReaperGetKudos)
+			r.With(httprate.LimitByIP(30, time.Minute)).Post("/{siteID}/kudo", site.ReaperPostKudo)
 		})
 
 		r.Route("/webmention/{username}/{siteId}", func(r chi.Router) {
@@ -245,6 +252,11 @@ func cleanupOldData() {
 			} else {
 				hitsDeleted = result.RowsAffected
 				totalHitsDeleted += hitsDeleted
+			}
+
+			// Delete kudos older than the cutoff date
+			if result := userDB.Db.Where("site_id = ? AND date < ?", siteData.ID, cutoffDate).Delete(&user_database.Kudo{}); result.Error != nil {
+				log.Printf("Error deleting old kudos for site %d: %v", siteData.ID, result.Error)
 			}
 
 			// Update the LastDataCleanupDate field

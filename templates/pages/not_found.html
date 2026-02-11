@@ -1,0 +1,15 @@
+{% extends "/layouts/standard.html" %}
+
+{% macro Title %}Page Not Found{% end %}
+
+{% macro Body %}
+  <div class="mt-16 text-center">
+    <h2 class="mt-4 text-xl font-semibold text-gray-700">Page not found</h2>
+    <p class="mt-2 text-gray-500">The page you're looking for doesn't exist or has been moved.</p>
+    <div class="mt-8">
+      <a href="/" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700">
+        Go Home
+      </a>
+    </div>
+  </div>
+{% end %}

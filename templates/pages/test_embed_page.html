@@ -3,17 +3,28 @@
 {% macro Title %}Test embed page for site 1{% end %}
 
 {% macro Body %}
-  <script src="{{publicURL}}/reaper/{{signedInUser.Username}}/embed/1.js" async></script>
+  <script src="{{publicURL}}/reaper/{{signedInUser.Username}}/embed/1.js?kudos" async></script>
   <div class="m-4 mb-8">
     <div class="bg-white shadow-md rounded-lg p-6">
       <h2 class="text-xl font-bold">Hi!</h2>
       <div class="mt-2 text-gray-700">
         <p class="mb-2">
-          [DEV] Page to test the embed code</span>
+          [DEV] Page to test the embed code
         </p>
         <p class="mb-2">
           This page embeds the <code>site 1</code> analytics script.
         </p>
+        <p class="mt-4">
+          <strong>Kudos test:</strong>
+          <button class="mochi_kudos px-4 py-2 border border-gray-300 rounded-md cursor-pointer bg-white hover:bg-gray-50 transition-colors text-sm"></button>
+        </p>
+        <style>
+          .mochi_kudos.did_kudo {
+            background-color: #f0fdf4;
+            border-color: #86efac;
+            color: #166534;
+          }
+        </style>
       </div>
     </div>
   </div>

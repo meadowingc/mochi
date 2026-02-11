@@ -44,4 +44,61 @@
       </div>
     </div>
   </div>
+
+  <div class="m-4 mb-8">
+    <div class="bg-white shadow-md rounded-lg p-6">
+      <h2 class="text-xl font-bold">Kudos (Likes)</h2>
+      <div class="mt-2 text-gray-700">
+        <p class="mb-2">
+          Add a kudos button to your pages so visitors can show their appreciation. It's a great way to see how many real humans engaged with your content.
+        </p>
+
+        <h3 class="text-lg font-semibold mb-2 mt-4">1. Enable kudos in your embed script</h3>
+        <p class="mb-2">
+          Add <code class="bg-gray-200 text-red-600 px-1 rounded">?kudos</code> to your embed script URL:
+        </p>
+        <code class="bg-gray-800 text-white p-4 rounded-lg block overflow-x-auto mb-4 mt-4">
+          &lt;script src="{{publicURL}}/reaper/{{escapePath(signedInUser.Username)}}/embed/{{site.ID}}.js?kudos" async&gt;&lt;/script&gt;
+        </code>
+
+        <h3 class="text-lg font-semibold mb-2 mt-4">2. Add a kudos button to your page</h3>
+        <p class="mb-2">
+          Place a button with the <code class="bg-gray-200 text-red-600 px-1 rounded">mochi_kudos</code> class wherever you'd like the kudos button to appear:
+        </p>
+        <code class="bg-gray-800 text-white p-4 rounded-lg block overflow-x-auto mb-4 mt-4">
+          &lt;button class="mochi_kudos"&gt;&lt;/button&gt;
+        </code>
+        <p class="mb-4">
+          The button will automatically show the current kudos count (e.g. "👋 42"). Visitors can click it once per page — their choice is stored in the browser.
+        </p>
+
+        <h3 class="text-lg font-semibold mb-2 mt-4">Options</h3>
+        <ul class="list-disc list-inside mb-4 space-y-2">
+          <li>
+            <strong>Custom emoji:</strong> Use <code class="bg-gray-200 text-red-600 px-1 rounded">?kudos=❤️</code> to change the default 👋 emoji.
+          </li>
+          <li>
+            <strong>Custom styling:</strong> Use <code class="bg-gray-200 text-red-600 px-1 rounded">?kudos=custom</code> to get only the count number, so you can style the button yourself.
+          </li>
+          <li>
+            <strong>Multiple buttons:</strong> On index pages with multiple posts, use <code class="bg-gray-200 text-red-600 px-1 rounded">data-path</code> to specify which page each button belongs to:
+            <code class="bg-gray-800 text-white p-4 rounded-lg block overflow-x-auto mt-2">
+              &lt;button class="mochi_kudos" data-path="/blog/my-post"&gt;&lt;/button&gt;
+            </code>
+          </li>
+          <li>
+            <strong>Private kudos:</strong> Add <code class="bg-gray-200 text-red-600 px-1 rounded">data-private="true"</code> to hide the count from visitors. You'll still see it in your dashboard.
+          </li>
+        </ul>
+
+        <h3 class="text-lg font-semibold mb-2 mt-4">Styling</h3>
+        <p class="mb-2">
+          When a visitor gives kudos, the button gets the <code class="bg-gray-200 text-red-600 px-1 rounded">did_kudo</code> CSS class and becomes disabled. Use this class to style the active state. For example:
+        </p>
+        <code class="bg-gray-800 text-white p-4 rounded-lg block overflow-x-auto mb-4 mt-2">
+          .mochi_kudos.did_kudo { background-color: #f0fdf4; border-color: #86efac; }
+        </code>
+      </div>
+    </div>
+  </div>
 {% end %}

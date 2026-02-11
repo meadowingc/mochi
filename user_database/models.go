@@ -48,3 +48,11 @@ type WebMention struct {
 	TargetURL string
 	Status    string
 }
+
+type Kudo struct {
+	gorm.Model
+	SiteID          uint      `gorm:"index;uniqueIndex:idx_kudo_dedup"`
+	Path            string    `gorm:"uniqueIndex:idx_kudo_dedup"`
+	Date            time.Time
+	VisitorIpUaHash *string   `gorm:"uniqueIndex:idx_kudo_dedup"`
+}

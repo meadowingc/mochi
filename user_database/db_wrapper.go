@@ -187,6 +187,7 @@ func getCachedOrCreateDB(username string) *UserDb {
 		&Site{},
 		&Hit{},
 		&WebMention{},
+		&Kudo{},
 	)
 	if err != nil {
 		log.Fatalf("failed to migrate database: %v", err)

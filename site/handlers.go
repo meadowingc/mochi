@@ -3,6 +3,7 @@ package site
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"log"
 	"mochi/constants"
@@ -625,6 +626,21 @@ func SiteAnalytics(w http.ResponseWriter, r *http.Request) {
 	}
 
 	numUniqueVisitors := len(uniqueVisitors)
+
+	// Query kudos within the date range for this site
+	var kudos []user_database.Kudo
+	useruser_database.Db.Where(
+		"site_id = ? AND date >= ? AND date <= ?", site.ID, minDate, maxDate,
+	).Find(&kudos)
+
+	countsForKudos := make(map[string]int)
+	for _, kudo := range kudos {
+		if kudo.Path != "" {
+			countsForKudos[kudo.Path]++
+		}
+	}
+	totalKudos := len(kudos)
+
 	RenderTemplate(w, r, "pages/dashboard/analytics/analytics_details.html",
 		&map[string]CustomDeclaration{
 			"site":                    {(*user_database.Site)(nil), site},
@@ -632,12 +648,14 @@ func SiteAnalytics(w http.ResponseWriter, r *http.Request) {
 			"maxDate":                 {(*time.Time)(nil), &maxDate},
 			"hits":                    {(*[]user_database.Hit)(nil), &hits},
 			"numUniqueVisitors":       {(*int)(nil), &numUniqueVisitors},
+			"totalKudos":              {(*int)(nil), &totalKudos},
 			"sortedCountsForPath":     makeSortedDeclaration(countsForPath),
 			"sortedCountsForReferrer": makeSortedDeclaration(countsForReferrer),
 			"sortedCountsForCountry":  makeSortedDeclaration(countryCountsWithEmoji),
 			"sortedCountsForOS":       makeSortedDeclaration(countsForOS),
 			"sortedCountsForBrowser":  makeSortedDeclaration(countsForBrowser),
 			"sortedCountsForDevice":   makeSortedDeclaration(countsForDevice),
+			"sortedCountsForKudos":    makeSortedDeclaration(countsForKudos),
 			"visitsByDay":             {(*map[string]int)(nil), &visitsByDay},
 			"graphDays":               {(*[]string)(nil), &graphDays},
 			"graphVisits":             {(*[]int)(nil), &graphVisits},
@@ -784,6 +802,12 @@ func DeleteSite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := userDb.Db.Unscoped().Where("site_id = ?", site.ID).Delete(&user_database.Kudo{}).Error; err != nil {
+		SetFlashMessage(w, "error", fmt.Sprintf("Failed to delete site kudos: %s", err))
+		http.Redirect(w, r, fmt.Sprintf("/dashboard/%d/settings", site.ID), http.StatusSeeOther)
+		return
+	}
+
 	// Now delete the site itself - PERMANENT DELETE
 	if err := userDb.Db.Unscoped().Delete(site).Error; err != nil {
 		SetFlashMessage(w, "error", fmt.Sprintf("Failed to delete site: %s", err))
@@ -856,11 +880,23 @@ func ReaperGetEmbedJs(w http.ResponseWriter, r *http.Request) {
 		countryFlagsStr += countryCodeToFlagEmoji(code)
 	}
 
+	// Parse kudos query params from the script src URL
+	_, kudosParamExists := r.URL.Query()["kudos"]
+	kudosEmoji := "👋"
+	if kudosParamExists {
+		if customEmoji := r.URL.Query().Get("kudos"); customEmoji != "" {
+			kudosEmoji = customEmoji
+		}
+	}
+
+	w.Header().Set("Cache-Control", "public, max-age=300")
 	RenderTemplate(w, r, "pages/reaper/embed/reaper_embed.js",
 		&map[string]CustomDeclaration{
 			"site":          {(*user_database.Site)(nil), &site},
 			"ownerUsername": {(*string)(nil), &username},
 			"countryFlags":  {(*string)(nil), &countryFlagsStr},
+			"kudosEnabled":  {(*bool)(nil), &kudosParamExists},
+			"kudosEmoji":    {(*string)(nil), &kudosEmoji},
 		},
 	)
 }
@@ -939,18 +975,18 @@ func ReaperPostHit(w http.ResponseWriter, r *http.Request) {
 
 		if referrerParam != nil {
 			referrerURL, err := url.Parse(*referrerParam)
-			if err != nil {
-				log.Printf("ReaperPostHit: Unable to parse referrer URL: %s", *referrerParam)
-				return
-			}
-
-			// if the referer is the same as the site URL, then it's likely a self visit and we should set the referrer to nil
-			if referrerURL.Host == siteURL.Host {
+			if err != nil || referrerURL.Host == "" {
+				// Malformed or relative URL — drop the referrer, but still record the hit
+				referrerParam = nil
+			} else if referrerURL.Host == siteURL.Host {
+				// Self-referral — drop
 				referrerParam = nil
 			} else {
-				// Standardize the protocol to https
+				// Standardize: force https, strip query params/fragment, strip trailing slash
 				referrerURL.Scheme = "https"
-				standardizedReferrer := referrerURL.String()
+				referrerURL.RawQuery = ""
+				referrerURL.Fragment = ""
+				standardizedReferrer := strings.TrimRight(referrerURL.String(), "/")
 				referrerParam = &standardizedReferrer
 			}
 		}
@@ -1483,4 +1519,189 @@ func PasswordResetSubmit(w http.ResponseWriter, r *http.Request) {
 
 	SetFlashMessage(w, "success", "Password has been reset successfully. You can now log in with your new password.")
 	http.Redirect(w, r, "/user/login", http.StatusSeeOther)
+}
+
+func ReaperGetKudos(w http.ResponseWriter, r *http.Request) {
+	pathParam := r.URL.Query().Get("path")
+	if pathParam == "" {
+		http.Error(w, "Path parameter is required", http.StatusBadRequest)
+		return
+	}
+
+	// Remove trailing slash, but keep "/" for root path
+	if len(pathParam) > 1 && strings.HasSuffix(pathParam, "/") {
+		pathParam = strings.TrimRight(pathParam, "/")
+	}
+
+	escapedUsername := chi.URLParam(r, "username")
+	escapedUsername = strings.TrimSpace(escapedUsername)
+
+	username, err := url.PathUnescape(escapedUsername)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error unescaping username '%s': %v", escapedUsername, err), http.StatusBadRequest)
+		return
+	}
+
+	siteID := chi.URLParam(r, "siteID")
+
+	userDb := user_database.GetDbIfExists(username)
+	if userDb == nil {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	var site user_database.Site
+	result := userDb.Db.First(&site, siteID)
+	if result.Error != nil {
+		http.Error(w, "Site not found", http.StatusNotFound)
+		return
+	}
+
+	// Validate origin
+	urlOfIncomingRequest := r.Header.Get("origin")
+	if urlOfIncomingRequest == "" {
+		urlOfIncomingRequest = r.Header.Get("referer")
+	}
+
+	if urlOfIncomingRequest != "" {
+		siteURL, err := url.Parse(site.URL)
+		if err != nil {
+			http.Error(w, "Invalid site URL", http.StatusInternalServerError)
+			return
+		}
+
+		incomingURL, err := url.Parse(urlOfIncomingRequest)
+		if err != nil {
+			http.Error(w, "Invalid origin URL", http.StatusBadRequest)
+			return
+		}
+
+		if siteURL.Host != incomingURL.Host &&
+			!(constants.DEBUG_MODE && strings.Contains(constants.PUBLIC_URL, incomingURL.Host)) {
+			http.Error(w, "Origin mismatch", http.StatusForbidden)
+			return
+		}
+	}
+
+	var count int64
+	userDb.Db.Model(&user_database.Kudo{}).Where("site_id = ? AND path = ?", site.ID, pathParam).Count(&count)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]int64{"count": count})
+}
+
+func ReaperPostKudo(w http.ResponseWriter, r *http.Request) {
+	pathParam := r.URL.Query().Get("path")
+	if pathParam == "" {
+		http.Error(w, "Path parameter is required", http.StatusBadRequest)
+		return
+	}
+
+	// Remove trailing slash, but keep "/" for root path
+	if len(pathParam) > 1 && strings.HasSuffix(pathParam, "/") {
+		pathParam = strings.TrimRight(pathParam, "/")
+	}
+
+	escapedUsername := chi.URLParam(r, "username")
+	escapedUsername = strings.TrimSpace(escapedUsername)
+
+	username, err := url.PathUnescape(escapedUsername)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error unescaping username '%s': %v", escapedUsername, err), http.StatusBadRequest)
+		return
+	}
+
+	siteID := chi.URLParam(r, "siteID")
+
+	userDb := user_database.GetDbIfExists(username)
+	if userDb == nil {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	var site user_database.Site
+	result := userDb.Db.First(&site, siteID)
+	if result.Error != nil {
+		http.Error(w, "Site not found", http.StatusNotFound)
+		return
+	}
+
+	// Validate origin
+	urlOfIncomingRequest := r.Header.Get("origin")
+	if urlOfIncomingRequest == "" {
+		urlOfIncomingRequest = r.Header.Get("referer")
+	}
+
+	if urlOfIncomingRequest != "" {
+		siteURL, err := url.Parse(site.URL)
+		if err != nil {
+			http.Error(w, "Invalid site URL", http.StatusInternalServerError)
+			return
+		}
+
+		incomingURL, err := url.Parse(urlOfIncomingRequest)
+		if err != nil {
+			http.Error(w, "Invalid origin URL", http.StatusBadRequest)
+			return
+		}
+
+		if siteURL.Host != incomingURL.Host &&
+			!(constants.DEBUG_MODE && strings.Contains(constants.PUBLIC_URL, incomingURL.Host)) {
+			http.Error(w, "Origin mismatch", http.StatusForbidden)
+			return
+		}
+	}
+
+	// Compute visitor hash for server-side dedup
+	userAgent := r.Header.Get("User-Agent")
+	userIp := r.Header.Get("CF-Connecting-IP")
+	if userIp == "" {
+		userIp = r.Header.Get("X-Forwarded-For")
+	}
+
+	var visitorHash *string
+	if userIp != "" {
+		hash := sha256.Sum256([]byte(userIp + userAgent))
+		hashString := hex.EncodeToString(hash[:])
+		visitorHash = &hashString
+	}
+
+	// Server-side dedup: check if this visitor already gave kudos to this path
+	if visitorHash != nil {
+		var existingCount int64
+		userDb.Db.Model(&user_database.Kudo{}).Where(
+			"site_id = ? AND path = ? AND visitor_ip_ua_hash = ?",
+			site.ID, pathParam, *visitorHash,
+		).Count(&existingCount)
+
+		if existingCount > 0 {
+			// Already gave kudos — return current count without creating a new one
+			var count int64
+			userDb.Db.Model(&user_database.Kudo{}).Where("site_id = ? AND path = ?", site.ID, pathParam).Count(&count)
+
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]int64{"count": count})
+			return
+		}
+	}
+
+	kudo := user_database.Kudo{
+		SiteID:          site.ID,
+		Path:            pathParam,
+		Date:            time.Now(),
+		VisitorIpUaHash: visitorHash,
+	}
+
+	result = userDb.Db.Create(&kudo)
+	if result.Error != nil {
+		log.Printf("ReaperPostKudo: Error saving kudo: %v", result.Error)
+		http.Error(w, "Error saving kudo", http.StatusInternalServerError)
+		return
+	}
+
+	var count int64
+	userDb.Db.Model(&user_database.Kudo{}).Where("site_id = ? AND path = ?", site.ID, pathParam).Count(&count)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]int64{"count": count})
 }

@@ -76,4 +76,85 @@
   if (countriesElement) {
     countriesElement.innerHTML = "{{countryFlags}}";
   }
+
+  {% if kudosEnabled %}
+  // Kudos functionality
+  (function() {
+    const kudosEndpoint = "{{publicURL}}/reaper/{{ownerUsername}}/{{site.ID}}/kudo";
+    const kudosEmoji = "{{kudosEmoji}}";
+    const siteID = "{{site.ID}}";
+
+    function getKudosStorageKey(path) {
+      return "mochi_kudos_" + siteID + "_" + path;
+    }
+
+    function initKudosButtons() {
+      const buttons = document.querySelectorAll(".mochi_kudos");
+      if (buttons.length === 0) return;
+
+      buttons.forEach(function(button) {
+        const path = button.getAttribute("data-path") || window.location.pathname;
+        const isPrivate = button.getAttribute("data-private") === "true";
+        const alreadyKudoed = localStorage.getItem(getKudosStorageKey(path)) != null;
+
+        // Set initial state
+        if (alreadyKudoed) {
+          button.classList.add("did_kudo");
+          button.disabled = true;
+        }
+
+        // Fetch current count
+        fetch(kudosEndpoint + "?path=" + encodeURIComponent(path))
+          .then(function(res) { return res.json(); })
+          .then(function(data) {
+            var count = data.count || 0;
+            if (kudosEmoji === "custom") {
+              button.textContent = isPrivate ? "" : String(count);
+            } else {
+              button.textContent = isPrivate ? kudosEmoji : kudosEmoji + " " + count;
+            }
+          })
+          .catch(function() {
+            if (kudosEmoji !== "custom") {
+              button.textContent = kudosEmoji;
+            }
+          });
+
+        // Handle click
+        if (!alreadyKudoed) {
+          button.addEventListener("click", function() {
+            if (button.disabled) return;
+
+            button.disabled = true;
+            button.classList.add("did_kudo");
+
+            fetch(kudosEndpoint + "?path=" + encodeURIComponent(path), { method: "POST" })
+              .then(function(res) { return res.json(); })
+              .then(function(data) {
+                localStorage.setItem(getKudosStorageKey(path), "true");
+                var count = data.count || 0;
+                if (kudosEmoji === "custom") {
+                  button.textContent = isPrivate ? "" : String(count);
+                } else {
+                  button.textContent = isPrivate ? kudosEmoji : kudosEmoji + " " + count;
+                }
+              })
+              .catch(function() {
+                // Re-enable on error
+                button.disabled = false;
+                button.classList.remove("did_kudo");
+              });
+          });
+        }
+      });
+    }
+
+    // Run when DOM is ready
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", initKudosButtons);
+    } else {
+      initKudosButtons();
+    }
+  })();
+  {% end %}
 })()
