@@ -3,64 +3,53 @@
 {% macro Title %}Home{% end %}
 
 {% macro Body %}
-  <div class="m-4 mb-8">
-    <div class="bg-white shadow-md rounded-lg p-6">
-      <h2 class="text-2xl font-bold text-center">🍡 Mochi - Minimalist Analytics</h2>
-      <p class="text-center text-gray-600 mt-2">Lightweight, privacy-focused web analytics for the IndieWeb</p>
-
-      <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mt-5" role="alert">
-        <p class="font-bold">🚧 Under construction 🚧</p>
-        <p>mochi is still a work in progress. I already use it as my main analytics platform, but it's missing many quality of life features, and some functionality is only partially done.</p>
-      </div>
-
-      <div class="mt-6 text-gray-700">
-        <p class="mt-2">
-          The web is becoming increasingly centralized, and most analytics services either invade privacy or are built for businesses, not individuals.
-          I created Mochi because I wanted something <span class="font-bold">minimal</span>, <span class="font-bold">private</span>, and <span class="font-bold">simple</span>. Something that could fit the necessities of the open web.
-        </p>
-        <p class="mt-2">
-          Originally I started this project since I was interested in trying my hand at implementing an analytics service, as well as to test out in practice some technical ideas I was curious about. It eventually expanded in scope and now it also supports something that I think is still drastically underused: webmentions.
-        </p>
-        <p class="mt-2">
-          I mostly created this for myself, but I hope it can be useful to others too. I did my best to try and make the platform as easy as possible to use, with my main aim being that of giving another option to non-technical users.
-        </p>
-      </div>
-
-      <div class="mt-6 text-gray-700">
-        <h3 class="text-lg font-bold">What is Mochi?</h3>
-        <p class="mt-2">
-          Mochi has two parts. One is a lightweight analytics service designed for personal blogs and small projects. It provides essential insights without tracking invasive data—no cookies, no profiling, just simple stats.
-        </p>
-        <p class="mt-2">
-          The second part is a webmention system that handles both sending and receiving. It automatically sends webmentions from your site to others and collects mentions your site receives from across the web. In my opinion, webmentions are a great idea but they're thoroughly underused. Especially by non-technical users. I hope that by making it easier to use, more people will start using them.
-        </p>
-      </div>
-
-      <div class="mt-6 text-gray-700">
-        <h3 class="text-lg font-bold">Who is Mochi for?</h3>
-        <p class="mt-2">
-          If you have a personal website, blog, or creative project, Mochi is for you. This service is free for non-commercial use in the IndieWeb community. If you're unsure about whether your site is allowed then feel free to <a href="https://meadow.cafe/mailbox/" class="text-blue-500 underline">reach out</a>.
-        </p>
-      </div>
-
-
-      <div class="mt-6 text-gray-700">
-        <p class="mt-7 text-center">
-          <a href="/user/register" class="text-white bg-indigo-600 hover:bg-indigo-700 px-6 py-3 rounded-md shadow-sm text-sm font-medium">Get Started</a>
-        </p>
-      </div>
-
-      <div class="mt-9 p-4 bg-gray-100 rounded-lg">
-        <h3 class="text-lg font-bold">A Note on Stability</h3>
-        <p class="mt-2">
-          Mochi is an experimental service, and I can't guarantee long-term stability.
-          If you need a more reliable solution with guaranteed uptime and data retention,
-          consider using a more mature service like <a class="text-blue-500 underline" href="https://tinylytics.app">Tinylytics</a> (from which Mochi derives a lot of inspiration).
-        </p>
-        <p class="mt-2">
-           Mochi isn't here to compete—it exists to provide an open source, potentially self-hostable alternative for those who love the open web.
-        </p>
-      </div>
+  <!-- Hero -->
+  <div class="text-center pt-10 sm:pt-14 pb-6">
+    <h1 class="text-4xl sm:text-5xl font-bold text-gray-900 tracking-tight">🍡 Mochi</h1>
+    <p class="mt-3 text-lg sm:text-xl text-gray-500 max-w-2xl mx-auto">Simple, privacy-focused analytics and webmentions for the IndieWeb.</p>
+    <div class="mt-3">
+      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">🚧 Work in progress</span>
     </div>
+    <div class="mt-5">
+      <a href="/user/register" class="inline-flex items-center px-6 py-3 text-base font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition-colors">Get Started</a>
+    </div>
+  </div>
+
+  <!-- Features -->
+  <div class="max-w-3xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-5 px-4">
+    <div class="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+      <div class="flex items-center mb-2">
+        <div class="bg-indigo-50 rounded-lg p-2 mr-3">
+          <svg class="h-5 w-5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+        </div>
+        <h2 class="text-lg font-semibold text-gray-900">Analytics</h2>
+      </div>
+      <p class="text-gray-600 text-sm leading-relaxed">Lightweight visitor stats for personal sites and blogs. No cookies, no profiling—just the essentials: page views, referrers, countries, and devices.</p>
+    </div>
+
+    <div class="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+      <div class="flex items-center mb-2">
+        <div class="bg-indigo-50 rounded-lg p-2 mr-3">
+          <svg class="h-5 w-5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          </svg>
+        </div>
+        <h2 class="text-lg font-semibold text-gray-900">Webmentions</h2>
+      </div>
+      <p class="text-gray-600 text-sm leading-relaxed">Send and receive webmentions automatically. Connect your site to the broader IndieWeb without any technical setup required.</p>
+    </div>
+  </div>
+
+  <!-- Who is it for + stability note -->
+  <div class="max-w-2xl mx-auto text-center pt-6 pb-2 space-y-2 px-4">
+    <p class="text-gray-500 text-sm">
+      Free for non-commercial personal sites and blogs. Not sure if your site qualifies? <a href="https://meadow.cafe/mailbox/" class="text-indigo-600 hover:text-indigo-700 underline">Just ask</a>.
+    </p>
+    <p class="text-xs text-gray-400">
+      Mochi is experimental—for something more mature, try <a class="underline hover:text-gray-500" href="https://tinylytics.app">Tinylytics</a>.
+      Mochi is <a class="underline hover:text-gray-500" href="https://codeberg.org/meadowingc/mochi">open source</a> and exists as an alternative for those who love the open web.
+    </p>
   </div>
 {% end %}

@@ -10,10 +10,10 @@
       {% if len(pathToCounts) == 0 %}
         <p>No data</p>
       {% else %}
-        <ul class="mt-2">
-          <li class="flex items-center justify-between py-2 px-4 border-b border-gray-200 bg-white">
-            <span class="font-bold">{{keyColumn}}</span>
-            <span class="font-bold">{{valueColumn}}</span>
+        <ul class="mt-2 max-h-96 overflow-y-auto rounded-lg border border-gray-200">
+          <li class="flex items-center justify-between py-2 px-4 border-b border-gray-200 bg-white sticky top-0 z-10">
+            <span class="font-bold text-sm text-gray-600">{{keyColumn}}</span>
+            <span class="font-bold text-sm text-gray-600">{{valueColumn}}</span>
           </li>
           {% for path_i, pdata := range pathToCounts %}
             {% bgColor := "bg-white" %}
@@ -62,7 +62,7 @@
   <div class="mt-2">
     <a
       href="/dashboard/{{site.ID}}/analytics/embed-instructions"
-      class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+      class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
     >
       Embed Instructions
     </a>
@@ -103,20 +103,20 @@
             </div>
           </div>
         </form>
-        <div class="mt-4 flex flex-wrap space-y-4 sm:space-y-0 sm:space-x-4">
-          <button onclick="setPreset('today')" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 cursor-pointer">
+        <div class="mt-4 flex flex-wrap gap-2">
+          <button onclick="setPreset('today')" class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 cursor-pointer transition-colors">
             Today
           </button>
-          <button onclick="setPreset('lastWeek')" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 cursor-pointer">
+          <button onclick="setPreset('lastWeek')" class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 cursor-pointer transition-colors">
             Last Week
           </button>
-          <button onclick="setPreset('lastMonth')" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 cursor-pointer">
+          <button onclick="setPreset('lastMonth')" class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 cursor-pointer transition-colors">
             Last Month
           </button>
-          <button onclick="setPreset('pastYear')" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 cursor-pointer">
+          <button onclick="setPreset('pastYear')" class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 cursor-pointer transition-colors">
             Past Year
           </button>
-          <button id="clearFiltersButton" onclick="clearAllFilters()" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 cursor-pointer">
+          <button id="clearFiltersButton" onclick="clearAllFilters()" class="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md text-red-600 hover:text-red-700 hover:bg-red-50 cursor-pointer transition-colors">
             Clear All Filters
           </button>
         </div>
@@ -214,12 +214,12 @@
       console.log("Has active filters:", hasFilters);
 
       if (!hasFilters) {
-        clearButton.classList.remove('bg-red-600', 'hover:bg-red-700');
-        clearButton.classList.add('bg-gray-400', 'cursor-not-allowed');
+        clearButton.classList.add('text-gray-300', 'cursor-not-allowed');
+        clearButton.classList.remove('text-red-600', 'hover:text-red-700', 'hover:bg-red-50');
         clearButton.disabled = true;
       } else {
-        clearButton.classList.remove('bg-gray-400', 'cursor-not-allowed');
-        clearButton.classList.add('bg-red-600', 'hover:bg-red-700', 'cursor-pointer');
+        clearButton.classList.remove('text-gray-300', 'cursor-not-allowed');
+        clearButton.classList.add('text-red-600', 'hover:text-red-700', 'hover:bg-red-50', 'cursor-pointer');
         clearButton.disabled = false;
       }
     }
@@ -304,8 +304,8 @@
             {
               label: "Visits",
               data: data,
-              backgroundColor: "rgba(75, 192, 192, 0.2)",
-              borderColor: "rgba(75, 192, 192, 1)",
+              backgroundColor: "rgba(99, 102, 241, 0.15)",
+              borderColor: "rgba(99, 102, 241, 0.8)",
               borderWidth: 1,
             },
           ],

@@ -3,11 +3,11 @@
 {% macro Title %}Login{% end %}
 
 {% macro Body %}
-<div class="max-w-md mx-auto mt-10 bg-white p-8 rounded-lg shadow-md">
+<div class="max-w-sm mx-auto mt-16">
   <h1 class="text-2xl font-bold mb-6 text-center">Login</h1>
-  <form action="/user/login" method="POST">
+  <form action="/user/login" method="POST" class="space-y-4">
     {{ csrfField }}
-    <div class="mb-4">
+    <div>
       <label for="username" class="block text-sm font-medium text-gray-700">Username</label>
       <input
         type="text"
@@ -17,7 +17,7 @@
         class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
       />
     </div>
-    <div class="mb-6">
+    <div>
       <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
       <input
         type="password"
@@ -27,26 +27,18 @@
         class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
       />
       <div class="mt-1 text-right">
-        <a href="/forgot-password" class="text-sm text-indigo-600 hover:text-indigo-800">Forgot password?</a>
+        <a href="/forgot-password" class="text-xs text-gray-400 hover:text-gray-600">Forgot password?</a>
       </div>
     </div>
-    <div class="flex justify-between items-center">
-      <button
-        type="submit"
-        class="w-full inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-      >
-        Login
-      </button>
-    </div>
-  </form>
-  <div class="mt-4 text-center">
-    <p class="text-sm text-gray-600">Don't have an account?</p>
-    <a
-      href="/user/register"
-      class="mt-2 inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+    <button
+      type="submit"
+      class="w-full py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 cursor-pointer"
     >
-      Register
-    </a>
-  </div>
+      Login
+    </button>
+  </form>
+  <p class="mt-6 text-center text-sm text-gray-500">
+    Don't have an account? <a href="/user/register" class="text-indigo-600 hover:text-indigo-700 font-medium">Register</a>
+  </p>
 </div>
 {% end %}
