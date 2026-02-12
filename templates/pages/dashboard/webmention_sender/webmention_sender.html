@@ -3,202 +3,140 @@
 {% macro Title %}Webmention Sender{% end %}
 
 {% macro Body %}
-  <h1 class="text-3xl font-bold leading-tight text-gray-900">Webmention Sender</h1>
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+    <h1 class="text-xl font-bold text-gray-900">Webmention Sender</h1>
+  </div>
 
-  <!-- Navigation tabs -->
-  <div class="mt-6 border-b border-gray-200">
-    <nav class="-mb-px flex space-x-8">
-      <a href="/dashboard" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm cursor-pointer">
+  <!-- Tabs -->
+  <div class="mt-3 border-b border-gray-200">
+    <nav class="-mb-px flex space-x-6">
+      <a href="/dashboard" class="border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300 whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm cursor-pointer transition-colors">
         Sites
       </a>
-      <a href="/dashboard/webmention-sender" class="border-indigo-500 text-indigo-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm cursor-pointer">
+      <a href="/dashboard/webmention-sender" class="border-indigo-500 text-indigo-600 whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm cursor-pointer">
         Webmention Sender
       </a>
-      <a href="/dashboard/settings" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm cursor-pointer">
+      <a href="/dashboard/settings" class="border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300 whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm cursor-pointer transition-colors">
         Settings
       </a>
     </nav>
   </div>
 
-  <!-- Process single URL immediately -->
-  <div class="mt-6 p-4 bg-gray-50 rounded-lg">
-    <div class="flex items-center">
-      <h2 class="text-lg font-medium text-gray-900">Process URL Now</h2>
-
-      <!-- Tooltip container -->
-      <div class="relative ml-2 group">
-        <div class="flex items-center justify-center w-5 h-5 bg-gray-200 rounded-full cursor-help">
-          <span class="text-xs font-bold text-gray-600">?</span>
-        </div>
-
-        <!-- Tooltip content -->
-        <div class="absolute z-10 invisible group-hover:visible w-64 bg-black text-white text-xs rounded p-2 -mt-2 left-7">
-          Immediately checks a URL for links and sends webmentions to those links. Use this for one-time processing without adding the URL to your monitored list. Toggle the RSS Feed option if processing a feed instead of a regular web page.
-        </div>
-      </div>
-    </div>
-    <p class="mt-1 text-sm text-gray-500">Check a URL for links and send webmentions immediately. Note that this will take a while.</p>
-
-    <form method="POST" action="/dashboard/webmention-sender/process" class="mt-4">
+  <!-- Process single URL -->
+  <div class="mt-8">
+    <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Process URL Now</h2>
+    <form method="POST" action="/dashboard/webmention-sender/process">
       {{ csrfField }}
-      <div>
-        <div class="flex-grow mb-3">
-          <label for="process-url" class="block text-sm font-medium text-gray-700">URL to process</label>
-          <input
-            type="text"
-            name="process-url"
-            id="process-url"
-            placeholder="https://example.com/your-post"
-            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white"
-            required
-          />
-        </div>
-
-        <div class="flex items-center gap-4">
-          <div class="flex items-center">
-            <input type="checkbox" id="is-rss" name="is-rss" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
-            <label for="is-rss" class="ml-2 block text-sm text-gray-900">RSS Feed</label>
-          </div>
-
-          <button
-            type="submit"
-            class="px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 whitespace-nowrap"
-          >
-            Process URL
+      <div class="flex gap-3 items-start">
+        <input
+          type="text"
+          name="process-url"
+          id="process-url"
+          placeholder="https://example.com/your-post"
+          class="flex-1 text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none"
+          required
+        />
+        <div class="flex items-center gap-3 shrink-0">
+          <label for="is-rss" class="flex items-center gap-1.5 text-sm text-gray-600 cursor-pointer">
+            <input type="checkbox" id="is-rss" name="is-rss" class="h-3.5 w-3.5 text-indigo-600 border-gray-300 rounded">
+            RSS
+          </label>
+          <button type="submit"
+                  class="px-4 py-2 text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 transition-colors cursor-pointer">
+            Process
           </button>
         </div>
       </div>
+      <p class="mt-1.5 text-xs text-gray-400">Checks the URL for links and sends webmentions immediately. Toggle RSS if processing a feed.</p>
     </form>
   </div>
 
-  <!-- Manage monitored URLs -->
-  <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-    {% rssFeedURLs := "" %}
-    {% webPageURLs := "" %}
-    {% for url in monitoredURLs %}
-      {% if url.IsRSS %}
-        {% rssFeedURLs = rssFeedURLs + url.URL + "\n" %}
-      {% else %}
-        {% webPageURLs = webPageURLs + url.URL + "\n" %}
-      {% end %}
+  <!-- Monitored URLs -->
+  {% rssFeedURLs := "" %}
+  {% webPageURLs := "" %}
+  {% for url in monitoredURLs %}
+    {% if url.IsRSS %}
+      {% rssFeedURLs = rssFeedURLs + url.URL + "\n" %}
+    {% else %}
+      {% webPageURLs = webPageURLs + url.URL + "\n" %}
     {% end %}
+  {% end %}
+
+  <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
     <!-- RSS Feeds -->
-    <div class="p-4 bg-gray-50 rounded-lg">
-      <div class="flex items-center">
-        <h2 class="text-lg font-medium text-gray-900">RSS Feeds</h2>
-
-        <!-- Tooltip container -->
-        <div class="relative ml-2 group">
-          <div class="flex items-center justify-center w-5 h-5 bg-gray-200 rounded-full cursor-help">
-            <span class="text-xs font-bold text-gray-600">?</span>
-          </div>
-
-          <!-- Tooltip content -->
-          <div class="absolute z-10 invisible group-hover:visible w-64 bg-black text-white text-xs rounded p-2 -mt-2 left-7">
-            RSS feeds are monitored for new posts. When a new post is found, all links in that post are checked for potential webmentions. This is useful for automatically sending webmentions whenever new content is published. Feeds in this list are checked once a week.
-          </div>
-        </div>
-      </div>
-      <p class="mt-1 text-sm text-gray-500">Add RSS feeds to monitor for new posts.</p>
-
-      <form method="POST" action="/dashboard/webmention-sender/add" class="mt-4">
+    <div>
+      <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">RSS Feeds</h2>
+      <form method="POST" action="/dashboard/webmention-sender/add">
         {{ csrfField }}
         <input type="hidden" name="is-rss" value="true">
-        <div>
-          <label for="rss-urls" class="block text-sm font-medium text-gray-700">URLs (one per line)</label>
-          <textarea
-            id="rss-urls"
-            name="rss-urls"
-            rows="8"
-            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white"
-            placeholder="https://example.com/feed.xml&#10;https://another-site.com/rss"
-          >{% if rssFeedURLs %}{{ rssFeedURLs }}{% end %}</textarea>
-        </div>
-        <div class="mt-4">
-          <button
-            type="submit"
-            class="py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          >
-            Save RSS Feeds
+        <textarea
+          id="rss-urls"
+          name="rss-urls"
+          rows="4"
+          class="block w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none font-mono"
+          placeholder="https://example.com/feed.xml&#10;https://another-site.com/rss"
+        >{% if rssFeedURLs %}{{ rssFeedURLs }}{% end %}</textarea>
+        <div class="mt-2 flex items-center justify-between">
+          <p class="text-xs text-gray-400">One URL per line · checked weekly</p>
+          <button type="submit"
+                  class="px-3 py-1.5 text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 transition-colors cursor-pointer">
+            Save
           </button>
         </div>
       </form>
     </div>
 
     <!-- Web Pages -->
-    <div class="p-4 bg-gray-50 rounded-lg sm:max-sm:mt-8">
-      <div class="flex items-center">
-        <h2 class="text-lg font-medium text-gray-900">Web Pages</h2>
-
-        <!-- Tooltip container -->
-        <div class="relative ml-2 group">
-          <div class="flex items-center justify-center w-5 h-5 bg-gray-200 rounded-full cursor-help">
-            <span class="text-xs font-bold text-gray-600">?</span>
-          </div>
-
-          <!-- Tooltip content -->
-          <div class="absolute z-10 invisible group-hover:visible w-64 bg-black text-white text-xs rounded p-2 -mt-2 left-7">
-            Web pages are checked individually for links that may need webmentions. Add specific blog posts or pages here that contain links to other sites you'd like to notify. Pages in this list are checked once a week.
-          </div>
-        </div>
-      </div>
-      <p class="mt-1 text-sm text-gray-500">Add individual web pages to monitor for links</p>
-
-      <form method="POST" action="/dashboard/webmention-sender/add" class="mt-4">
+    <div>
+      <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Web Pages</h2>
+      <form method="POST" action="/dashboard/webmention-sender/add">
         {{ csrfField }}
         <input type="hidden" name="is-rss" value="false">
-        <div>
-          <label for="page-urls" class="block text-sm font-medium text-gray-700">URLs (one per line)</label>
-          <textarea
-            id="page-urls"
-            name="page-urls"
-            rows="8"
-            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white"
-            placeholder="https://example.com/my-post&#10;https://example.com/another-post"
-          >{% if webPageURLs %}{{ webPageURLs }}{% end %}</textarea>
-        </div>
-        <div class="mt-4">
-          <button
-            type="submit"
-            class="py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          >
-            Save Web Pages
+        <textarea
+          id="page-urls"
+          name="page-urls"
+          rows="4"
+          class="block w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none font-mono"
+          placeholder="https://example.com/my-post&#10;https://example.com/another-post"
+        >{% if webPageURLs %}{{ webPageURLs }}{% end %}</textarea>
+        <div class="mt-2 flex items-center justify-between">
+          <p class="text-xs text-gray-400">One URL per line · checked weekly</p>
+          <button type="submit"
+                  class="px-3 py-1.5 text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 transition-colors cursor-pointer">
+            Save
           </button>
         </div>
       </form>
     </div>
   </div>
 
+  <!-- Recent sent webmentions -->
   {% if sentWebmentions and len(sentWebmentions) > 0 %}
-  <div class="mt-8 p-4 bg-gray-50 rounded-lg">
-    <h2 class="text-lg font-medium text-gray-900">Recent Sent Webmentions</h2>
-    <div class="mt-2 overflow-x-auto">
-      <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50">
-          <tr>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Target</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+  <div class="mt-8">
+    <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Recent Sent Webmentions</h2>
+    <div class="overflow-x-auto border border-gray-200 rounded-lg">
+      <table class="min-w-full text-sm">
+        <thead>
+          <tr class="border-b border-gray-200">
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Source</th>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Target</th>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Date</th>
           </tr>
         </thead>
-        <tbody class="bg-white divide-y divide-gray-200">
+        <tbody class="divide-y divide-gray-100">
           {% for wm in sentWebmentions %}
           <tr>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 truncate max-w-xs">{{ wm.SourceURL }}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 truncate max-w-xs">{{ wm.TargetURL }}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm">
+            <td class="px-3 py-2 text-gray-600 truncate max-w-[200px]">{{ wm.SourceURL }}</td>
+            <td class="px-3 py-2 text-gray-600 truncate max-w-[200px]">{{ wm.TargetURL }}</td>
+            <td class="px-3 py-2">
               {% if wm.StatusCode >= 200 and wm.StatusCode < 300 %}
-              <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                Success ({{ wm.StatusCode }})
-              </span>
+              <span class="text-xs font-medium text-green-700">✓ {{ wm.StatusCode }}</span>
               {% else %}
-              <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                Error ({{ wm.StatusCode }})
-              </span>
+              <span class="text-xs font-medium text-red-600">✗ {{ wm.StatusCode }}</span>
               {% end %}
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ wm.CreatedAt.Format("Jan 2, 2006") }}</td>
+            <td class="px-3 py-2 text-gray-400 text-xs">{{ wm.CreatedAt.Format("Jan 2, 2006") }}</td>
           </tr>
           {% end %}
         </tbody>

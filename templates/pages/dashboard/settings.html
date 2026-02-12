@@ -3,477 +3,335 @@
 {% macro Title %}User Settings{% end %}
 
 {% macro Body %}
-  <h1 class="text-3xl font-bold leading-tight text-gray-900">Settings</h1>
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+    <h1 class="text-xl font-bold text-gray-900">Settings</h1>
+  </div>
 
-  <!-- Navigation tabs -->
-  <div class="mt-6 border-b border-gray-200">
-    <nav class="-mb-px flex space-x-8">
-      <a href="/dashboard" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm cursor-pointer">
+  <!-- Tabs -->
+  <div class="mt-3 border-b border-gray-200">
+    <nav class="-mb-px flex space-x-6">
+      <a href="/dashboard" class="border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300 whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm cursor-pointer transition-colors">
         Sites
       </a>
-      <a href="/dashboard/webmention-sender" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm cursor-pointer">
+      <a href="/dashboard/webmention-sender" class="border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300 whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm cursor-pointer transition-colors">
         Webmention Sender
       </a>
-      <a href="/dashboard/settings" class="border-indigo-500 text-indigo-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm cursor-pointer">
+      <a href="/dashboard/settings" class="border-indigo-500 text-indigo-600 whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm cursor-pointer">
         Settings
       </a>
     </nav>
   </div>
 
-  <!-- Settings form -->
+  {% if error %}
+  <div class="mt-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">{{ error }}</div>
+  {% end %}
 
-  <div class="max-w-3xl mx-auto mt-10 bg-white p-8 rounded-lg shadow-md">
-    <!-- Password Change Section -->
-    <div class="mb-8 p-4 bg-gray-50 rounded-lg">
-      <h2 class="text-xl font-semibold mb-4">Change Password</h2>
-      <form method="POST" action="/dashboard/settings/change-password">
+  {% if success %}
+  <div class="mt-4 text-sm text-green-600 bg-green-50 border border-green-200 rounded-md px-3 py-2">{{ success }}</div>
+  {% end %}
+
+  <!-- Change Password -->
+  <div class="mt-8 max-w-lg">
+    <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-4">Change Password</h2>
+    <form method="POST" action="/dashboard/settings/change-password">
+      {{ csrfField }}
+      <div class="space-y-3">
+        <div>
+          <label for="current-password" class="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
+          <input type="password" id="current-password" name="current-password" required
+                 class="block w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none">
+        </div>
+        <div>
+          <label for="new-password" class="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+          <input type="password" id="new-password" name="new-password" required
+                 class="block w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none">
+        </div>
+        <div>
+          <label for="confirm-password" class="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
+          <input type="password" id="confirm-password" name="confirm-password" required
+                 class="block w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none">
+        </div>
+      </div>
+      <button type="submit"
+              class="mt-4 px-4 py-2 text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 transition-colors cursor-pointer">
+        Change Password
+      </button>
+    </form>
+  </div>
+
+  <!-- Discord -->
+  <div class="mt-8 max-w-lg">
+    <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-4">Discord Notifications</h2>
+
+    {% if discordSettings.DiscordVerified %}
+      <p class="text-sm text-green-600 mb-3">
+        ✓ Connected as <span class="font-semibold">{{ discordSettings.DiscordUsername }}</span>
+      </p>
+
+      <form method="POST" action="/dashboard/settings/discord/toggle" class="mb-4">
         {{ csrfField }}
-        <div class="mb-4">
-          <label for="current-password" class="block text-sm font-medium text-gray-700">Current Password</label>
-          <input
-            type="password"
-            id="current-password"
-            name="current-password"
-            required
-            class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border border-gray-300 rounded-md px-3 py-2"
-          >
+        <div class="flex items-center gap-3">
+          <label for="discord-notifications" class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+            <input type="checkbox" id="discord-notifications" name="discord-notifications"
+                   {% if discordSettings.NotificationsEnabled %}checked{% end %}
+                   class="h-3.5 w-3.5 text-indigo-600 border-gray-300 rounded">
+            Enable notifications
+          </label>
+          <button type="submit"
+                  class="px-3 py-1.5 text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 transition-colors cursor-pointer">
+            Save
+          </button>
         </div>
-        <div class="mb-4">
-          <label for="new-password" class="block text-sm font-medium text-gray-700">New Password</label>
-          <input
-            type="password"
-            id="new-password"
-            name="new-password"
-            required
-            class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border border-gray-300 rounded-md px-3 py-2"
-          >
+      </form>
+
+      <!-- Timezone & notification time -->
+      <form method="POST" action="/dashboard/settings/discord/timezone" class="mb-4">
+        {{ csrfField }}
+        <div class="space-y-3">
+          <div>
+            <label for="timezone-autocomplete" class="block text-sm font-medium text-gray-700 mb-1">Timezone</label>
+            <div class="relative">
+              <input type="text" id="timezone-autocomplete"
+                     placeholder="Search timezone (e.g., London, Tokyo)"
+                     class="block w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none">
+              <div id="timezone-search-results" class="absolute z-10 w-full bg-white border border-gray-200 rounded-md mt-1 max-h-48 overflow-y-auto hidden shadow-lg"></div>
+              <input type="hidden" id="timezone" name="timezone" value="{{ discordSettings.Timezone }}" />
+            </div>
+          </div>
+
+          <div>
+            <label for="notification_time" class="block text-sm font-medium text-gray-700 mb-1">Notification Time</label>
+            <select id="notification_time" name="notification_time"
+                    class="block w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500 focus:outline-none">
+              {% for hour := 0; hour < 24; hour++ %}
+                <option value="{{hour}}" {% if discordSettings.NotificationTime == hour %}selected{% end %}>
+                  {% if hour == 0 %}12:00 AM (Midnight)
+                  {% else if hour < 12 %}{{hour}}:00 AM
+                  {% else if hour == 12 %}12:00 PM (Noon)
+                  {% else %}{{hour-12}}:00 PM
+                  {% end %}
+                </option>
+              {% end %}
+            </select>
+          </div>
         </div>
-        <div class="mb-4">
-          <label for="confirm-password" class="block text-sm font-medium text-gray-700">Confirm New Password</label>
-          <input
-            type="password"
-            id="confirm-password"
-            name="confirm-password"
-            required
-            class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border border-gray-300 rounded-md px-3 py-2"
-          >
-        </div>
-        <button
-          type="submit"
-          class="py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-        >
-          Change Password
+        <button type="submit"
+                class="mt-4 px-4 py-2 text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 transition-colors cursor-pointer">
+          Save Timezone
         </button>
       </form>
-    </div>
 
-    <!-- Discord Integration Section -->
-    <div class="mt-6 p-4 bg-gray-50 rounded-lg">
-      <h2 class="text-xl font-semibold mb-4">Discord Notifications</h2>
-
-      {% if error %}
-      <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-        {{ error }}
+      <div class="mt-4 pt-4 border-t border-gray-100">
+        <form method="POST" action="/dashboard/settings/discord/disconnect">
+          {{ csrfField }}
+          <button type="submit"
+                  class="text-sm text-red-500 hover:text-red-700 transition-colors cursor-pointer">
+            Disconnect Discord
+          </button>
+        </form>
       </div>
-      {% end %}
 
-      {% if success %}
-      <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-        {{ success }}
-      </div>
-      {% end %}
+    {% else %}
+      <p class="text-sm text-gray-600 mb-3">Connect Discord to receive notifications for webmentions, announcements, and password recovery.</p>
 
-      {% if discordSettings.DiscordVerified %}
-        <div class="mb-4">
-          <p class="text-green-600 font-medium">
-            <svg class="inline-block w-5 h-5 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-            </svg>
-            Connected to Discord as <span class="font-semibold">{{ discordSettings.DiscordUsername }}</span>
-          </p>
-
-          <div class="mt-3">
-            <form method="POST" action="/dashboard/settings/discord/toggle">
-              {{ csrfField }}
-              <div class="flex items-center">
-                <input
-                  type="checkbox"
-                  id="discord-notifications"
-                  name="discord-notifications"
-                  {% if discordSettings.NotificationsEnabled %}checked{% end %}
-                  class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                >
-                <label for="discord-notifications" class="ml-2 block text-sm text-gray-700">
-                  Enable Discord notifications
-                </label>
-              </div>
-              <button
-                type="submit"
-                class="mt-3 py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              >
-                Save Preferences
-              </button>
-            </form>
+      {% if discordSettings.DiscordVerifyCode %}
+        <div class="border border-blue-200 bg-blue-50 rounded-lg p-4 mb-4">
+          <p class="text-sm font-medium text-blue-800 mb-2">Your verification code:</p>
+          <div class="bg-white border border-blue-200 rounded px-3 py-2 font-mono text-lg font-semibold text-center mb-3">
+            {{ discordSettings.DiscordVerifyCode }}
           </div>
-
-          <div class="mt-4 pt-4 border-t border-gray-200">
-            <form method="POST" action="/dashboard/settings/discord/disconnect">
-              {{ csrfField }}
-              <button
-                type="submit"
-                class="py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-              >
-                Disconnect Discord
-              </button>
-            </form>
-          </div>
-
-          <!-- Timezone settings -->
-          <div class="mt-4 pt-4 border-t border-gray-200">
-            <form method="POST" action="/dashboard/settings/discord/timezone">
-              {{ csrfField }}
-              <div class="mb-4">
-                <label for="timezone-autocomplete" class="block text-sm font-medium text-gray-700">Preferred Timezone</label>
-                <div class="relative mt-1">
-                  <input
-                    type="text"
-                    id="timezone-autocomplete"
-                    placeholder="Search for your timezone (e.g., London, Tokyo, New York)"
-                    class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  />
-                  <div id="timezone-search-results" class="absolute z-10 w-full bg-white shadow-lg rounded-md mt-1 max-h-60 overflow-y-auto hidden"></div>
-                  <!-- Hidden input that will actually be submitted with the form -->
-                  <input type="hidden" id="timezone" name="timezone" value="{{ discordSettings.Timezone }}" />
-                </div>
-                <p class="mt-2 text-sm text-gray-500">
-                  Start typing your city name or region to find your timezone (UTC is the default).
-                </p>
-              </div>
-
-              <script>
-                document.addEventListener('DOMContentLoaded', function() {
-                  const timezoneAutocomplete = document.getElementById('timezone-autocomplete');
-                  const timezoneInput = document.getElementById('timezone');
-                  const searchResults = document.getElementById('timezone-search-results');
-
-                  // Full list of IANA timezones
-                  const allTimezones = [
-                    "Africa/Abidjan", "Africa/Accra", "Africa/Addis_Ababa", "Africa/Algiers", "Africa/Asmara",
-                    "Africa/Bamako", "Africa/Bangui", "Africa/Banjul", "Africa/Bissau", "Africa/Blantyre",
-                    "Africa/Brazzaville", "Africa/Bujumbura", "Africa/Cairo", "Africa/Casablanca", "Africa/Ceuta",
-                    "Africa/Conakry", "Africa/Dakar", "Africa/Dar_es_Salaam", "Africa/Djibouti", "Africa/Douala",
-                    "Africa/El_Aaiun", "Africa/Freetown", "Africa/Gaborone", "Africa/Harare", "Africa/Johannesburg",
-                    "Africa/Juba", "Africa/Kampala", "Africa/Khartoum", "Africa/Kigali", "Africa/Kinshasa",
-                    "Africa/Lagos", "Africa/Libreville", "Africa/Lome", "Africa/Luanda", "Africa/Lubumbashi",
-                    "Africa/Lusaka", "Africa/Malabo", "Africa/Maputo", "Africa/Maseru", "Africa/Mbabane",
-                    "Africa/Mogadishu", "Africa/Monrovia", "Africa/Nairobi", "Africa/Ndjamena", "Africa/Niamey",
-                    "Africa/Nouakchott", "Africa/Ouagadougou", "Africa/Porto-Novo", "Africa/Sao_Tome", "Africa/Tripoli",
-                    "Africa/Tunis", "Africa/Windhoek",
-                    "America/Adak", "America/Anchorage", "America/Anguilla", "America/Antigua", "America/Araguaina",
-                    "America/Argentina/Buenos_Aires", "America/Argentina/Catamarca", "America/Argentina/Cordoba",
-                    "America/Argentina/Jujuy", "America/Argentina/La_Rioja", "America/Argentina/Mendoza",
-                    "America/Argentina/Rio_Gallegos", "America/Argentina/Salta", "America/Argentina/San_Juan",
-                    "America/Argentina/San_Luis", "America/Argentina/Tucuman", "America/Argentina/Ushuaia",
-                    "America/Aruba", "America/Asuncion", "America/Atikokan", "America/Bahia", "America/Bahia_Banderas",
-                    "America/Barbados", "America/Belem", "America/Belize", "America/Blanc-Sablon", "America/Boa_Vista",
-                    "America/Bogota", "America/Boise", "America/Cambridge_Bay", "America/Campo_Grande", "America/Cancun",
-                    "America/Caracas", "America/Cayenne", "America/Cayman", "America/Chicago", "America/Chihuahua",
-                    "America/Costa_Rica", "America/Creston", "America/Cuiaba", "America/Curacao", "America/Danmarkshavn",
-                    "America/Dawson", "America/Dawson_Creek", "America/Denver", "America/Detroit", "America/Dominica",
-                    "America/Edmonton", "America/Eirunepe", "America/El_Salvador", "America/Fort_Nelson", "America/Fortaleza",
-                    "America/Glace_Bay", "America/Goose_Bay", "America/Grand_Turk", "America/Grenada", "America/Guadeloupe",
-                    "America/Guatemala", "America/Guayaquil", "America/Guyana", "America/Halifax", "America/Havana",
-                    "America/Hermosillo", "America/Indiana/Indianapolis", "America/Indiana/Knox", "America/Indiana/Marengo",
-                    "America/Indiana/Petersburg", "America/Indiana/Tell_City", "America/Indiana/Vevay", "America/Indiana/Vincennes",
-                    "America/Indiana/Winamac", "America/Inuvik", "America/Iqaluit", "America/Jamaica", "America/Juneau",
-                    "America/Kentucky/Louisville", "America/Kentucky/Monticello", "America/Kralendijk", "America/La_Paz",
-                    "America/Lima", "America/Los_Angeles", "America/Lower_Princes", "America/Maceio", "America/Managua",
-                    "America/Manaus", "America/Marigot", "America/Martinique", "America/Matamoros", "America/Mazatlan",
-                    "America/Menominee", "America/Merida", "America/Metlakatla", "America/Mexico_City", "America/Miquelon",
-                    "America/Moncton", "America/Monterrey", "America/Montevideo", "America/Montserrat", "America/Nassau",
-                    "America/New_York", "America/Nipigon", "America/Nome", "America/Noronha", "America/North_Dakota/Beulah",
-                    "America/North_Dakota/Center", "America/North_Dakota/New_Salem", "America/Nuuk", "America/Ojinaga",
-                    "America/Panama", "America/Pangnirtung", "America/Paramaribo", "America/Phoenix", "America/Port-au-Prince",
-                    "America/Port_of_Spain", "America/Porto_Velho", "America/Puerto_Rico", "America/Punta_Arenas",
-                    "America/Rainy_River", "America/Rankin_Inlet", "America/Recife", "America/Regina", "America/Resolute",
-                    "America/Rio_Branco", "America/Santarem", "America/Santiago", "America/Santo_Domingo", "America/Sao_Paulo",
-                    "America/Scoresbysund", "America/Sitka", "America/St_Barthelemy", "America/St_Johns", "America/St_Kitts",
-                    "America/St_Lucia", "America/St_Thomas", "America/St_Vincent", "America/Swift_Current", "America/Tegucigalpa",
-                    "America/Thule", "America/Thunder_Bay", "America/Tijuana", "America/Toronto", "America/Tortola",
-                    "America/Vancouver", "America/Whitehorse", "America/Winnipeg", "America/Yakutat", "America/Yellowknife",
-                    "Antarctica/Casey", "Antarctica/Davis", "Antarctica/DumontDUrville", "Antarctica/Macquarie",
-                    "Antarctica/Mawson", "Antarctica/McMurdo", "Antarctica/Palmer", "Antarctica/Rothera", "Antarctica/Syowa",
-                    "Antarctica/Troll", "Antarctica/Vostok",
-                    "Asia/Aden", "Asia/Almaty", "Asia/Amman", "Asia/Anadyr", "Asia/Aqtau", "Asia/Aqtobe", "Asia/Ashgabat",
-                    "Asia/Atyrau", "Asia/Baghdad", "Asia/Bahrain", "Asia/Baku", "Asia/Bangkok", "Asia/Barnaul", "Asia/Beirut",
-                    "Asia/Bishkek", "Asia/Brunei", "Asia/Chita", "Asia/Choibalsan", "Asia/Colombo", "Asia/Damascus",
-                    "Asia/Dhaka", "Asia/Dili", "Asia/Dubai", "Asia/Dushanbe", "Asia/Famagusta", "Asia/Gaza", "Asia/Hebron",
-                    "Asia/Ho_Chi_Minh", "Asia/Hong_Kong", "Asia/Hovd", "Asia/Irkutsk", "Asia/Jakarta", "Asia/Jayapura",
-                    "Asia/Jerusalem", "Asia/Kabul", "Asia/Kamchatka", "Asia/Karachi", "Asia/Kathmandu", "Asia/Khandyga",
-                    "Asia/Kolkata", "Asia/Krasnoyarsk", "Asia/Kuala_Lumpur", "Asia/Kuching", "Asia/Kuwait", "Asia/Macau",
-                    "Asia/Magadan", "Asia/Makassar", "Asia/Manila", "Asia/Muscat", "Asia/Nicosia", "Asia/Novokuznetsk",
-                    "Asia/Novosibirsk", "Asia/Omsk", "Asia/Oral", "Asia/Phnom_Penh", "Asia/Pontianak", "Asia/Pyongyang",
-                    "Asia/Qatar", "Asia/Qostanay", "Asia/Qyzylorda", "Asia/Riyadh", "Asia/Sakhalin", "Asia/Samarkand",
-                    "Asia/Seoul", "Asia/Shanghai", "Asia/Singapore", "Asia/Srednekolymsk", "Asia/Taipei", "Asia/Tashkent",
-                    "Asia/Tbilisi", "Asia/Tehran", "Asia/Thimphu", "Asia/Tokyo", "Asia/Tomsk", "Asia/Ulaanbaatar",
-                    "Asia/Urumqi", "Asia/Ust-Nera", "Asia/Vientiane", "Asia/Vladivostok", "Asia/Yakutsk", "Asia/Yangon",
-                    "Asia/Yekaterinburg", "Asia/Yerevan",
-                    "Atlantic/Azores", "Atlantic/Bermuda", "Atlantic/Canary", "Atlantic/Cape_Verde", "Atlantic/Faroe",
-                    "Atlantic/Madeira", "Atlantic/Reykjavik", "Atlantic/South_Georgia", "Atlantic/St_Helena", "Atlantic/Stanley",
-                    "Australia/Adelaide", "Australia/Brisbane", "Australia/Broken_Hill", "Australia/Darwin", "Australia/Eucla",
-                    "Australia/Hobart", "Australia/Lindeman", "Australia/Lord_Howe", "Australia/Melbourne", "Australia/Perth",
-                    "Australia/Sydney",
-                    "Europe/Amsterdam", "Europe/Andorra", "Europe/Astrakhan", "Europe/Athens", "Europe/Belgrade", "Europe/Berlin",
-                    "Europe/Bratislava", "Europe/Brussels", "Europe/Bucharest", "Europe/Budapest", "Europe/Busingen",
-                    "Europe/Chisinau", "Europe/Copenhagen", "Europe/Dublin", "Europe/Gibraltar", "Europe/Guernsey",
-                    "Europe/Helsinki", "Europe/Isle_of_Man", "Europe/Istanbul", "Europe/Jersey", "Europe/Kaliningrad",
-                    "Europe/Kiev", "Europe/Kirov", "Europe/Lisbon", "Europe/Ljubljana", "Europe/London", "Europe/Luxembourg",
-                    "Europe/Madrid", "Europe/Malta", "Europe/Mariehamn", "Europe/Minsk", "Europe/Monaco", "Europe/Moscow",
-                    "Europe/Oslo", "Europe/Paris", "Europe/Podgorica", "Europe/Prague", "Europe/Riga", "Europe/Rome",
-                    "Europe/Samara", "Europe/San_Marino", "Europe/Sarajevo", "Europe/Saratov", "Europe/Simferopol",
-                    "Europe/Skopje", "Europe/Sofia", "Europe/Stockholm", "Europe/Tallinn", "Europe/Tirane", "Europe/Ulyanovsk",
-                    "Europe/Uzhgorod", "Europe/Vaduz", "Europe/Vatican", "Europe/Vienna", "Europe/Vilnius", "Europe/Volgograd",
-                    "Europe/Warsaw", "Europe/Zagreb", "Europe/Zaporozhye", "Europe/Zurich",
-                    "Indian/Antananarivo", "Indian/Chagos", "Indian/Christmas", "Indian/Cocos", "Indian/Comoro",
-                    "Indian/Kerguelen", "Indian/Mahe", "Indian/Maldives", "Indian/Mauritius", "Indian/Mayotte", "Indian/Reunion",
-                    "Pacific/Apia", "Pacific/Auckland", "Pacific/Bougainville", "Pacific/Chatham", "Pacific/Chuuk",
-                    "Pacific/Easter", "Pacific/Efate", "Pacific/Fakaofo", "Pacific/Fiji", "Pacific/Funafuti",
-                    "Pacific/Galapagos", "Pacific/Gambier", "Pacific/Guadalcanal", "Pacific/Guam", "Pacific/Honolulu",
-                    "Pacific/Kanton", "Pacific/Kiritimati", "Pacific/Kosrae", "Pacific/Kwajalein", "Pacific/Majuro",
-                    "Pacific/Marquesas", "Pacific/Midway", "Pacific/Nauru", "Pacific/Niue", "Pacific/Norfolk",
-                    "Pacific/Noumea", "Pacific/Pago_Pago", "Pacific/Palau", "Pacific/Pitcairn", "Pacific/Pohnpei",
-                    "Pacific/Port_Moresby", "Pacific/Rarotonga", "Pacific/Saipan", "Pacific/Tahiti", "Pacific/Tarawa",
-                    "Pacific/Tongatapu", "Pacific/Wake", "Pacific/Wallis",
-                    "UTC"
-                  ];
-
-                  // Common city names to timezone mapping for better search results
-                  const cityToTimezone = {
-                    "new york": "America/New_York",
-                    "los angeles": "America/Los_Angeles",
-                    "chicago": "America/Chicago",
-                    "toronto": "America/Toronto",
-                    "vancouver": "America/Vancouver",
-                    "mexico city": "America/Mexico_City",
-                    "london": "Europe/London",
-                    "paris": "Europe/Paris",
-                    "berlin": "Europe/Berlin",
-                    "rome": "Europe/Rome",
-                    "madrid": "Europe/Madrid",
-                    "amsterdam": "Europe/Amsterdam",
-                    "brussels": "Europe/Brussels",
-                    "vienna": "Europe/Vienna",
-                    "zurich": "Europe/Zurich",
-                    "moscow": "Europe/Moscow",
-                    "dubai": "Asia/Dubai",
-                    "mumbai": "Asia/Kolkata",
-                    "delhi": "Asia/Kolkata",
-                    "kolkata": "Asia/Kolkata",
-                    "bangalore": "Asia/Kolkata",
-                    "tokyo": "Asia/Tokyo",
-                    "seoul": "Asia/Seoul",
-                    "beijing": "Asia/Shanghai",
-                    "shanghai": "Asia/Shanghai",
-                    "hong kong": "Asia/Hong_Kong",
-                    "singapore": "Asia/Singapore",
-                    "sydney": "Australia/Sydney",
-                    "melbourne": "Australia/Melbourne",
-                    "auckland": "Pacific/Auckland",
-                    "honolulu": "Pacific/Honolulu",
-                    "johannesburg": "Africa/Johannesburg",
-                    "cairo": "Africa/Cairo",
-                    "lagos": "Africa/Lagos",
-                    "nairobi": "Africa/Nairobi"
-                  };
-
-                  // Function to format timezone for display
-                  function formatTimezone(timezone) {
-                    // Format timezone and try to add UTC offset if possible
-                    try {
-                      const now = new Date();
-                      const formatter = new Intl.DateTimeFormat('en-US', {
-                        timeZone: timezone,
-                        timeZoneName: 'short'
-                      });
-                      const formatted = formatter.format(now);
-                      const tzPart = formatted.split(', ')[1] || ''; // Extract the timezone part like "GMT+9"
-
-                      // Format the main timezone name nicely
-                      const parts = timezone.split('/');
-                      let formattedName = parts.map(part => part.replace(/_/g, ' ')).join(' / ');
-
-                      // Add the UTC offset if available
-                      if (tzPart) {
-                        return `${formattedName} (${tzPart})`;
-                      }
-                      return formattedName;
-                    } catch (e) {
-                      // Fallback if Intl API fails
-                      return timezone.replace(/_/g, ' ').replace(/\//g, ' / ');
-                    }
-                  }
-
-                  // Function to filter timezones based on search
-                  function filterTimezones(search) {
-                    if (!search) return [];
-
-                    const results = [];
-                    const searchLower = search.toLowerCase();
-
-                    // First check if the search matches a common city name
-                    for (const city in cityToTimezone) {
-                      if (city.includes(searchLower)) {
-                        const timezone = cityToTimezone[city];
-                        if (!results.includes(timezone)) {
-                          results.push(timezone);
-                        }
-                      }
-                    }
-
-                    // Then check against all timezone names
-                    for (const timezone of allTimezones) {
-                      const formattedTimezone = formatTimezone(timezone).toLowerCase();
-                      if (formattedTimezone.includes(searchLower) && !results.includes(timezone)) {
-                        results.push(timezone);
-                      }
-                    }
-
-                    return results.slice(0, 10); // Limit to 10 results for better UX
-                  }
-
-                  // Show search results
-                  function showResults(results) {
-                    if (results.length === 0) {
-                      searchResults.classList.add('hidden');
-                      return;
-                    }
-
-                    searchResults.innerHTML = '';
-                    results.forEach(tz => {
-                      const div = document.createElement('div');
-                      div.className = 'py-2 px-3 cursor-pointer hover:bg-gray-100';
-                      div.textContent = formatTimezone(tz);
-                      div.dataset.value = tz;
-                      div.addEventListener('click', () => {
-                        selectTimezone(tz);
-                      });
-                      searchResults.appendChild(div);
-                    });
-
-                    searchResults.classList.remove('hidden');
-                  }
-
-                  // Select a timezone
-                  function selectTimezone(timezone) {
-                    timezoneInput.value = timezone;
-                    timezoneAutocomplete.value = formatTimezone(timezone);
-                    searchResults.classList.add('hidden');
-                  }
-
-                  // Handle input in search field
-                  timezoneAutocomplete.addEventListener('input', () => {
-                    const results = filterTimezones(timezoneAutocomplete.value);
-                    showResults(results);
-                  });
-
-                  // Hide results when clicking outside
-                  document.addEventListener('click', (e) => {
-                    if (e.target !== timezoneAutocomplete && e.target !== searchResults) {
-                      searchResults.classList.add('hidden');
-                    }
-                  });
-
-                  // Focus should show results if input has value
-                  timezoneAutocomplete.addEventListener('focus', () => {
-                    if (timezoneAutocomplete.value) {
-                      const results = filterTimezones(timezoneAutocomplete.value);
-                      showResults(results);
-                    }
-                  });
-
-                  // Initialize with current timezone formatted
-                  selectTimezone(timezoneInput.value || 'UTC');
-                });
-              </script>
-              <div class="mb-4">
-                <label for="notification_time" class="block text-sm font-medium text-gray-700">Preferred Notification Time</label>
-                <div class="mt-1">
-                  <select
-                    id="notification_time"
-                    name="notification_time"
-                    class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  >
-                    {% for hour := 0; hour < 24; hour++ %}
-                      <option value="{{hour}}" {% if discordSettings.NotificationTime == hour %}selected{% end %}>
-                        {% if hour == 0 %}12:00 AM (Midnight)
-                        {% else if hour < 12 %}{{hour}}:00 AM
-                        {% else if hour == 12 %}12:00 PM (Noon)
-                        {% else %}{{hour-12}}:00 PM
-                        {% end %}
-                      </option>
-                    {% end %}
-                  </select>
-                </div>
-                <p class="mt-2 text-sm text-gray-500">
-                  This is the time when you'll receive scheduled notifications like metrics summaries.
-                </p>
-              </div>
-              <button
-                type="submit"
-                class="mt-1 py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              >
-                Save Timezone Settings
-              </button>
-            </form>
-          </div>
+          <ol class="text-sm text-blue-700 space-y-1 list-decimal list-inside">
+            <li><a href="https://discord.com/oauth2/authorize?client_id=1345854875514437673" target="_blank" class="underline hover:text-blue-900">Authorize MochiBot</a> to send you DMs</li>
+            <li>Send this code as a direct message to the bot</li>
+            <li>Reload this page to confirm</li>
+          </ol>
+          <p class="mt-2 text-xs text-blue-500">Expires in 30 minutes.</p>
         </div>
+        <form method="POST" action="/dashboard/settings/discord/verify/refresh">
+          {{ csrfField }}
+          <button type="submit"
+                  class="px-3 py-1.5 text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors cursor-pointer">
+            Generate New Code
+          </button>
+        </form>
       {% else %}
-        <div class="mb-6">
-          <p class="mb-4">Connect your Discord account to receive notifications when:</p>
-          <ul class="list-disc list-inside ml-4 mb-4">
-            <li>Your site receives new webmentions</li>
-            <li>Important system announcements</li>
-            <li>Password recovery assistance should you misplace your credentials</li>
-          </ul>
-
-          {% if discordSettings.DiscordVerifyCode %}
-            <div class="bg-blue-50 p-4 rounded-lg mb-4">
-              <h3 class="font-semibold text-blue-800 mb-2">Verification Code Generated!</h3>
-              <p class="mb-2">Your verification code is:</p>
-              <div class="bg-white p-3 rounded border border-blue-200 font-mono text-lg font-semibold text-center mb-2">
-                {{ discordSettings.DiscordVerifyCode }}
-              </div>
-              <ol class="list-decimal list-inside mb-2">
-                <li>First, <a href="https://discord.com/oauth2/authorize?client_id=1345854875514437673" target="_blank" class="text-blue-600 hover:text-blue-800 underline">authorize MochiBot to send you direct messages</a></li>
-                <li>Send this code as a direct message to the bot as a direct message</li>
-                <li>The bot will verify your identity and link your accounts</li>
-                <li>Reload this page to confirm the connection</li>
-              </ol>
-              <p class="text-sm text-blue-600">Code expires in 30 minutes.</p>
-            </div>
-
-            <form method="POST" action="/dashboard/settings/discord/verify/refresh">
-              {{ csrfField }}
-              <button
-                type="submit"
-                class="py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                Generate New Code
-              </button>
-            </form>
-          {% else %}
-            <form method="POST" action="/dashboard/settings/discord/verify/generate">
-              {{ csrfField }}
-              <button
-                type="submit"
-                class="py-2 mt-4 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              >
-                Connect Discord Account
-              </button>
-            </form>
-          {% end %}
-        </div>
+        <form method="POST" action="/dashboard/settings/discord/verify/generate">
+          {{ csrfField }}
+          <button type="submit"
+                  class="px-4 py-2 text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 transition-colors cursor-pointer">
+            Connect Discord
+          </button>
+        </form>
       {% end %}
-    </div>
+    {% end %}
   </div>
+
+  <!-- Timezone autocomplete script -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const timezoneAutocomplete = document.getElementById('timezone-autocomplete');
+      if (!timezoneAutocomplete) return;
+      const timezoneInput = document.getElementById('timezone');
+      const searchResults = document.getElementById('timezone-search-results');
+
+      const allTimezones = [
+        "Africa/Abidjan", "Africa/Accra", "Africa/Addis_Ababa", "Africa/Algiers", "Africa/Asmara",
+        "Africa/Bamako", "Africa/Bangui", "Africa/Banjul", "Africa/Bissau", "Africa/Blantyre",
+        "Africa/Brazzaville", "Africa/Bujumbura", "Africa/Cairo", "Africa/Casablanca", "Africa/Ceuta",
+        "Africa/Conakry", "Africa/Dakar", "Africa/Dar_es_Salaam", "Africa/Djibouti", "Africa/Douala",
+        "Africa/El_Aaiun", "Africa/Freetown", "Africa/Gaborone", "Africa/Harare", "Africa/Johannesburg",
+        "Africa/Juba", "Africa/Kampala", "Africa/Khartoum", "Africa/Kigali", "Africa/Kinshasa",
+        "Africa/Lagos", "Africa/Libreville", "Africa/Lome", "Africa/Luanda", "Africa/Lubumbashi",
+        "Africa/Lusaka", "Africa/Malabo", "Africa/Maputo", "Africa/Maseru", "Africa/Mbabane",
+        "Africa/Mogadishu", "Africa/Monrovia", "Africa/Nairobi", "Africa/Ndjamena", "Africa/Niamey",
+        "Africa/Nouakchott", "Africa/Ouagadougou", "Africa/Porto-Novo", "Africa/Sao_Tome", "Africa/Tripoli",
+        "Africa/Tunis", "Africa/Windhoek",
+        "America/Adak", "America/Anchorage", "America/Anguilla", "America/Antigua", "America/Araguaina",
+        "America/Argentina/Buenos_Aires", "America/Argentina/Catamarca", "America/Argentina/Cordoba",
+        "America/Argentina/Jujuy", "America/Argentina/La_Rioja", "America/Argentina/Mendoza",
+        "America/Argentina/Rio_Gallegos", "America/Argentina/Salta", "America/Argentina/San_Juan",
+        "America/Argentina/San_Luis", "America/Argentina/Tucuman", "America/Argentina/Ushuaia",
+        "America/Aruba", "America/Asuncion", "America/Atikokan", "America/Bahia", "America/Bahia_Banderas",
+        "America/Barbados", "America/Belem", "America/Belize", "America/Blanc-Sablon", "America/Boa_Vista",
+        "America/Bogota", "America/Boise", "America/Cambridge_Bay", "America/Campo_Grande", "America/Cancun",
+        "America/Caracas", "America/Cayenne", "America/Cayman", "America/Chicago", "America/Chihuahua",
+        "America/Costa_Rica", "America/Creston", "America/Cuiaba", "America/Curacao", "America/Danmarkshavn",
+        "America/Dawson", "America/Dawson_Creek", "America/Denver", "America/Detroit", "America/Dominica",
+        "America/Edmonton", "America/Eirunepe", "America/El_Salvador", "America/Fort_Nelson", "America/Fortaleza",
+        "America/Glace_Bay", "America/Goose_Bay", "America/Grand_Turk", "America/Grenada", "America/Guadeloupe",
+        "America/Guatemala", "America/Guayaquil", "America/Guyana", "America/Halifax", "America/Havana",
+        "America/Hermosillo", "America/Indiana/Indianapolis", "America/Indiana/Knox", "America/Indiana/Marengo",
+        "America/Indiana/Petersburg", "America/Indiana/Tell_City", "America/Indiana/Vevay", "America/Indiana/Vincennes",
+        "America/Indiana/Winamac", "America/Inuvik", "America/Iqaluit", "America/Jamaica", "America/Juneau",
+        "America/Kentucky/Louisville", "America/Kentucky/Monticello", "America/Kralendijk", "America/La_Paz",
+        "America/Lima", "America/Los_Angeles", "America/Lower_Princes", "America/Maceio", "America/Managua",
+        "America/Manaus", "America/Marigot", "America/Martinique", "America/Matamoros", "America/Mazatlan",
+        "America/Menominee", "America/Merida", "America/Metlakatla", "America/Mexico_City", "America/Miquelon",
+        "America/Moncton", "America/Monterrey", "America/Montevideo", "America/Montserrat", "America/Nassau",
+        "America/New_York", "America/Nipigon", "America/Nome", "America/Noronha", "America/North_Dakota/Beulah",
+        "America/North_Dakota/Center", "America/North_Dakota/New_Salem", "America/Nuuk", "America/Ojinaga",
+        "America/Panama", "America/Pangnirtung", "America/Paramaribo", "America/Phoenix", "America/Port-au-Prince",
+        "America/Port_of_Spain", "America/Porto_Velho", "America/Puerto_Rico", "America/Punta_Arenas",
+        "America/Rainy_River", "America/Rankin_Inlet", "America/Recife", "America/Regina", "America/Resolute",
+        "America/Rio_Branco", "America/Santarem", "America/Santiago", "America/Santo_Domingo", "America/Sao_Paulo",
+        "America/Scoresbysund", "America/Sitka", "America/St_Barthelemy", "America/St_Johns", "America/St_Kitts",
+        "America/St_Lucia", "America/St_Thomas", "America/St_Vincent", "America/Swift_Current", "America/Tegucigalpa",
+        "America/Thule", "America/Thunder_Bay", "America/Tijuana", "America/Toronto", "America/Tortola",
+        "America/Vancouver", "America/Whitehorse", "America/Winnipeg", "America/Yakutat", "America/Yellowknife",
+        "Antarctica/Casey", "Antarctica/Davis", "Antarctica/DumontDUrville", "Antarctica/Macquarie",
+        "Antarctica/Mawson", "Antarctica/McMurdo", "Antarctica/Palmer", "Antarctica/Rothera", "Antarctica/Syowa",
+        "Antarctica/Troll", "Antarctica/Vostok",
+        "Asia/Aden", "Asia/Almaty", "Asia/Amman", "Asia/Anadyr", "Asia/Aqtau", "Asia/Aqtobe", "Asia/Ashgabat",
+        "Asia/Atyrau", "Asia/Baghdad", "Asia/Bahrain", "Asia/Baku", "Asia/Bangkok", "Asia/Barnaul", "Asia/Beirut",
+        "Asia/Bishkek", "Asia/Brunei", "Asia/Chita", "Asia/Choibalsan", "Asia/Colombo", "Asia/Damascus",
+        "Asia/Dhaka", "Asia/Dili", "Asia/Dubai", "Asia/Dushanbe", "Asia/Famagusta", "Asia/Gaza", "Asia/Hebron",
+        "Asia/Ho_Chi_Minh", "Asia/Hong_Kong", "Asia/Hovd", "Asia/Irkutsk", "Asia/Jakarta", "Asia/Jayapura",
+        "Asia/Jerusalem", "Asia/Kabul", "Asia/Kamchatka", "Asia/Karachi", "Asia/Kathmandu", "Asia/Khandyga",
+        "Asia/Kolkata", "Asia/Krasnoyarsk", "Asia/Kuala_Lumpur", "Asia/Kuching", "Asia/Kuwait", "Asia/Macau",
+        "Asia/Magadan", "Asia/Makassar", "Asia/Manila", "Asia/Muscat", "Asia/Nicosia", "Asia/Novokuznetsk",
+        "Asia/Novosibirsk", "Asia/Omsk", "Asia/Oral", "Asia/Phnom_Penh", "Asia/Pontianak", "Asia/Pyongyang",
+        "Asia/Qatar", "Asia/Qostanay", "Asia/Qyzylorda", "Asia/Riyadh", "Asia/Sakhalin", "Asia/Samarkand",
+        "Asia/Seoul", "Asia/Shanghai", "Asia/Singapore", "Asia/Srednekolymsk", "Asia/Taipei", "Asia/Tashkent",
+        "Asia/Tbilisi", "Asia/Tehran", "Asia/Thimphu", "Asia/Tokyo", "Asia/Tomsk", "Asia/Ulaanbaatar",
+        "Asia/Urumqi", "Asia/Ust-Nera", "Asia/Vientiane", "Asia/Vladivostok", "Asia/Yakutsk", "Asia/Yangon",
+        "Asia/Yekaterinburg", "Asia/Yerevan",
+        "Atlantic/Azores", "Atlantic/Bermuda", "Atlantic/Canary", "Atlantic/Cape_Verde", "Atlantic/Faroe",
+        "Atlantic/Madeira", "Atlantic/Reykjavik", "Atlantic/South_Georgia", "Atlantic/St_Helena", "Atlantic/Stanley",
+        "Australia/Adelaide", "Australia/Brisbane", "Australia/Broken_Hill", "Australia/Darwin", "Australia/Eucla",
+        "Australia/Hobart", "Australia/Lindeman", "Australia/Lord_Howe", "Australia/Melbourne", "Australia/Perth",
+        "Australia/Sydney",
+        "Europe/Amsterdam", "Europe/Andorra", "Europe/Astrakhan", "Europe/Athens", "Europe/Belgrade", "Europe/Berlin",
+        "Europe/Bratislava", "Europe/Brussels", "Europe/Bucharest", "Europe/Budapest", "Europe/Busingen",
+        "Europe/Chisinau", "Europe/Copenhagen", "Europe/Dublin", "Europe/Gibraltar", "Europe/Guernsey",
+        "Europe/Helsinki", "Europe/Isle_of_Man", "Europe/Istanbul", "Europe/Jersey", "Europe/Kaliningrad",
+        "Europe/Kiev", "Europe/Kirov", "Europe/Lisbon", "Europe/Ljubljana", "Europe/London", "Europe/Luxembourg",
+        "Europe/Madrid", "Europe/Malta", "Europe/Mariehamn", "Europe/Minsk", "Europe/Monaco", "Europe/Moscow",
+        "Europe/Oslo", "Europe/Paris", "Europe/Podgorica", "Europe/Prague", "Europe/Riga", "Europe/Rome",
+        "Europe/Samara", "Europe/San_Marino", "Europe/Sarajevo", "Europe/Saratov", "Europe/Simferopol",
+        "Europe/Skopje", "Europe/Sofia", "Europe/Stockholm", "Europe/Tallinn", "Europe/Tirane", "Europe/Ulyanovsk",
+        "Europe/Uzhgorod", "Europe/Vaduz", "Europe/Vatican", "Europe/Vienna", "Europe/Vilnius", "Europe/Volgograd",
+        "Europe/Warsaw", "Europe/Zagreb", "Europe/Zaporozhye", "Europe/Zurich",
+        "Indian/Antananarivo", "Indian/Chagos", "Indian/Christmas", "Indian/Cocos", "Indian/Comoro",
+        "Indian/Kerguelen", "Indian/Mahe", "Indian/Maldives", "Indian/Mauritius", "Indian/Mayotte", "Indian/Reunion",
+        "Pacific/Apia", "Pacific/Auckland", "Pacific/Bougainville", "Pacific/Chatham", "Pacific/Chuuk",
+        "Pacific/Easter", "Pacific/Efate", "Pacific/Fakaofo", "Pacific/Fiji", "Pacific/Funafuti",
+        "Pacific/Galapagos", "Pacific/Gambier", "Pacific/Guadalcanal", "Pacific/Guam", "Pacific/Honolulu",
+        "Pacific/Kanton", "Pacific/Kiritimati", "Pacific/Kosrae", "Pacific/Kwajalein", "Pacific/Majuro",
+        "Pacific/Marquesas", "Pacific/Midway", "Pacific/Nauru", "Pacific/Niue", "Pacific/Norfolk",
+        "Pacific/Noumea", "Pacific/Pago_Pago", "Pacific/Palau", "Pacific/Pitcairn", "Pacific/Pohnpei",
+        "Pacific/Port_Moresby", "Pacific/Rarotonga", "Pacific/Saipan", "Pacific/Tahiti", "Pacific/Tarawa",
+        "Pacific/Tongatapu", "Pacific/Wake", "Pacific/Wallis",
+        "UTC"
+      ];
+
+      const cityToTimezone = {
+        "new york": "America/New_York", "los angeles": "America/Los_Angeles",
+        "chicago": "America/Chicago", "toronto": "America/Toronto",
+        "vancouver": "America/Vancouver", "mexico city": "America/Mexico_City",
+        "london": "Europe/London", "paris": "Europe/Paris", "berlin": "Europe/Berlin",
+        "rome": "Europe/Rome", "madrid": "Europe/Madrid", "amsterdam": "Europe/Amsterdam",
+        "brussels": "Europe/Brussels", "vienna": "Europe/Vienna", "zurich": "Europe/Zurich",
+        "moscow": "Europe/Moscow", "dubai": "Asia/Dubai", "mumbai": "Asia/Kolkata",
+        "delhi": "Asia/Kolkata", "kolkata": "Asia/Kolkata", "bangalore": "Asia/Kolkata",
+        "tokyo": "Asia/Tokyo", "seoul": "Asia/Seoul", "beijing": "Asia/Shanghai",
+        "shanghai": "Asia/Shanghai", "hong kong": "Asia/Hong_Kong", "singapore": "Asia/Singapore",
+        "sydney": "Australia/Sydney", "melbourne": "Australia/Melbourne",
+        "auckland": "Pacific/Auckland", "honolulu": "Pacific/Honolulu",
+        "johannesburg": "Africa/Johannesburg", "cairo": "Africa/Cairo",
+        "lagos": "Africa/Lagos", "nairobi": "Africa/Nairobi"
+      };
+
+      function formatTimezone(timezone) {
+        try {
+          const now = new Date();
+          const formatter = new Intl.DateTimeFormat('en-US', { timeZone: timezone, timeZoneName: 'short' });
+          const formatted = formatter.format(now);
+          const tzPart = formatted.split(', ')[1] || '';
+          const parts = timezone.split('/');
+          let formattedName = parts.map(part => part.replace(/_/g, ' ')).join(' / ');
+          return tzPart ? `${formattedName} (${tzPart})` : formattedName;
+        } catch (e) {
+          return timezone.replace(/_/g, ' ').replace(/\//g, ' / ');
+        }
+      }
+
+      function filterTimezones(search) {
+        if (!search) return [];
+        const results = [];
+        const searchLower = search.toLowerCase();
+        for (const city in cityToTimezone) {
+          if (city.includes(searchLower)) {
+            const tz = cityToTimezone[city];
+            if (!results.includes(tz)) results.push(tz);
+          }
+        }
+        for (const tz of allTimezones) {
+          if (formatTimezone(tz).toLowerCase().includes(searchLower) && !results.includes(tz)) results.push(tz);
+        }
+        return results.slice(0, 10);
+      }
+
+      function showResults(results) {
+        if (results.length === 0) { searchResults.classList.add('hidden'); return; }
+        searchResults.innerHTML = '';
+        results.forEach(tz => {
+          const div = document.createElement('div');
+          div.className = 'py-1.5 px-3 cursor-pointer hover:bg-gray-100 text-sm';
+          div.textContent = formatTimezone(tz);
+          div.addEventListener('click', () => { timezoneInput.value = tz; timezoneAutocomplete.value = formatTimezone(tz); searchResults.classList.add('hidden'); });
+          searchResults.appendChild(div);
+        });
+        searchResults.classList.remove('hidden');
+      }
+
+      timezoneAutocomplete.addEventListener('input', () => showResults(filterTimezones(timezoneAutocomplete.value)));
+      document.addEventListener('click', (e) => { if (e.target !== timezoneAutocomplete) searchResults.classList.add('hidden'); });
+      timezoneAutocomplete.addEventListener('focus', () => { if (timezoneAutocomplete.value) showResults(filterTimezones(timezoneAutocomplete.value)); });
+
+      // Initialize
+      const initTz = timezoneInput.value || 'UTC';
+      timezoneInput.value = initTz;
+      timezoneAutocomplete.value = formatTimezone(initTz);
+    });
+  </script>
 {% end %}

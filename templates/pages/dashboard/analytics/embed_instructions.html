@@ -1,104 +1,114 @@
 {% extends "/layouts/standard.html" %}
 
-{% macro Title %}Embed Instructions{% end %}
+{% macro Title %}Embed Instructions | {{site.URL}}{% end %}
 
 {% macro Body %}
-  <h1 class="text-2xl font-bold">{{site.URL}}</h1>
 
-  <!-- embed instructions link -->
-  <div class="mt-2 mb-8">
-    <a href="/dashboard/{{site.ID}}/analytics" class="text-blue-500 underline">
-      Back to analytics dashboard
-    </a>
-  </div>
-
-  <hr class="my-4 border-t border-gray-200" />
-
-  <div class="m-4 mb-8">
-    <div class="bg-white shadow-md rounded-lg p-6">
-      <h2 class="text-xl font-bold">Embed instructions</h2>
-      <div class="mt-2 text-gray-700">
-        <p class="mb-2">
-          To embed the analytics script on your site, you need to add the below tag to your site's HTML.
-          You should add it at the very end of the <code class="bg-gray-200 text-red-600 px-1 rounded">&lt;head&gt;</code>
-          tag.
-        </p>
-        <code class="bg-gray-800 text-white p-4 rounded-lg block overflow-x-auto mb-4 mt-4">
-          &lt;script src="{{publicURL}}/reaper/{{escapePath(signedInUser.Username)}}/embed/{{site.ID}}.js"
-          async&gt;&lt;/script&gt;
-        </code>
-        <p class="mb-4">
-          This will start tracking visits to your site and sending the data to
-          your dashboard.
-        </p>
-        <h3 class="text-lg font-semibold mb-2">Prevent from tracking your own visits</h3>
-        <p class="mb-2">
-          The <code class="bg-gray-200 text-red-600 px-1 rounded">mochi_ignore</code> parameter can be used to control whether your own visits are tracked.
-          You can add <code class="bg-gray-200 text-red-600 px-1 rounded">?mochi_ignore=true</code> to the URL to stop tracking your visits in the current browser.
-          To re-enable tracking, add <code class="bg-gray-200 text-red-600 px-1 rounded">?mochi_ignore=false</code> to the URL.
-        </p>
-        <p class="mb-4">
-          When you disable tracking, a message will alert you that mochi will no longer track your own hits in this browser.
-          Similarly, when you re-enable tracking, a message will alert you that mochi has been enabled for this website in this browser.
-        </p>
-      </div>
+  <!-- Header row -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+    <div>
+      <h1 class="text-xl font-bold text-gray-900">{{site.URL}}</h1>
+      <a href="/dashboard" class="text-sm text-gray-400 hover:text-gray-600 transition-colors">← Dashboard</a>
     </div>
   </div>
 
-  <div class="m-4 mb-8">
-    <div class="bg-white shadow-md rounded-lg p-6">
-      <h2 class="text-xl font-bold">Kudos (Likes)</h2>
-      <div class="mt-2 text-gray-700">
-        <p class="mb-2">
-          Add a kudos button to your pages so visitors can show their appreciation. It's a great way to see how many real humans engaged with your content.
-        </p>
+  <!-- Tabs -->
+  <div class="mt-3 border-b border-gray-200">
+    <nav class="-mb-px flex space-x-6">
+      <a href="/dashboard/{{site.ID}}/analytics" class="border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300 whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm cursor-pointer transition-colors">
+        Analytics
+      </a>
+      <a href="/dashboard/{{site.ID}}/webmentions" class="border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300 whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm cursor-pointer transition-colors">
+        Webmentions
+      </a>
+      <a href="/dashboard/{{site.ID}}/settings" class="border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300 whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm cursor-pointer transition-colors">
+        Site Settings
+      </a>
+    </nav>
+  </div>
 
-        <h3 class="text-lg font-semibold mb-2 mt-4">1. Enable kudos in your embed script</h3>
-        <p class="mb-2">
-          Add <code class="bg-gray-200 text-red-600 px-1 rounded">?kudos</code> to your embed script URL:
-        </p>
-        <code class="bg-gray-800 text-white p-4 rounded-lg block overflow-x-auto mb-4 mt-4">
-          &lt;script src="{{publicURL}}/reaper/{{escapePath(signedInUser.Username)}}/embed/{{site.ID}}.js?kudos" async&gt;&lt;/script&gt;
-        </code>
+  <!-- Analytics script -->
+  <div class="mt-8">
+    <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-4">Analytics Script</h2>
+    <p class="text-sm text-gray-600 mb-3">
+      Add this tag at the end of your <code class="bg-gray-100 text-gray-800 text-xs px-1.5 py-0.5 rounded font-mono">&lt;head&gt;</code> to start tracking visits.
+    </p>
+    <pre class="bg-gray-900 text-gray-100 text-sm p-4 rounded-lg overflow-x-auto font-mono">&lt;script src="{{publicURL}}/reaper/{{escapePath(signedInUser.Username)}}/embed/{{site.ID}}.js" async&gt;&lt;/script&gt;</pre>
+  </div>
 
-        <h3 class="text-lg font-semibold mb-2 mt-4">2. Add a kudos button to your page</h3>
-        <p class="mb-2">
-          Place a button with the <code class="bg-gray-200 text-red-600 px-1 rounded">mochi_kudos</code> class wherever you'd like the kudos button to appear:
-        </p>
-        <code class="bg-gray-800 text-white p-4 rounded-lg block overflow-x-auto mb-4 mt-4">
-          &lt;button class="mochi_kudos"&gt;&lt;/button&gt;
-        </code>
-        <p class="mb-4">
-          The button will automatically show the current kudos count (e.g. "👋 42"). Visitors can click it once per page — their choice is stored in the browser.
-        </p>
+  <!-- Ignore your own visits -->
+  <div class="mt-8">
+    <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-4">Ignore Your Own Visits</h2>
+    <p class="text-sm text-gray-600 mb-2">
+      Append <code class="bg-gray-100 text-gray-800 text-xs px-1.5 py-0.5 rounded font-mono">?mochi_ignore=true</code> to any page URL on your site to stop tracking your visits in that browser.
+      Use <code class="bg-gray-100 text-gray-800 text-xs px-1.5 py-0.5 rounded font-mono">?mochi_ignore=false</code> to re-enable tracking.
+    </p>
+    <p class="text-sm text-gray-400">
+      An alert will confirm when tracking has been disabled or re-enabled.
+    </p>
+  </div>
 
-        <h3 class="text-lg font-semibold mb-2 mt-4">Options</h3>
-        <ul class="list-disc list-inside mb-4 space-y-2">
-          <li>
-            <strong>Custom emoji:</strong> Use <code class="bg-gray-200 text-red-600 px-1 rounded">?kudos=❤️</code> to change the default 👋 emoji.
-          </li>
-          <li>
-            <strong>Custom styling:</strong> Use <code class="bg-gray-200 text-red-600 px-1 rounded">?kudos=custom</code> to get only the count number, so you can style the button yourself.
-          </li>
-          <li>
-            <strong>Multiple buttons:</strong> On index pages with multiple posts, use <code class="bg-gray-200 text-red-600 px-1 rounded">data-path</code> to specify which page each button belongs to:
-            <code class="bg-gray-800 text-white p-4 rounded-lg block overflow-x-auto mt-2">
-              &lt;button class="mochi_kudos" data-path="/blog/my-post"&gt;&lt;/button&gt;
-            </code>
-          </li>
-          <li>
-            <strong>Private kudos:</strong> Add <code class="bg-gray-200 text-red-600 px-1 rounded">data-private="true"</code> to hide the count from visitors. You'll still see it in your dashboard.
-          </li>
-        </ul>
+  <!-- Kudos -->
+  <div class="mt-8">
+    <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-4">Kudos (Likes)</h2>
+    <p class="text-sm text-gray-600 mb-4">
+      Add a kudos button so visitors can show appreciation. A great way to measure real engagement.
+    </p>
 
-        <h3 class="text-lg font-semibold mb-2 mt-4">Styling</h3>
-        <p class="mb-2">
-          When a visitor gives kudos, the button gets the <code class="bg-gray-200 text-red-600 px-1 rounded">did_kudo</code> CSS class and becomes disabled. Use this class to style the active state. For example:
-        </p>
-        <code class="bg-gray-800 text-white p-4 rounded-lg block overflow-x-auto mb-4 mt-2">
-          .mochi_kudos.did_kudo { background-color: #f0fdf4; border-color: #86efac; }
-        </code>
+    <!-- Step 1 -->
+    <div class="mb-5">
+      <h3 class="text-sm font-semibold text-gray-700 mb-2">1. Enable kudos in your embed script</h3>
+      <p class="text-sm text-gray-600 mb-2">
+        Add <code class="bg-gray-100 text-gray-800 text-xs px-1.5 py-0.5 rounded font-mono">?kudos</code> to the script URL:
+      </p>
+      <pre class="bg-gray-900 text-gray-100 text-sm p-4 rounded-lg overflow-x-auto font-mono">&lt;script src="{{publicURL}}/reaper/{{escapePath(signedInUser.Username)}}/embed/{{site.ID}}.js?kudos" async&gt;&lt;/script&gt;</pre>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="mb-5">
+      <h3 class="text-sm font-semibold text-gray-700 mb-2">2. Add a kudos button to your page</h3>
+      <p class="text-sm text-gray-600 mb-2">
+        Place a button with the <code class="bg-gray-100 text-gray-800 text-xs px-1.5 py-0.5 rounded font-mono">mochi_kudos</code> class wherever you'd like it to appear:
+      </p>
+      <pre class="bg-gray-900 text-gray-100 text-sm p-4 rounded-lg overflow-x-auto font-mono">&lt;button class="mochi_kudos"&gt;&lt;/button&gt;</pre>
+      <p class="text-sm text-gray-400 mt-2">
+        The button automatically shows the current count (e.g. "👋 42"). Visitors can click once per page — stored in the browser.
+      </p>
+    </div>
+
+    <!-- Options -->
+    <div class="mb-5">
+      <h3 class="text-sm font-semibold text-gray-700 mb-3">Options</h3>
+      <div class="space-y-3 text-sm text-gray-600">
+        <div class="flex gap-2">
+          <span class="font-medium text-gray-700 shrink-0">Custom emoji</span>
+          <span>— Use <code class="bg-gray-100 text-gray-800 text-xs px-1.5 py-0.5 rounded font-mono">?kudos=❤️</code> to change the default 👋 emoji.</span>
+        </div>
+        <div class="flex gap-2">
+          <span class="font-medium text-gray-700 shrink-0">Custom styling</span>
+          <span>— Use <code class="bg-gray-100 text-gray-800 text-xs px-1.5 py-0.5 rounded font-mono">?kudos=custom</code> to get only the count number, so you can style it yourself.</span>
+        </div>
+        <div>
+          <div class="flex gap-2">
+            <span class="font-medium text-gray-700 shrink-0">Multiple buttons</span>
+            <span>— On index pages, use <code class="bg-gray-100 text-gray-800 text-xs px-1.5 py-0.5 rounded font-mono">data-path</code> to specify which page each button belongs to:</span>
+          </div>
+          <pre class="bg-gray-900 text-gray-100 text-sm p-4 rounded-lg overflow-x-auto font-mono mt-2">&lt;button class="mochi_kudos" data-path="/blog/my-post"&gt;&lt;/button&gt;</pre>
+        </div>
+        <div class="flex gap-2">
+          <span class="font-medium text-gray-700 shrink-0">Private kudos</span>
+          <span>— Add <code class="bg-gray-100 text-gray-800 text-xs px-1.5 py-0.5 rounded font-mono">data-private="true"</code> to hide the count from visitors. You'll still see it in your dashboard.</span>
+        </div>
       </div>
+    </div>
+
+    <!-- Styling -->
+    <div>
+      <h3 class="text-sm font-semibold text-gray-700 mb-2">Styling the active state</h3>
+      <p class="text-sm text-gray-600 mb-2">
+        After a visitor clicks kudos, the button gets the <code class="bg-gray-100 text-gray-800 text-xs px-1.5 py-0.5 rounded font-mono">did_kudo</code> class and becomes disabled. Style it like:
+      </p>
+      <pre class="bg-gray-900 text-gray-100 text-sm p-4 rounded-lg overflow-x-auto font-mono">.mochi_kudos.did_kudo { background-color: #f0fdf4; border-color: #86efac; }</pre>
     </div>
   </div>
 {% end %}

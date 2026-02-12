@@ -5,229 +5,161 @@
 {% macro Body %}
 
   {% macro MetricsCountTable(pathToCounts []struct{Key string; Value int}, title, keyColumn, valueColumn, filterName string, isLink bool) %}
-    <div class="mt-4">
-      <h2 class="text-xl font-bold">{{ title }}</h2>
-      {% if len(pathToCounts) == 0 %}
-        <p>No data</p>
-      {% else %}
-        <ul class="mt-2 max-h-96 overflow-y-auto rounded-lg border border-gray-200">
-          <li class="flex items-center justify-between py-2 px-4 border-b border-gray-200 bg-white sticky top-0 z-10">
-            <span class="font-bold text-sm text-gray-600">{{keyColumn}}</span>
-            <span class="font-bold text-sm text-gray-600">{{valueColumn}}</span>
+    {% if len(pathToCounts) == 0 %}
+    {% else %}
+      <div>
+        <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{{ title }}</h3>
+        <ul class="max-h-72 overflow-y-auto rounded-lg border border-gray-200 text-sm">
+          <li class="flex items-center justify-between py-1.5 px-3 border-b border-gray-200 bg-white sticky top-0 z-10">
+            <span class="font-medium text-xs text-gray-400">{{keyColumn}}</span>
+            <span class="font-medium text-xs text-gray-400">{{valueColumn}}</span>
           </li>
           {% for path_i, pdata := range pathToCounts %}
             {% bgColor := "bg-white" %}
             {% if path_i % 2 == 0 %}
               {% bgColor = "bg-gray-50" %}
             {% end %}
-            <li class="flex items-center justify-between py-2 px-4 border-b border-gray-200 {{bgColor}}">
-              <span class="cursor-pointer text-blue-500">
+            <li class="flex items-center justify-between py-1.5 px-3 border-b border-gray-100 {{bgColor}}">
+              <span class="cursor-pointer text-indigo-600 hover:text-indigo-800 transition-colors truncate mr-2">
                 <span onclick="addFilter('{{filterName}}', '{{ pdata.Key }}')">{{ pdata.Key }}</span>
                 {% if isLink %}
-                    <a target="_blank" href="{{pdata.Key}}" class="ml-1 text-gray-500">(⤴)</a>
+                    <a target="_blank" href="{{pdata.Key}}" class="ml-1 text-gray-400 hover:text-gray-600">(⤴)</a>
                 {% end %}
               </span>
-              <span>{{ pdata.Value }}</span>
+              <span class="text-gray-700 font-medium tabular-nums shrink-0">{{ pdata.Value }}</span>
             </li>
           {% end %}
         </ul>
-      {% end %}
-    </div>
+      </div>
+    {% end %}
   {% end %}
 
   <script src="/assets/js/chart.js"></script>
 
-  <h1 class="text-2xl font-bold">{{site.URL}}</h1>
-
-  <div class="mt-2">
-    <a href="/dashboard" class="text-blue-500 underline mr-4">Back to Dashboard</a>
+  <!-- Header row: site name + nav -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+    <div>
+      <h1 class="text-xl font-bold text-gray-900">{{site.URL}}</h1>
+      <a href="/dashboard" class="text-sm text-gray-400 hover:text-gray-600 transition-colors">← Dashboard</a>
+    </div>
+    <a href="/dashboard/{{site.ID}}/analytics/embed-instructions"
+       class="text-xs text-gray-400 hover:text-gray-600 transition-colors self-start sm:self-auto">
+      Embed Instructions →
+    </a>
   </div>
 
-
   <!-- Tabs -->
-  <div class="mt-6 mb-4 border-b border-gray-200">
-    <nav class="-mb-px flex space-x-8">
-      <a href="/dashboard/{{site.ID}}/analytics" class="border-indigo-500 text-indigo-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm cursor-pointer">
+  <div class="mt-3 border-b border-gray-200">
+    <nav class="-mb-px flex space-x-6">
+      <a href="/dashboard/{{site.ID}}/analytics" class="border-indigo-500 text-indigo-600 whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm cursor-pointer">
         Analytics
       </a>
-      <a href="/dashboard/{{site.ID}}/webmentions" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm cursor-pointer">
+      <a href="/dashboard/{{site.ID}}/webmentions" class="border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300 whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm cursor-pointer transition-colors">
         Webmentions
       </a>
-      <a href="/dashboard/{{site.ID}}/settings" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm cursor-pointer">
+      <a href="/dashboard/{{site.ID}}/settings" class="border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300 whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm cursor-pointer transition-colors">
         Site Settings
       </a>
     </nav>
   </div>
 
-  <div class="mt-2">
-    <a
-      href="/dashboard/{{site.ID}}/analytics/embed-instructions"
-      class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
-    >
-      Embed Instructions
-    </a>
-  </div>
-
-  <hr class="my-4 border-t border-gray-200" />
-
-  <!-- total vists and filters -->
-  <div class="m-4 mb-8">
-    <div class="bg-white shadow-md rounded-lg p-6">
-      <h2 class="text-xl font-bold">
-        Total visits in date range: <i>{%show len(hits) %}</i>
-      </h2>
-      <h3 class="text-lg font-bold">
-        Number of unique visitors: <i>{{numUniqueVisitors}}</i>
-      </h3>
-      {% if totalKudos > 0 %}
-      <h3 class="text-lg font-bold">
-        👋 Kudos in date range: <i>{{totalKudos}}</i>
-      </h3>
-      {% end %}
-
-      <div class="mt-4">
-        <form method="GET">
-          <div class="flex flex-wrap items-center space-y-4 sm:space-y-0 sm:space-x-4">
-            <div class="w-full sm:w-auto">
-              <label for="minDate" class="block text-sm font-medium text-gray-700">Min Date (inclusive)</label>
-              <input type="date" id="minDate" name="minDate" value="{{dateFmt("2006-01-02", minDate)}}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-            </div>
-            <div class="w-full sm:w-auto">
-              <label for="maxDate" class="block text-sm font-medium text-gray-700">Max Date (inclusive)</label>
-              <input type="date" id="maxDate" name="maxDate" value="{{dateFmt("2006-01-02", maxDate)}}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-            </div>
-            <div class="w-full sm:w-auto pt-6 sm:pt-0">
-              <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 cursor-pointer">
-                Apply
-              </button>
-            </div>
-          </div>
-        </form>
-        <div class="mt-4 flex flex-wrap gap-2">
-          <button onclick="setPreset('today')" class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 cursor-pointer transition-colors">
-            Today
-          </button>
-          <button onclick="setPreset('lastWeek')" class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 cursor-pointer transition-colors">
-            Last Week
-          </button>
-          <button onclick="setPreset('lastMonth')" class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 cursor-pointer transition-colors">
-            Last Month
-          </button>
-          <button onclick="setPreset('pastYear')" class="inline-flex items-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 cursor-pointer transition-colors">
-            Past Year
-          </button>
-          <button id="clearFiltersButton" onclick="clearAllFilters()" class="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md text-red-600 hover:text-red-700 hover:bg-red-50 cursor-pointer transition-colors">
-            Clear All Filters
-          </button>
-        </div>
+  <!-- Stats bar + date controls -->
+  <div class="mt-4 flex flex-col lg:flex-row lg:items-start gap-4">
+    <!-- Stats -->
+    <div class="flex items-baseline gap-6 shrink-0">
+      <div>
+        <span class="text-2xl font-bold text-gray-900">{%show len(hits) %}</span>
+        <span class="text-sm text-gray-400 ml-1">visits</span>
       </div>
+      <div>
+        <span class="text-2xl font-bold text-gray-900">{{numUniqueVisitors}}</span>
+        <span class="text-sm text-gray-400 ml-1">unique</span>
+      </div>
+      {% if totalKudos > 0 %}
+      <div>
+        <span class="text-2xl font-bold text-gray-900">{{totalKudos}}</span>
+        <span class="text-sm text-gray-400 ml-1">👋 kudos</span>
+      </div>
+      {% end %}
+    </div>
+
+    <!-- Date controls -->
+    <div class="flex flex-wrap items-end gap-2 lg:ml-auto">
+      <div class="flex flex-wrap gap-1.5">
+        <button onclick="setPreset('today')" class="px-2.5 py-1 text-xs font-medium rounded-md border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 cursor-pointer transition-colors">Today</button>
+        <button onclick="setPreset('lastWeek')" class="px-2.5 py-1 text-xs font-medium rounded-md border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 cursor-pointer transition-colors">Week</button>
+        <button onclick="setPreset('lastMonth')" class="px-2.5 py-1 text-xs font-medium rounded-md border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 cursor-pointer transition-colors">Month</button>
+        <button onclick="setPreset('pastYear')" class="px-2.5 py-1 text-xs font-medium rounded-md border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 cursor-pointer transition-colors">Year</button>
+        <button id="clearFiltersButton" onclick="clearAllFilters()" class="px-2.5 py-1 text-xs font-medium rounded-md text-red-500 hover:bg-red-50 cursor-pointer transition-colors">Clear</button>
+      </div>
+      <form method="GET" class="flex items-end gap-1.5">
+        <input type="date" id="minDate" name="minDate" value="{{dateFmt("2006-01-02", minDate)}}" class="block w-32 text-xs border border-gray-200 rounded-md px-2 py-1">
+        <span class="text-gray-300 text-xs">–</span>
+        <input type="date" id="maxDate" name="maxDate" value="{{dateFmt("2006-01-02", maxDate)}}" class="block w-32 text-xs border border-gray-200 rounded-md px-2 py-1">
+        <button type="submit" class="px-2.5 py-1 text-xs font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 cursor-pointer transition-colors">Go</button>
+      </form>
     </div>
   </div>
 
-  <!-- graph of visits -->
-
   {% if len(hits) > 0 %}
-  <h2 class="text-xl font-bold">Graph</h2>
 
-  <canvas
-    id="barChart"
-    width="400"
-    height="200"
-  ></canvas>
-
-  <div class="mt-4">
-    <hr class="my-4 border-t border-gray-200" />
+  <!-- Chart -->
+  <div class="mt-4 bg-white rounded-lg border border-gray-200 p-4">
+    <canvas id="barChart" width="400" height="150"></canvas>
   </div>
 
-  <!-- counts for each path -->
-  {{ MetricsCountTable(sortedCountsForPath, "Visits by Path", "Path", "Visits", "pagePathFilter", false) }}
-
-  <div class="mt-4">
-    <hr class="my-4 border-t border-gray-200" />
+  <!-- Primary tables: Path + Referrer side by side -->
+  <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+    {{ MetricsCountTable(sortedCountsForPath, "Pages", "Path", "Visits", "pagePathFilter", false) }}
+    {{ MetricsCountTable(sortedCountsForReferrer, "Referrers", "Source", "Visits", "referrerFilter", true) }}
   </div>
 
-  <!-- counts for each referer and referer for path -->
-  {{ MetricsCountTable(sortedCountsForReferrer, "Visits by referrer", "Referrer", "Visits", "referrerFilter", true) }}
-
-  <div class="mt-4">
-    <hr class="my-4 border-t border-gray-200" />
+  <!-- Secondary tables: Country + OS + Browser + Device in grid -->
+  <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+    {{ MetricsCountTable(sortedCountsForCountry, "Countries", "Country", "Visits", "countryFilter", false) }}
+    {{ MetricsCountTable(sortedCountsForOS, "OS", "OS", "Visits", "osFilter", false) }}
+    {{ MetricsCountTable(sortedCountsForBrowser, "Browsers", "Browser", "Visits", "browserFilter", false) }}
+    {{ MetricsCountTable(sortedCountsForDevice, "Devices", "Device", "Visits", "deviceFilter", false) }}
   </div>
-
-  <!-- counts for each country -->
-  {{ MetricsCountTable(sortedCountsForCountry, "Visits by country", "Country", "Visits", "countryFilter", false) }}
-
-  <div class="mt-4">
-    <hr class="my-4 border-t border-gray-200" />
-  </div>
-
-  <!-- counts for each OS -->
-  {{ MetricsCountTable(sortedCountsForOS, "Visits by OS", "OS", "Visits", "osFilter", false) }}
-
-  <div class="mt-4">
-    <hr class="my-4 border-t border-gray-200" />
-  </div>
-
-  <!-- counts for each browser -->
-  {{ MetricsCountTable(sortedCountsForBrowser, "Visits by browser", "Browser", "Visits", "browserFilter", false) }}
-
-  <div class="mt-4">
-    <hr class="my-4 border-t border-gray-200" />
-  </div>
-
-  <!-- counts for each device -->
-  {{ MetricsCountTable(sortedCountsForDevice, "Visits by device", "Device", "Visits", "deviceFilter", false) }}
 
   {% else %}
-  <div class="mt-6 text-center py-12">
+  <div class="mt-8 text-center py-16">
     <p class="text-gray-400 text-lg">No visit data in this date range</p>
     <p class="mt-2 text-gray-400 text-sm">Visits will appear here once your site starts receiving traffic.</p>
   </div>
   {% end %}
 
   {% if len(sortedCountsForKudos) > 0 %}
-  <div class="mt-4">
-    <hr class="my-4 border-t border-gray-200" />
+  <div class="mt-6">
+    {{ MetricsCountTable(sortedCountsForKudos, "Kudos by Page", "Page", "Kudos", "pagePathFilter", false) }}
   </div>
-
-  <!-- kudos by page -->
-  {{ MetricsCountTable(sortedCountsForKudos, "Kudos by Page", "Page", "Kudos", "pagePathFilter", false) }}
   {% end %}
 
   <script>
     function hasActiveFilters() {
       const urlParams = new URLSearchParams(window.location.search);
       const filters = ['pagePathFilter', 'referrerFilter', 'countryFilter', 'osFilter', 'browserFilter', 'deviceFilter', 'minDate', 'maxDate'];
-
-      // Check if any filter is active
       for (const filter of filters) {
-        if (urlParams.has(filter)) {
-          console.log("Active filter found:", filter);
-          return true;
-        }
+        if (urlParams.has(filter)) return true;
       }
       return false;
     }
 
     function updateClearFiltersButton() {
       const clearButton = document.getElementById('clearFiltersButton');
-      const hasFilters = hasActiveFilters();
-      console.log("Has active filters:", hasFilters);
-
-      if (!hasFilters) {
+      if (!hasActiveFilters()) {
         clearButton.classList.add('text-gray-300', 'cursor-not-allowed');
-        clearButton.classList.remove('text-red-600', 'hover:text-red-700', 'hover:bg-red-50');
+        clearButton.classList.remove('text-red-500', 'hover:bg-red-50');
         clearButton.disabled = true;
       } else {
         clearButton.classList.remove('text-gray-300', 'cursor-not-allowed');
-        clearButton.classList.add('text-red-600', 'hover:text-red-700', 'hover:bg-red-50', 'cursor-pointer');
+        clearButton.classList.add('text-red-500', 'hover:bg-red-50', 'cursor-pointer');
         clearButton.disabled = false;
       }
     }
 
     function clearAllFilters() {
-      if (hasActiveFilters()) {
-        window.location.search = '';
-      }
+      if (hasActiveFilters()) window.location.search = '';
     }
 
     function addFilter(filterName, filterValue) {
@@ -251,13 +183,13 @@
         if (filterValue) {
           const filterElements = document.querySelectorAll(`[onclick="addFilter('${filter}', '${filterValue}')"]`);
           filterElements.forEach(element => {
-            element.classList.remove('text-blue-500');
+            element.classList.remove('text-indigo-600');
             element.classList.remove('cursor-pointer');
             element.classList.add('text-gray-500');
             element.removeAttribute('onclick');
             const removeSpan = document.createElement('span');
-            removeSpan.classList.add('text-red-500', 'cursor-pointer');
-            removeSpan.textContent = ' x';
+            removeSpan.classList.add('text-red-400', 'cursor-pointer', 'hover:text-red-600', 'ml-1');
+            removeSpan.textContent = '✕';
             removeSpan.onclick = function() {
               removeFilter(filter);
             };
@@ -266,13 +198,12 @@
         }
       });
 
-      // Update the clear filters button state
       updateClearFiltersButton();
     });
 
     function setPreset(preset) {
       const today = new Date();
-      let minDate, maxDate = today.toLocaleDateString('en-CA'); // 'en-CA' format is YYYY-MM-DD
+      let minDate, maxDate = today.toLocaleDateString('en-CA');
 
       if (preset === 'today') {
         minDate = new Date().toLocaleDateString('en-CA');
@@ -286,6 +217,11 @@
 
       document.getElementById('minDate').value = minDate;
       document.getElementById('maxDate').value = maxDate;
+
+      const urlParams = new URLSearchParams(window.location.search);
+      urlParams.set('minDate', minDate);
+      urlParams.set('maxDate', maxDate);
+      window.location.search = urlParams.toString();
     }
 
     document.addEventListener("DOMContentLoaded", function () {
@@ -300,20 +236,29 @@
         type: "bar",
         data: {
           labels: labels,
-          datasets: [
-            {
-              label: "Visits",
-              data: data,
-              backgroundColor: "rgba(99, 102, 241, 0.15)",
-              borderColor: "rgba(99, 102, 241, 0.8)",
-              borderWidth: 1,
-            },
-          ],
+          datasets: [{
+            label: "Visits",
+            data: data,
+            backgroundColor: "rgba(99, 102, 241, 0.12)",
+            borderColor: "rgba(99, 102, 241, 0.6)",
+            borderWidth: 1,
+            borderRadius: 3,
+          }],
         },
         options: {
+          responsive: true,
+          plugins: {
+            legend: { display: false },
+          },
           scales: {
             y: {
               beginAtZero: true,
+              grid: { color: "rgba(0,0,0,0.04)" },
+              ticks: { font: { size: 11 }, color: "#9ca3af" },
+            },
+            x: {
+              grid: { display: false },
+              ticks: { font: { size: 11 }, color: "#9ca3af" },
             },
           },
           onClick: function (evt, elements) {

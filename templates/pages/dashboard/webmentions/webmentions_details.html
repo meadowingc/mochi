@@ -3,257 +3,196 @@
 {% macro Title %}{{site.URL}} | Webmentions{% end %}
 
 {% macro Body %}
-  <h1 class="text-2xl font-bold">{{site.URL}}</h1>
 
-  <div class="mt-2">
-    <a href="/dashboard" class="text-blue-500 underline mr-4">Back to Dashboard</a>
+  <!-- Header row: site name + nav -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+    <div>
+      <h1 class="text-xl font-bold text-gray-900">{{site.URL}}</h1>
+      <a href="/dashboard" class="text-sm text-gray-400 hover:text-gray-600 transition-colors">← Dashboard</a>
+    </div>
   </div>
 
   <!-- Tabs -->
-  <div class="mt-6 mb-4 border-b border-gray-200">
-    <nav class="-mb-px flex space-x-8">
-      <a href="/dashboard/{{site.ID}}/analytics" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm cursor-pointer">
+  <div class="mt-3 border-b border-gray-200">
+    <nav class="-mb-px flex space-x-6">
+      <a href="/dashboard/{{site.ID}}/analytics" class="border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300 whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm cursor-pointer transition-colors">
         Analytics
       </a>
-      <a href="/dashboard/{{site.ID}}/webmentions" class="border-indigo-500 text-indigo-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm cursor-pointer">
+      <a href="/dashboard/{{site.ID}}/webmentions" class="border-indigo-500 text-indigo-600 whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm cursor-pointer">
         Webmentions
       </a>
-      <a href="/dashboard/{{site.ID}}/settings" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm cursor-pointer">
+      <a href="/dashboard/{{site.ID}}/settings" class="border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300 whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm cursor-pointer transition-colors">
         Site Settings
       </a>
     </nav>
   </div>
 
-  <!-- Setup Instructions Accordion -->
-  <div class="mt-4 border border-gray-200 rounded-lg overflow-hidden shadow-sm">
-    <details class="group">
-      <summary class="flex justify-between items-center p-2 bg-gray-50 cursor-pointer">
-        <div class="flex items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-indigo-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-          </svg>
-          <h3 class="text-lg font-medium text-gray-900">Setup Instructions</h3>
-        </div>
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500 group-open:transform group-open:rotate-180 transition-transform duration-200" viewBox="0 0 20 20" fill="currentColor">
+  <!-- Setup & API accordions -->
+  <div class="mt-4 space-y-1.5">
+    <details class="group border border-gray-200 rounded-lg overflow-hidden">
+      <summary class="flex justify-between items-center px-3 py-2 bg-gray-50/50 cursor-pointer text-sm">
+        <span class="font-medium text-gray-700">⚡ Setup Instructions</span>
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400 group-open:rotate-180 transition-transform duration-200" viewBox="0 0 20 20" fill="currentColor">
           <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
         </svg>
       </summary>
-
-      <div class="p-4 border-t border-gray-200 bg-white">
-        <p class="mb-2 text-sm text-gray-700">
-          To set up webmentions on your site, you need to add the following link tag to your site's <code class="bg-gray-200 text-red-600 px-1 rounded">&lt;head&gt;</code> section.
-        </p>
-        <div class="bg-gray-800 text-white p-4 rounded-lg block overflow-x-auto mb-4 mt-4">
+      <div class="px-3 py-3 border-t border-gray-200 bg-white text-sm text-gray-600">
+        <p class="mb-2">Add this to your site's <code class="bg-gray-100 text-red-600 px-1 rounded text-xs">&lt;head&gt;</code>:</p>
+        <div class="bg-gray-800 text-white p-3 rounded-md text-xs font-mono overflow-x-auto">
           <code>&lt;link rel="webmention" href="{{webmentionsURL}}/webmention/{{escapePath(signedInUser.Username)}}/{{site.ID}}/receive" /&gt;</code>
         </div>
-        <p class="mb-4 text-sm text-gray-700">
-          This will make it so that anyone that wants to send webmentions to your site can do so by sending them to <code>mochi</code>!
-        </p>
       </div>
     </details>
-  </div>
 
-  <!-- API Information Accordion -->
-  <div class="mt-2 border border-gray-200 rounded-lg overflow-hidden shadow-sm">
-    <details class="group">
-      <summary class="flex justify-between items-center p-2 bg-gray-50 cursor-pointer">
-        <div class="flex items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-indigo-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-          </svg>
-          <h3 class="text-lg font-medium text-gray-900">API Access for Webmentions</h3>
-        </div>
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500 group-open:transform group-open:rotate-180 transition-transform duration-200" viewBox="0 0 20 20" fill="currentColor">
+    <details class="group border border-gray-200 rounded-lg overflow-hidden">
+      <summary class="flex justify-between items-center px-3 py-2 bg-gray-50/50 cursor-pointer text-sm">
+        <span class="font-medium text-gray-700">&lt;/&gt; API Access</span>
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400 group-open:rotate-180 transition-transform duration-200" viewBox="0 0 20 20" fill="currentColor">
           <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
         </svg>
       </summary>
-
-      <div class="p-4 border-t border-gray-200 bg-white">
-        <p class="text-sm text-gray-600">
-          You can access your approved webmentions programmatically via our JSON API. This is useful for displaying webmentions on your website.
-        </p>
-        <div class="mt-3">
-          <div class="bg-gray-100 p-3 rounded font-mono text-sm overflow-x-auto">
-            {{publicURL}}/api/webmentions/{{signedInUser.Username}}/{{site.ID}}
-          </div>
-          <p class="mt-2 text-sm text-gray-500">
-            This endpoint returns a JSON array of your approved webmentions. It's public and CORS-enabled, so you can fetch it directly from your website's frontend.
-          </p>
-        </div>
-        <div class="mt-3">
-          <details class="text-sm nested-details">
-            <summary class="cursor-pointer text-indigo-600 hover:text-indigo-900 inline-flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
-              </svg>
-              View example response format
-            </summary>
-            <pre class="mt-2 p-3 bg-gray-800 text-white rounded-lg overflow-x-auto text-xs">[
+      <div class="px-3 py-3 border-t border-gray-200 bg-white text-sm text-gray-600 space-y-2">
+        <p>Fetch approved webmentions as JSON:</p>
+        <div class="bg-gray-100 p-2 rounded-md font-mono text-xs overflow-x-auto">{{publicURL}}/api/webmentions/{{signedInUser.Username}}/{{site.ID}}</div>
+        <details class="text-xs">
+          <summary class="cursor-pointer text-indigo-600 hover:text-indigo-800">Example response</summary>
+          <pre class="mt-1.5 p-2 bg-gray-800 text-white rounded-md overflow-x-auto">[
   {
     "source": "https://othersite.com/post-referencing-you",
     "target": "https://yoursite.com/your-post",
     "created_at": "2025-04-01T12:34:56Z"
   }
 ]</pre>
-          </details>
-        </div>
+        </details>
       </div>
     </details>
   </div>
 
-  <hr class="my-4 border-t border-gray-200" />
-
-  <!-- Webmentions to process section -->
-  <div class="mb-8">
-    <h2 class="text-xl font-bold mb-4">Webmentions to Process</h2>
-    {% if len(pendingWebmentions) == 0 %}
-      <p class="text-sm text-gray-500 italic">No pending webmentions</p>
-    {% else %}
-      <ul class="divide-y divide-gray-200">
-        {% for webmention in pendingWebmentions %}
-        <li class="py-4">
-          <div class="flex justify-between items-center">
-            <div>
-              <p class="text-sm text-gray-500">
-                <strong>Source URL:</strong>
-                <a href="{{ webmention.SourceURL }}" class="text-blue-500 underline" target="_blank">{{ webmention.SourceURL }}</a>
-              </p>
-              <p class="text-sm text-gray-500">
-                <strong>Target URL:</strong>
-                <a href="{{ webmention.TargetURL }}" class="text-blue-500 underline" target="_blank">{{ webmention.TargetURL }}</a>
-              </p>
-              <p class="text-sm text-gray-500">
-                <strong>Created At:</strong>
-                {{ webmention.CreatedAt.Format("2006-01-02 15:04:05") }}
-              </p>
-              <p class="text-sm text-gray-500">
-                <strong>Status:</strong>
-                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                  {{ webmention.Status }}
-                </span>
-              </p>
+  <!-- Pending webmentions -->
+  {% if len(pendingWebmentions) > 0 %}
+  <div class="mt-6">
+    <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+      Pending
+      <span class="ml-1 text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full text-xs font-medium normal-case tracking-normal">{{len(pendingWebmentions)}}</span>
+    </h3>
+    <div class="border border-gray-200 rounded-lg overflow-hidden max-h-[32rem] overflow-y-auto">
+      {% for wm_i, webmention := range pendingWebmentions %}
+        {% bgColor := "bg-white" %}
+        {% if wm_i % 2 == 0 %}
+          {% bgColor = "bg-gray-50/50" %}
+        {% end %}
+        <div class="flex items-start justify-between gap-3 px-3 py-2.5 border-b border-gray-100 {{bgColor}}">
+          <div class="min-w-0 flex-1">
+            <div class="flex items-baseline gap-1.5 text-sm">
+              <a href="{{ webmention.SourceURL }}" class="text-indigo-600 hover:text-indigo-800 truncate" target="_blank" title="{{ webmention.SourceURL }}">{{ webmention.SourceURL }}</a>
             </div>
-            <div class="flex space-x-2">
-              <form method="POST" action="/dashboard/{{site.ID}}/webmentions/{{webmention.ID}}/approve">
-                {{ csrfField }}
-                <button type="submit" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                  Approve
-                </button>
-              </form>
-              <form method="POST" action="/dashboard/{{site.ID}}/webmentions/{{webmention.ID}}/reject">
-                {{ csrfField }}
-                <button type="submit" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-                  Reject
-                </button>
-              </form>
+            <div class="flex items-baseline gap-1.5 text-xs text-gray-400 mt-0.5">
+              <span>→</span>
+              <a href="{{ webmention.TargetURL }}" class="hover:text-gray-600 truncate" target="_blank">{{ webmention.TargetURL }}</a>
+              <span class="shrink-0">· {{ webmention.CreatedAt.Format("Jan 2, 2006") }}</span>
             </div>
           </div>
-        </li>
-        {% end %}
-      </ul>
-    {% end %}
+          <div class="flex gap-1.5 shrink-0">
+            <form method="POST" action="/dashboard/{{site.ID}}/webmentions/{{webmention.ID}}/approve">
+              {{ csrfField }}
+              <button type="submit" class="px-2 py-1 text-xs font-medium rounded text-green-700 bg-green-50 hover:bg-green-100 cursor-pointer transition-colors">Approve</button>
+            </form>
+            <form method="POST" action="/dashboard/{{site.ID}}/webmentions/{{webmention.ID}}/reject">
+              {{ csrfField }}
+              <button type="submit" class="px-2 py-1 text-xs font-medium rounded text-red-600 bg-red-50 hover:bg-red-100 cursor-pointer transition-colors">Reject</button>
+            </form>
+          </div>
+        </div>
+      {% end %}
+    </div>
   </div>
+  {% end %}
 
-  <!-- Approved webmentions section -->
-  <div class="mb-8">
-    <h2 class="text-xl font-bold mb-4">Approved Webmentions</h2>
-    {% if len(approvedWebmentions) == 0 %}
-      <p class="text-sm text-gray-500 italic">No approved webmentions</p>
-    {% else %}
-      <ul class="divide-y divide-gray-200">
-        {% for webmention in approvedWebmentions %}
-        <li class="py-4">
-          <div class="flex justify-between items-center">
-            <div>
-              <p class="text-sm text-gray-500">
-                <strong>Source URL:</strong>
-                <a href="{{ webmention.SourceURL }}" class="text-blue-500 underline" target="_blank">{{ webmention.SourceURL }}</a>
-              </p>
-              <p class="text-sm text-gray-500">
-                <strong>Target URL:</strong>
-                <a href="{{ webmention.TargetURL }}" class="text-blue-500 underline" target="_blank">{{ webmention.TargetURL }}</a>
-              </p>
-              <p class="text-sm text-gray-500">
-                <strong>Created At:</strong>
-                {{ webmention.CreatedAt.Format("2006-01-02 15:04:05") }}
-              </p>
-              <p class="text-sm text-gray-500">
-                <strong>Status:</strong>
-                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                  {{ webmention.Status }}
-                </span>
-              </p>
+  <!-- Approved webmentions -->
+  {% if len(approvedWebmentions) > 0 %}
+  <div class="mt-6">
+    <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+      Approved
+      <span class="ml-1 text-green-700 bg-green-50 px-1.5 py-0.5 rounded-full text-xs font-medium normal-case tracking-normal">{{len(approvedWebmentions)}}</span>
+    </h3>
+    <div class="border border-gray-200 rounded-lg overflow-hidden max-h-96 overflow-y-auto">
+      {% for wm_i, webmention := range approvedWebmentions %}
+        {% bgColor := "bg-white" %}
+        {% if wm_i % 2 == 0 %}
+          {% bgColor = "bg-gray-50/50" %}
+        {% end %}
+        <div class="flex items-start justify-between gap-3 px-3 py-2.5 border-b border-gray-100 {{bgColor}}">
+          <div class="min-w-0 flex-1">
+            <div class="flex items-baseline gap-1.5 text-sm">
+              <a href="{{ webmention.SourceURL }}" class="text-indigo-600 hover:text-indigo-800 truncate" target="_blank" title="{{ webmention.SourceURL }}">{{ webmention.SourceURL }}</a>
             </div>
-            <div class="flex space-x-2">
-              <form method="POST" action="/dashboard/{{site.ID}}/webmentions/{{webmention.ID}}/status/pending">
-                {{ csrfField }}
-                <button type="submit" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-indigo-600 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                  Mark as Pending
-                </button>
-              </form>
-              <form method="POST" action="/dashboard/{{site.ID}}/webmentions/{{webmention.ID}}/status/rejected">
-                {{ csrfField }}
-                <button type="submit" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-red-600 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-                  Reject
-                </button>
-              </form>
+            <div class="flex items-baseline gap-1.5 text-xs text-gray-400 mt-0.5">
+              <span>→</span>
+              <a href="{{ webmention.TargetURL }}" class="hover:text-gray-600 truncate" target="_blank">{{ webmention.TargetURL }}</a>
+              <span class="shrink-0">· {{ webmention.CreatedAt.Format("Jan 2, 2006") }}</span>
             </div>
           </div>
-        </li>
-        {% end %}
-      </ul>
-    {% end %}
+          <div class="flex gap-1.5 shrink-0">
+            <form method="POST" action="/dashboard/{{site.ID}}/webmentions/{{webmention.ID}}/status/pending">
+              {{ csrfField }}
+              <button type="submit" class="px-2 py-1 text-xs font-medium rounded text-gray-500 bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors">Undo</button>
+            </form>
+            <form method="POST" action="/dashboard/{{site.ID}}/webmentions/{{webmention.ID}}/status/rejected">
+              {{ csrfField }}
+              <button type="submit" class="px-2 py-1 text-xs font-medium rounded text-red-600 bg-red-50 hover:bg-red-100 cursor-pointer transition-colors">Reject</button>
+            </form>
+          </div>
+        </div>
+      {% end %}
+    </div>
   </div>
+  {% end %}
 
-  <!-- Rejected webmentions section -->
-  <div class="mb-8">
-    <h2 class="text-xl font-bold mb-4">Rejected Webmentions</h2>
-    {% if len(rejectedWebmentions) == 0 %}
-      <p class="text-sm text-gray-500 italic">No rejected webmentions</p>
-    {% else %}
-      <ul class="divide-y divide-gray-200">
-        {% for webmention in rejectedWebmentions %}
-        <li class="py-4">
-          <div class="flex justify-between items-center">
-            <div>
-              <p class="text-sm text-gray-500">
-                <strong>Source URL:</strong>
-                <a href="{{ webmention.SourceURL }}" class="text-blue-500 underline" target="_blank">{{ webmention.SourceURL }}</a>
-              </p>
-              <p class="text-sm text-gray-500">
-                <strong>Target URL:</strong>
-                <a href="{{ webmention.TargetURL }}" class="text-blue-500 underline" target="_blank">{{ webmention.TargetURL }}</a>
-              </p>
-              <p class="text-sm text-gray-500">
-                <strong>Created At:</strong>
-                {{ webmention.CreatedAt.Format("2006-01-02 15:04:05") }}
-              </p>
-              <p class="text-sm text-gray-500">
-                <strong>Status:</strong>
-                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                  {{ webmention.Status }}
-                </span>
-              </p>
+  <!-- Rejected webmentions -->
+  {% if len(rejectedWebmentions) > 0 %}
+  <div class="mt-6">
+    <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+      Rejected
+      <span class="ml-1 text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full text-xs font-medium normal-case tracking-normal">{{len(rejectedWebmentions)}}</span>
+    </h3>
+    <div class="border border-gray-200 rounded-lg overflow-hidden max-h-96 overflow-y-auto">
+      {% for wm_i, webmention := range rejectedWebmentions %}
+        {% bgColor := "bg-white" %}
+        {% if wm_i % 2 == 0 %}
+          {% bgColor = "bg-gray-50/50" %}
+        {% end %}
+        <div class="flex items-start justify-between gap-3 px-3 py-2.5 border-b border-gray-100 {{bgColor}}">
+          <div class="min-w-0 flex-1">
+            <div class="flex items-baseline gap-1.5 text-sm">
+              <a href="{{ webmention.SourceURL }}" class="text-indigo-600 hover:text-indigo-800 truncate" target="_blank" title="{{ webmention.SourceURL }}">{{ webmention.SourceURL }}</a>
             </div>
-            <div class="flex space-x-2">
-              <form method="POST" action="/dashboard/{{site.ID}}/webmentions/{{webmention.ID}}/status/pending">
-                {{ csrfField }}
-                <button type="submit" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-indigo-600 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                  Mark as Pending
-                </button>
-              </form>
-              <form method="POST" action="/dashboard/{{site.ID}}/webmentions/{{webmention.ID}}/status/approved">
-                {{ csrfField }}
-                <button type="submit" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-green-600 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-                  Approve
-                </button>
-              </form>
+            <div class="flex items-baseline gap-1.5 text-xs text-gray-400 mt-0.5">
+              <span>→</span>
+              <a href="{{ webmention.TargetURL }}" class="hover:text-gray-600 truncate" target="_blank">{{ webmention.TargetURL }}</a>
+              <span class="shrink-0">· {{ webmention.CreatedAt.Format("Jan 2, 2006") }}</span>
             </div>
           </div>
-        </li>
-        {% end %}
-      </ul>
-    {% end %}
+          <div class="flex gap-1.5 shrink-0">
+            <form method="POST" action="/dashboard/{{site.ID}}/webmentions/{{webmention.ID}}/status/pending">
+              {{ csrfField }}
+              <button type="submit" class="px-2 py-1 text-xs font-medium rounded text-gray-500 bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors">Undo</button>
+            </form>
+            <form method="POST" action="/dashboard/{{site.ID}}/webmentions/{{webmention.ID}}/status/approved">
+              {{ csrfField }}
+              <button type="submit" class="px-2 py-1 text-xs font-medium rounded text-green-700 bg-green-50 hover:bg-green-100 cursor-pointer transition-colors">Approve</button>
+            </form>
+          </div>
+        </div>
+      {% end %}
+    </div>
   </div>
+  {% end %}
+
+  {% if len(pendingWebmentions) == 0 && len(approvedWebmentions) == 0 && len(rejectedWebmentions) == 0 %}
+  <div class="mt-8 text-center py-16">
+    <p class="text-gray-400 text-lg">No webmentions yet</p>
+    <p class="mt-2 text-gray-400 text-sm">Webmentions will appear here once other sites start mentioning yours.</p>
+  </div>
+  {% end %}
 
 {% end %}
