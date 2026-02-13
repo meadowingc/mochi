@@ -74,6 +74,12 @@
           <span class="text-lg font-semibold text-gray-900">{{ siteStats[site.ID].TotalHits }}</span>
           <span class="text-xs text-gray-400 ml-1">total</span>
         </div>
+        {% if siteStats[site.ID].TotalKudos > 0 %}
+        <div>
+          <span class="text-lg font-semibold text-gray-900">{{ siteStats[site.ID].TotalKudos }}</span>
+          <span class="text-xs text-gray-400 ml-1">kudos</span>
+        </div>
+        {% end %}
       </div>
     </a>
     {% end %}

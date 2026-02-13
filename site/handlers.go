@@ -213,9 +213,10 @@ func UserDashboardHome(w http.ResponseWriter, r *http.Request) {
 	today := time.Date(userLocalTime.Year(), userLocalTime.Month(), userLocalTime.Day(), 0, 0, 0, 0, tzLocation)
 
 	type SiteStats struct {
-		SiteID    uint
-		TodayHits int
-		TotalHits int
+		SiteID     uint
+		TodayHits  int
+		TotalHits  int
+		TotalKudos int
 	}
 
 	siteStats := make(map[uint]SiteStats)
@@ -260,6 +261,23 @@ func UserDashboardHome(w http.ResponseWriter, r *http.Request) {
 	for _, result := range totalResults {
 		if stats, ok := siteStats[result.SiteID]; ok {
 			stats.TotalHits = result.Count
+			siteStats[result.SiteID] = stats
+		}
+	}
+
+	// Calculate total kudos
+	var kudosResults []struct {
+		SiteID uint
+		Count  int
+	}
+	userDb.Db.Model(&user_database.Kudo{}).
+		Select("site_id, count(*) as count").
+		Group("site_id").
+		Scan(&kudosResults)
+
+	for _, result := range kudosResults {
+		if stats, ok := siteStats[result.SiteID]; ok {
+			stats.TotalKudos = result.Count
 			siteStats[result.SiteID] = stats
 		}
 	}
