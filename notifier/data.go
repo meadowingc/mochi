@@ -198,18 +198,53 @@ func SendSiteMetricsSummary(username string, siteID uint) error {
 		topPagesStr = "No page visits recorded in this period."
 	}
 
+	// Count kudos by page in this period
+	var kudos []user_database.Kudo
+	userDb.Db.Where("site_id = ? AND created_at >= ?", siteID, startDate).Find(&kudos)
+
+	kudosByPage := make(map[string]int)
+	for _, kudo := range kudos {
+		if kudo.Path != "" {
+			kudosByPage[kudo.Path]++
+		}
+	}
+
+	var kudosStr string
+	if len(kudosByPage) > 0 {
+		type KudoCount struct {
+			Path  string
+			Count int
+		}
+		sortedKudos := []KudoCount{}
+		for path, count := range kudosByPage {
+			sortedKudos = append(sortedKudos, KudoCount{Path: path, Count: count})
+		}
+		sort.Slice(sortedKudos, func(i, j int) bool {
+			return sortedKudos[i].Count > sortedKudos[j].Count
+		})
+		for _, kc := range sortedKudos {
+			kudosStr += fmt.Sprintf("• %s: %d\n", kc.Path, kc.Count)
+		}
+	}
+
 	// Create the formatted message
+	kudosSection := ""
+	if kudosStr != "" {
+		kudosSection = fmt.Sprintf("\n:wave: **Kudos (%d):**\n%s", len(kudos), kudosStr)
+	}
+
 	message := fmt.Sprintf(":chart_with_upwards_trend: **%s Metrics Summary for %s**\n\n"+
 		":calendar: Period: %s to %s\n"+
 		":eyes: Total Page Views: %d\n"+
 		":bust_in_silhouette: Unique Visitors: %d\n\n"+
-		"**Top Pages:**\n%s\n\n"+
+		"**Top Pages:**\n%s%s\n\n"+
 		"View full analytics in your dashboard: %s/dashboard/%d/analytics",
 		reportType, site.URL,
 		startDate.Format("Jan 2"), time.Now().Format("Jan 2"),
 		len(hits),
 		len(uniqueVisitors),
 		topPagesStr,
+		kudosSection,
 		constants.PUBLIC_URL, siteID,
 	)
 
