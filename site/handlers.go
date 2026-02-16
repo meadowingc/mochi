@@ -221,12 +221,13 @@ func UserDashboardHome(w http.ResponseWriter, r *http.Request) {
 
 	siteStats := make(map[uint]SiteStats)
 
-	// Initialize stats for all sites
+	// Initialize stats for all sites (include archived all-time counts)
 	for _, site := range userSites {
 		siteStats[site.ID] = SiteStats{
 			SiteID:    site.ID,
 			TodayHits: 0,
-			TotalHits: 0,
+			TotalHits: int(site.AllTimeHits),
+			TotalKudos: int(site.AllTimeKudos),
 		}
 	}
 
@@ -260,7 +261,7 @@ func UserDashboardHome(w http.ResponseWriter, r *http.Request) {
 
 	for _, result := range totalResults {
 		if stats, ok := siteStats[result.SiteID]; ok {
-			stats.TotalHits = result.Count
+			stats.TotalHits += result.Count
 			siteStats[result.SiteID] = stats
 		}
 	}
@@ -277,7 +278,7 @@ func UserDashboardHome(w http.ResponseWriter, r *http.Request) {
 
 	for _, result := range kudosResults {
 		if stats, ok := siteStats[result.SiteID]; ok {
-			stats.TotalKudos = result.Count
+			stats.TotalKudos += result.Count
 			siteStats[result.SiteID] = stats
 		}
 	}
@@ -647,17 +648,33 @@ func SiteAnalytics(w http.ResponseWriter, r *http.Request) {
 
 	// Query kudos within the date range for this site
 	var kudos []user_database.Kudo
-	useruser_database.Db.Where(
+	kudoQuery := useruser_database.Db.Where(
 		"site_id = ? AND date >= ? AND date <= ?", site.ID, minDate, maxDate,
-	).Find(&kudos)
+	)
+	if pagePathFilter != "" {
+		kudoQuery = kudoQuery.Where("path = ?", pagePathFilter)
+	}
+	kudoQuery.Find(&kudos)
 
 	countsForKudos := make(map[string]int)
+	kudosByDay := make(map[string]int)
+	// Initialize all days to 0 (same range as visits chart)
+	for _, day := range sortedDays {
+		kudosByDay[day] = 0
+	}
 	for _, kudo := range kudos {
 		if kudo.Path != "" {
 			countsForKudos[kudo.Path]++
 		}
+		date := kudo.Date.Format("2006-01-02")
+		kudosByDay[date]++
 	}
 	totalKudos := len(kudos)
+
+	graphKudos := make([]int, 0, len(sortedDays))
+	for _, day := range sortedDays {
+		graphKudos = append(graphKudos, kudosByDay[day])
+	}
 
 	RenderTemplate(w, r, "pages/dashboard/analytics/analytics_details.html",
 		&map[string]CustomDeclaration{
@@ -677,6 +694,7 @@ func SiteAnalytics(w http.ResponseWriter, r *http.Request) {
 			"visitsByDay":             {(*map[string]int)(nil), &visitsByDay},
 			"graphDays":               {(*[]string)(nil), &graphDays},
 			"graphVisits":             {(*[]int)(nil), &graphVisits},
+			"graphKudos":              {(*[]int)(nil), &graphKudos},
 		},
 	)
 }
@@ -701,12 +719,13 @@ func SiteSettingsPage(w http.ResponseWriter, r *http.Request) {
 	signedInUser := GetSignedInUserOrFail(r)
 	userDb := user_database.GetDbOrFatal(signedInUser.Username)
 
-	// Calculate total hits for the site
-	var totalHits int64
+	// Calculate total hits for the site (current + archived)
+	var currentHits int64
 	userDb.Db.Model(&user_database.Hit{}).Where(
 		&user_database.Hit{
 			SiteID: siteFromContext.ID,
-		}).Count(&totalHits)
+		}).Count(&currentHits)
+	totalHits := currentHits + siteFromContext.AllTimeHits
 
 	// Get Discord settings for the user
 	discordSettings, err := notifier.GetDiscordSettingsByUsername(signedInUser.Username)

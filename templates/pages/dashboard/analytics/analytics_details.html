@@ -105,6 +105,18 @@
 
   <!-- Chart -->
   <div class="mt-4 bg-white rounded-lg border border-gray-200 p-4">
+    {% if totalKudos > 0 %}
+    <div class="flex gap-1 mb-3">
+      <button id="chartTabVisits" onclick="switchChart('visits')"
+              class="px-3 py-1 text-xs font-medium rounded-md bg-indigo-50 text-indigo-600 cursor-pointer transition-colors">
+        Visits
+      </button>
+      <button id="chartTabKudos" onclick="switchChart('kudos')"
+              class="px-3 py-1 text-xs font-medium rounded-md text-gray-400 hover:text-gray-600 cursor-pointer transition-colors">
+        Kudos
+      </button>
+    </div>
+    {% end %}
     <canvas id="barChart" width="400" height="150"></canvas>
   </div>
 
@@ -230,15 +242,16 @@
       const ctx = barChart.getContext("2d");
 
       const labels = JSON.parse({{toJSON(graphDays)}});
-      const data = JSON.parse({{toJSON(graphVisits)}});
+      const visitsData = JSON.parse({{toJSON(graphVisits)}});
+      const kudosData = JSON.parse({{toJSON(graphKudos)}});
 
-      new Chart(ctx, {
+      const chart = new Chart(ctx, {
         type: "bar",
         data: {
           labels: labels,
           datasets: [{
             label: "Visits",
-            data: data,
+            data: visitsData,
             backgroundColor: "rgba(99, 102, 241, 0.12)",
             borderColor: "rgba(99, 102, 241, 0.6)",
             borderWidth: 1,
@@ -273,6 +286,27 @@
           },
         },
       });
+
+      window.switchChart = function(mode) {
+        const visitsTab = document.getElementById('chartTabVisits');
+        const kudosTab = document.getElementById('chartTabKudos');
+        if (mode === 'kudos') {
+          chart.data.datasets[0].data = kudosData;
+          chart.data.datasets[0].label = 'Kudos';
+          chart.data.datasets[0].backgroundColor = 'rgba(245, 158, 11, 0.12)';
+          chart.data.datasets[0].borderColor = 'rgba(245, 158, 11, 0.6)';
+          if (kudosTab) { kudosTab.className = 'px-3 py-1 text-xs font-medium rounded-md bg-amber-50 text-amber-600 cursor-pointer transition-colors'; }
+          if (visitsTab) { visitsTab.className = 'px-3 py-1 text-xs font-medium rounded-md text-gray-400 hover:text-gray-600 cursor-pointer transition-colors'; }
+        } else {
+          chart.data.datasets[0].data = visitsData;
+          chart.data.datasets[0].label = 'Visits';
+          chart.data.datasets[0].backgroundColor = 'rgba(99, 102, 241, 0.12)';
+          chart.data.datasets[0].borderColor = 'rgba(99, 102, 241, 0.6)';
+          if (visitsTab) { visitsTab.className = 'px-3 py-1 text-xs font-medium rounded-md bg-indigo-50 text-indigo-600 cursor-pointer transition-colors'; }
+          if (kudosTab) { kudosTab.className = 'px-3 py-1 text-xs font-medium rounded-md text-gray-400 hover:text-gray-600 cursor-pointer transition-colors'; }
+        }
+        chart.update();
+      };
     });
   </script>
 

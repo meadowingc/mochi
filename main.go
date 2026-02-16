@@ -245,6 +245,13 @@ func cleanupOldData() {
 			// Calculate the cutoff date based on retention period
 			cutoffDate := now.AddDate(0, -retentionMonths, 0)
 
+			// Count hits to be deleted, then archive to all-time counter
+			var hitsToDelete int64
+			userDB.Db.Model(&user_database.Hit{}).Where("site_id = ? AND date < ?", siteData.ID, cutoffDate).Count(&hitsToDelete)
+			if hitsToDelete > 0 {
+				userDB.Db.Exec("UPDATE sites SET all_time_hits = all_time_hits + ? WHERE id = ?", hitsToDelete, siteData.ID)
+			}
+
 			// Delete hits older than the cutoff date
 			var hitsDeleted int64
 			if result := userDB.Db.Where("site_id = ? AND date < ?", siteData.ID, cutoffDate).Delete(&user_database.Hit{}); result.Error != nil {
@@ -252,6 +259,13 @@ func cleanupOldData() {
 			} else {
 				hitsDeleted = result.RowsAffected
 				totalHitsDeleted += hitsDeleted
+			}
+
+			// Count kudos to be deleted, then archive to all-time counter
+			var kudosToDelete int64
+			userDB.Db.Model(&user_database.Kudo{}).Where("site_id = ? AND date < ?", siteData.ID, cutoffDate).Count(&kudosToDelete)
+			if kudosToDelete > 0 {
+				userDB.Db.Exec("UPDATE sites SET all_time_kudos = all_time_kudos + ? WHERE id = ?", kudosToDelete, siteData.ID)
 			}
 
 			// Delete kudos older than the cutoff date

@@ -23,6 +23,8 @@ type Site struct {
 	URL                     string
 	DataRetentionMonths     int       `gorm:"default:6"`
 	LastDataCleanupDate     time.Time `gorm:"default:0"`
+	AllTimeHits             int64     `gorm:"default:0"`
+	AllTimeKudos            int64     `gorm:"default:0"`
 	Hits                    []Hit     `gorm:"foreignKey:SiteID"`
 	MetricsNotificationFreq string    // Frequency of site metrics notifications: "none", "daily", "weekly", "monthly"
 	LastMetricsSentAt       time.Time `gorm:"default:0"`
