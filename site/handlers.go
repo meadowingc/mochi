@@ -742,6 +742,15 @@ func SiteSettingsPage(w http.ResponseWriter, r *http.Request) {
 	success = r.URL.Query().Get("success")
 	errorMsg = r.URL.Query().Get("error")
 
+	// Pass newly generated API key if present (so user can copy it)
+	newAPIKey := r.URL.Query().Get("newAPIKey")
+
+	// Dereference APIKey for template display
+	var apiKeyStr string
+	if siteFromContext.APIKey != nil {
+		apiKeyStr = *siteFromContext.APIKey
+	}
+
 	RenderTemplate(w, r, "pages/dashboard/site_settings.html",
 		&map[string]CustomDeclaration{
 			"site":            {(*user_database.Site)(nil), siteFromContext},
@@ -749,6 +758,8 @@ func SiteSettingsPage(w http.ResponseWriter, r *http.Request) {
 			"success":         {(*string)(nil), &success},
 			"error":           {(*string)(nil), &errorMsg},
 			"discordSettings": {(*shared_database.UserDiscordSettings)(nil), discordSettings},
+			"newAPIKey":       {(*string)(nil), &newAPIKey},
+			"apiKeyStr":       {(*string)(nil), &apiKeyStr},
 		},
 	)
 }

@@ -12,3 +12,7 @@ shared.db*
 
 tmp
 node_modules
+
+# Swagger auto-generated files (docs.go is kept since it's compiled)
+docs/swagger.json
+docs/swagger.yaml

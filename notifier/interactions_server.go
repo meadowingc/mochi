@@ -68,7 +68,8 @@ func StartInteractionHandler() {
 
 	err := session.Open()
 	if err != nil {
-		log.Fatalf("could not open session: %s", err)
+		log.Printf("WARNING: could not open Discord session: %s (Discord features will be unavailable)", err)
+		return
 	}
 
 	sigch := make(chan os.Signal, 1)

@@ -28,6 +28,7 @@ type Site struct {
 	Hits                    []Hit     `gorm:"foreignKey:SiteID"`
 	MetricsNotificationFreq string    // Frequency of site metrics notifications: "none", "daily", "weekly", "monthly"
 	LastMetricsSentAt       time.Time `gorm:"default:0"`
+	APIKey                  *string   `gorm:"uniqueIndex"`
 }
 
 type Hit struct {

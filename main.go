@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"mochi/constants"
+	_ "mochi/docs"
 	"mochi/notifier"
 	"mochi/shared_database"
 	"mochi/site"
@@ -19,8 +20,18 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/httprate"
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
+// @title Mochi Analytics API
+// @version 1.0
+// @description API for accessing analytics data from Mochi. Useful for backlink discovery and analysis.
+// @host mochi.meadow.cafe
+// @BasePath /
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Enter your API key with the "Bearer " prefix, e.g. "Bearer abc123..."
 func main() {
 	err := godotenv.Load()
 	if err != nil {
@@ -170,6 +181,7 @@ func initRouter() *chi.Mux {
 				r.Post("/settings/update", site.UpdateSiteSettings)
 				r.Post("/settings/delete", site.DeleteSite)
 				r.Post("/settings/metrics-notification", site.MetricsNotificationSettings)
+				r.Post("/settings/generate-api-key", site.GenerateAPIKey)
 			})
 		})
 	})
@@ -188,8 +200,12 @@ func initRouter() *chi.Mux {
 
 		r.Route("/api", func(r chi.Router) {
 			r.Get("/webmentions/{username}/{siteID}", site.WebmentionPublicAPI)
+			r.With(httprate.LimitByIP(60, time.Minute)).Get("/analytics/{username}/{siteID}", site.AnalyticsAPI)
 		})
 	})
+
+	// Swagger UI
+	r.Get("/api/docs/*", httpSwagger.WrapHandler)
 
 	return r
 }
