@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"mochi/constants"
+	"mochi/safehttp"
 	"mochi/shared_database"
 	"net/http"
 	"net/url"
@@ -19,7 +20,12 @@ import (
 const (
 	maxFeedEntriesToCheck = 20
 	userAgent             = "Mochi (https://mochi.meadow.cafe)"
+	maxFeedBodyBytes      = 5 << 20
+	maxPageBodyBytes      = 5 << 20
+	maxResponseBodyBytes  = 1 << 20
 )
+
+var newHTTPClient = safehttp.NewClient
 
 // RSS feed structures
 type RSS struct {
@@ -111,7 +117,7 @@ func ProcessFeed(monitoredURL *shared_database.MonitoredURL) []shared_database.S
 
 	sentWebmentions := []shared_database.SentWebmention{}
 
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := newHTTPClient(safehttp.WithTimeout(30 * time.Second))
 	req, err := http.NewRequest("GET", feedURL, nil)
 	if err != nil {
 		log.Printf("Error creating request for RSS feed %s: %v", feedURL, err)
@@ -131,7 +137,7 @@ func ProcessFeed(monitoredURL *shared_database.MonitoredURL) []shared_database.S
 		return sentWebmentions
 	}
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := readLimitedBody(resp.Body, maxFeedBodyBytes)
 	if err != nil {
 		log.Printf("Error reading RSS feed body %s: %v", feedURL, err)
 		return sentWebmentions
@@ -357,7 +363,7 @@ func getLinksInPageForWhichWeHaventSentWebmentionsTo(pageURL string) []string {
 	filteredLinks := []string{}
 
 	// Fetch the page content
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := newHTTPClient(safehttp.WithTimeout(30 * time.Second))
 	req, err := http.NewRequest("GET", pageURL, nil)
 	if err != nil {
 		log.Printf("Error creating request for %s: %v", pageURL, err)
@@ -385,8 +391,14 @@ func getLinksInPageForWhichWeHaventSentWebmentionsTo(pageURL string) []string {
 	}
 	sourceDomain := sourceURLParsed.Hostname()
 
+	body, err := readLimitedBody(resp.Body, maxPageBodyBytes)
+	if err != nil {
+		log.Printf("Error reading HTML from %s: %v", pageURL, err)
+		return filteredLinks
+	}
+
 	// Parse the HTML
-	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(body))
 	if err != nil {
 		log.Printf("Error parsing HTML from %s: %v", pageURL, err)
 		return filteredLinks
@@ -467,13 +479,16 @@ func SendWebmention(sourceURL, targetURL string) (*SendWebmentionResult, error) 
 	if endpoint == "" {
 		return nil, fmt.Errorf("no webmention endpoint found for %s", targetURL)
 	}
+	if err := safehttp.ValidateURLString(endpoint); err != nil {
+		return nil, fmt.Errorf("unsafe webmention endpoint %q: %w", endpoint, err)
+	}
 
 	// Send the webmention
 	values := url.Values{}
 	values.Set("source", sourceURL)
 	values.Set("target", targetURL)
 
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := newHTTPClient(safehttp.WithTimeout(30 * time.Second))
 	req, err := http.NewRequest("POST", endpoint, bytes.NewBufferString(values.Encode()))
 	if err != nil {
 		return nil, fmt.Errorf("error creating webmention request: %v", err)
@@ -488,9 +503,9 @@ func SendWebmention(sourceURL, targetURL string) (*SendWebmentionResult, error) 
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := readLimitedBody(resp.Body, maxResponseBodyBytes)
 	if err != nil {
-		log.Printf("Error reading webmention response: %v", err)
+		return nil, fmt.Errorf("error reading webmention response: %w", err)
 	}
 
 	log.Printf("Webmention response from %s: %d", endpoint, resp.StatusCode)
@@ -504,13 +519,13 @@ func SendWebmention(sourceURL, targetURL string) (*SendWebmentionResult, error) 
 // discoverWebmentionEndpoint discovers the webmention endpoint for a given URL
 func discoverWebmentionEndpoint(targetURL string) (string, error) {
 	// Create a custom HTTP client that doesn't follow redirects
-	client := &http.Client{
-		Timeout: 30 * time.Second,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+	client := newHTTPClient(
+		safehttp.WithTimeout(30*time.Second),
+		safehttp.WithRedirectPolicy(func(req *http.Request, via []*http.Request) error {
 			// Don't follow redirects (eg, important for webring links and the like)
 			return http.ErrUseLastResponse
-		},
-	}
+		}),
+	)
 
 	req, err := http.NewRequest("GET", targetURL, nil)
 	if err != nil {
@@ -541,21 +556,18 @@ func discoverWebmentionEndpoint(targetURL string) (string, error) {
 		if strings.Contains(header, "rel=\"webmention\"") || strings.Contains(header, "rel=webmention") {
 			parts := strings.Split(header, ";")
 			if len(parts) > 0 {
-				url := strings.Trim(parts[0], " <>")
-				// Resolve relative URLs in headers
-				if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
-					url, err = resolveURL(targetURL, url)
-					if err != nil {
-						return "", err
-					}
-				}
-				return url, nil
+				return resolveAndValidateEndpoint(targetURL, strings.Trim(parts[0], " <>"))
 			}
 		}
 	}
 
+	body, err := readLimitedBody(resp.Body, maxPageBodyBytes)
+	if err != nil {
+		return "", fmt.Errorf("error reading target page: %w", err)
+	}
+
 	// Parse HTML for endpoint
-	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(body))
 	if err != nil {
 		return "", err
 	}
@@ -577,15 +589,37 @@ func discoverWebmentionEndpoint(targetURL string) (string, error) {
 		})
 	}
 
-	// Resolve relative URLs
-	if endpoint != "" && !strings.HasPrefix(endpoint, "http://") && !strings.HasPrefix(endpoint, "https://") {
-		endpoint, err = resolveURL(targetURL, endpoint)
+	// Resolve and validate relative and absolute URLs alike.
+	if endpoint != "" {
+		endpoint, err = resolveAndValidateEndpoint(targetURL, endpoint)
 		if err != nil {
 			return "", err
 		}
 	}
 
 	return endpoint, nil
+}
+
+func resolveAndValidateEndpoint(baseURL, endpoint string) (string, error) {
+	resolved, err := resolveURL(baseURL, endpoint)
+	if err != nil {
+		return "", err
+	}
+	if err := safehttp.ValidateURLString(resolved); err != nil {
+		return "", fmt.Errorf("unsafe webmention endpoint %q: %w", resolved, err)
+	}
+	return resolved, nil
+}
+
+func readLimitedBody(reader io.Reader, limit int64) ([]byte, error) {
+	body, err := io.ReadAll(io.LimitReader(reader, limit+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(body)) > limit {
+		return nil, fmt.Errorf("response body exceeds %d bytes", limit)
+	}
+	return body, nil
 }
 
 // AddURLToMonitor adds a URL for a user to monitor

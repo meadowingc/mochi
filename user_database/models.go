@@ -9,11 +9,12 @@ import (
 
 type User struct {
 	gorm.Model
-	Username     string `gorm:"uniqueIndex"`
-	CreatedAt    time.Time
-	PasswordHash datatypes.JSON `gorm:"type:json"`
-	SessionToken string         `gorm:"index;unique"`
-	Sites        []Site         `gorm:"foreignKey:UserID"`
+	Username         string `gorm:"uniqueIndex"`
+	CreatedAt        time.Time
+	PasswordHash     datatypes.JSON `gorm:"type:json"`
+	SessionToken     string         `gorm:"index;unique"`
+	SessionExpiresAt time.Time
+	Sites            []Site `gorm:"foreignKey:UserID"`
 }
 
 type Site struct {
@@ -54,8 +55,8 @@ type WebMention struct {
 
 type Kudo struct {
 	gorm.Model
-	SiteID          uint      `gorm:"index;uniqueIndex:idx_kudo_dedup"`
-	Path            string    `gorm:"uniqueIndex:idx_kudo_dedup"`
+	SiteID          uint   `gorm:"index;uniqueIndex:idx_kudo_dedup"`
+	Path            string `gorm:"uniqueIndex:idx_kudo_dedup"`
 	Date            time.Time
-	VisitorIpUaHash *string   `gorm:"uniqueIndex:idx_kudo_dedup"`
+	VisitorIpUaHash *string `gorm:"uniqueIndex:idx_kudo_dedup"`
 }

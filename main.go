@@ -40,13 +40,19 @@ func main() {
 
 	shared_database.InitSharedDb()
 	user_database.InitDb()
+	if err := shared_database.ReconcilePublicSiteRoutes(); err != nil {
+		log.Fatal("Public site route reconciliation failed")
+	}
 
 	r := initRouter()
 
-	go notifier.StartInteractionHandler()
-	go webmention_sender.StartPeriodicChecker()
-	go startDataCleanupScheduler()
-	go startMetricsReportScheduler()
+	e2eMode := constants.DEBUG_MODE && os.Getenv("MOCHI_E2E_MODE") == "true"
+	if !e2eMode {
+		go notifier.StartInteractionHandler()
+		go webmention_sender.StartPeriodicChecker()
+		go startDataCleanupScheduler()
+		go startMetricsReportScheduler()
+	}
 
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
@@ -77,7 +83,7 @@ func initRouter() *chi.Mux {
 		AllowedOrigins:   []string{"*"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
-		ExposedHeaders:   []string{"Link"},
+		ExposedHeaders:   []string{"Link", "Deprecation"},
 		AllowCredentials: false,
 		MaxAge:           300,
 	})
@@ -165,10 +171,11 @@ func initRouter() *chi.Mux {
 		})
 
 		r.With(site.UserSiteDashboardMiddleware).Route("/{siteID}", func(r chi.Router) {
-			r.Get("/analytics", site.SiteAnalytics)
-			r.Get("/analytics/embed-instructions", site.SiteEmbedInstructions)
+			r.With(site.DashboardPublicSiteRouteMiddleware).Get("/analytics", site.SiteAnalytics)
+			r.With(site.DashboardPublicSiteRouteMiddleware).
+				Get("/analytics/embed-instructions", site.SiteEmbedInstructions)
 
-			r.Get("/webmentions", site.WebmentionsDetails)
+			r.With(site.DashboardPublicSiteRouteMiddleware).Get("/webmentions", site.WebmentionsDetails)
 
 			r.With(httprate.LimitByIP(30, time.Minute)).Group(func(r chi.Router) {
 				r.Post("/webmentions/{webmentionID}/approve", site.WebmentionApprove)
@@ -176,7 +183,7 @@ func initRouter() *chi.Mux {
 				r.Post("/webmentions/{webmentionID}/status/{status}", site.WebmentionChangeStatus)
 			})
 
-			r.Get("/settings", site.SiteSettingsPage)
+			r.With(site.DashboardPublicSiteRouteMiddleware).Get("/settings", site.SiteSettingsPage)
 			r.With(httprate.LimitByIP(10, time.Hour)).Group(func(r chi.Router) {
 				r.Post("/settings/update", site.UpdateSiteSettings)
 				r.Post("/settings/delete", site.DeleteSite)
@@ -187,21 +194,35 @@ func initRouter() *chi.Mux {
 	})
 
 	r.With(CORSEverywhereMiddleware.Handler).Group(func(r chi.Router) {
-		r.Route("/reaper/{username}", func(r chi.Router) {
-			r.Get("/embed/{siteID}.js", site.ReaperGetEmbedJs)
-			r.Post("/{siteID}", site.ReaperPostHit)
-			r.Get("/{siteID}/kudo", site.ReaperGetKudos)
-			r.With(httprate.LimitByIP(30, time.Minute)).Post("/{siteID}/kudo", site.ReaperPostKudo)
-		})
+		r.With(site.CanonicalPublicSiteMiddleware).
+			Get("/reaper/{publicID}/embed.js", site.ReaperGetEmbedJs)
+		r.With(site.CanonicalPublicSiteMiddleware).
+			Post("/reaper/{publicID}", site.ReaperPostHit)
+		r.With(site.CanonicalPublicSiteMiddleware).
+			Get("/reaper/{publicID}/kudo", site.ReaperGetKudos)
+		r.With(site.CanonicalPublicSiteMiddleware, httprate.LimitByIP(30, time.Minute)).
+			Post("/reaper/{publicID}/kudo", site.ReaperPostKudo)
+		r.With(site.CanonicalPublicSiteMiddleware).
+			Post("/webmention/{publicID}/receive", site.WebmentionReceive)
+		r.With(site.CanonicalPublicSiteMiddleware).
+			Get("/api/webmentions/{publicID}", site.WebmentionPublicAPI)
+		r.With(httprate.LimitByIP(60, time.Minute), site.CanonicalAnalyticsSiteMiddleware).
+			Get("/api/analytics/{publicID}", site.AnalyticsAPI)
 
-		r.Route("/webmention/{username}/{siteId}", func(r chi.Router) {
-			r.Post("/receive", site.WebmentionReceive)
-		})
-
-		r.Route("/api", func(r chi.Router) {
-			r.Get("/webmentions/{username}/{siteID}", site.WebmentionPublicAPI)
-			r.With(httprate.LimitByIP(60, time.Minute)).Get("/analytics/{username}/{siteID}", site.AnalyticsAPI)
-		})
+		r.With(site.LegacyAnalyticsReaperMiddleware).
+			Get("/reaper/{username}/embed/{siteID}.js", site.ReaperGetEmbedJs)
+		r.With(site.LegacyAnalyticsReaperMiddleware).
+			Post("/reaper/{username}/{siteID}", site.ReaperPostHit)
+		r.With(site.LegacyAnalyticsReaperMiddleware).
+			Get("/reaper/{username}/{siteID}/kudo", site.ReaperGetKudos)
+		r.With(site.LegacyAnalyticsReaperMiddleware, httprate.LimitByIP(30, time.Minute)).
+			Post("/reaper/{username}/{siteID}/kudo", site.ReaperPostKudo)
+		r.With(site.LegacyWebmentionMiddleware).
+			Post("/webmention/{username}/{siteID}/receive", site.WebmentionReceive)
+		r.With(site.LegacyAPIMiddleware).
+			Get("/api/webmentions/{username}/{siteID}", site.WebmentionPublicAPI)
+		r.With(site.LegacyAnalyticsAPIMiddleware, httprate.LimitByIP(60, time.Minute)).
+			Get("/api/analytics/{username}/{siteID}", site.AnalyticsAPI)
 	})
 
 	// Swagger UI
@@ -235,7 +256,7 @@ func cleanupOldData() {
 		// Get all sites for the user
 		var sites []user_database.Site
 		if err := userDB.Db.Find(&sites).Error; err != nil {
-			log.Printf("Error fetching sites for user %s: %v", username, err)
+			log.Printf("Scheduled data cleanup: error fetching sites: %v", err)
 			continue
 		}
 
@@ -296,8 +317,8 @@ func cleanupOldData() {
 			} else {
 				sitesUpdated++
 				if hitsDeleted > 0 {
-					log.Printf("Site %d (user: %s): Deleted %d hits older than %s",
-						siteData.ID, username, hitsDeleted, cutoffDate.Format("2006-01-02"))
+					log.Printf("Site %d: deleted %d hits older than %s",
+						siteData.ID, hitsDeleted, cutoffDate.Format("2006-01-02"))
 				}
 			}
 		}

@@ -1,7 +1,7 @@
 (function () {
   const pagePath = encodeURIComponent(window.location.pathname);
   const encodedUrl = encodeURIComponent(window.location.href);
-  const analyticsEndpoint = "{{publicURL}}/reaper/{{ownerUsername}}/{{site.ID}}";
+  const analyticsEndpoint = "{{publicURL}}/reaper/{{publicID}}";
   const referrerUrl = document.referrer.indexOf(window.location.href) < 0 ? encodeURIComponent(document.referrer) : "";
   let shouldTrack = localStorage.getItem("mochi_ignore") == null;
   const ignoreParam = new URLSearchParams(document.location.search).get("mochi_ignore") || new URLSearchParams(document.location.search).get("mi");
@@ -80,12 +80,12 @@
   {% if kudosEnabled %}
   // Kudos functionality
   (function() {
-    const kudosEndpoint = "{{publicURL}}/reaper/{{ownerUsername}}/{{site.ID}}/kudo";
+    const kudosEndpoint = "{{publicURL}}/reaper/{{publicID}}/kudo";
     const kudosEmoji = "{{kudosEmoji}}";
-    const siteID = "{{site.ID}}";
+    const publicSiteID = "{{publicID}}";
 
     function getKudosStorageKey(path) {
-      return "mochi_kudos_" + siteID + "_" + path;
+      return "mochi_kudos_" + publicSiteID + "_" + path;
     }
 
     function initKudosButtons() {

@@ -39,7 +39,7 @@
       <div class="px-3 py-3 border-t border-gray-200 bg-white text-sm text-gray-600">
         <p class="mb-2">Add this to your site's <code class="bg-gray-100 text-red-600 px-1 rounded text-xs">&lt;head&gt;</code>:</p>
         <div class="bg-gray-800 text-white p-3 rounded-md text-xs font-mono overflow-x-auto">
-          <code>&lt;link rel="webmention" href="{{webmentionsURL}}/webmention/{{escapePath(signedInUser.Username)}}/{{site.ID}}/receive" /&gt;</code>
+          <code>&lt;link rel="webmention" href="{{webmentionsURL}}/webmention/{{publicID}}/receive" /&gt;</code>
         </div>
       </div>
     </details>
@@ -53,7 +53,7 @@
       </summary>
       <div class="px-3 py-3 border-t border-gray-200 bg-white text-sm text-gray-600 space-y-2">
         <p>Fetch approved webmentions as JSON:</p>
-        <div class="bg-gray-100 p-2 rounded-md font-mono text-xs overflow-x-auto">{{publicURL}}/api/webmentions/{{signedInUser.Username}}/{{site.ID}}</div>
+        <div class="bg-gray-100 p-2 rounded-md font-mono text-xs overflow-x-auto">{{publicURL}}/api/webmentions/{{publicID}}</div>
         <details class="text-xs">
           <summary class="cursor-pointer text-indigo-600 hover:text-indigo-800">Example response</summary>
           <pre class="mt-1.5 p-2 bg-gray-800 text-white rounded-md overflow-x-auto">[

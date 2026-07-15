@@ -69,11 +69,24 @@ func databaseFileExists(username string) bool {
 }
 
 func GetDbIfExists(username string) *UserDb {
-	if !databaseFileExists(username) {
-		return nil
+	userDb, err := GetDbIfExistsWithError(username)
+	if err != nil {
+		log.Fatalf("failed to open user database: %v", err)
 	}
 
-	return getCachedOrCreateDB(username)
+	return userDb
+}
+
+func GetDbIfExistsWithError(username string) (*UserDb, error) {
+	_, err := os.Stat(fmt.Sprintf(databaseFilePathFormat, username))
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("stat user database: %w", err)
+	}
+
+	return getCachedOrCreateDBWithError(username)
 }
 
 func GetDbOrFatal(username string) *UserDb {
@@ -142,9 +155,7 @@ func GetAllUsernames() ([]string, error) {
 			continue
 		}
 
-		usernameParts := strings.Split(username, ".db")
-
-		username = usernameParts[0]
+		username = strings.TrimSuffix(username, ".db")
 		username = strings.TrimPrefix(username, "mochi_")
 		username = strings.TrimSpace(username)
 
@@ -160,25 +171,36 @@ func GetAllUsernames() ([]string, error) {
 }
 
 func getCachedOrCreateDB(username string) *UserDb {
+	userDb, err := getCachedOrCreateDBWithError(username)
+	if err != nil {
+		log.Fatalf("failed to open user database: %v", err)
+	}
+	return userDb
+}
+
+func getCachedOrCreateDBWithError(username string) (*UserDb, error) {
 	cacheMutex.Lock()
 	defer cacheMutex.Unlock()
 
 	if cached, exists := dbCache[username]; exists {
 		cached.lastAccess = time.Now()
-		return cached.userDb
+		return cached.userDb, nil
 	}
 
 	// create the database folder if it doesn't exist
 	if _, err := os.Stat(databaseFolder); os.IsNotExist(err) {
-		os.Mkdir(databaseFolder, 0755)
+		if err := os.Mkdir(databaseFolder, 0755); err != nil {
+			return nil, fmt.Errorf("create user database directory: %w", err)
+		}
+	} else if err != nil {
+		return nil, fmt.Errorf("stat user database directory: %w", err)
 	}
 
-	var err error
 	db, err := gorm.Open(sqlite.Open(
 		fmt.Sprintf("file:"+databaseFilePathFormat+"?cache=shared&mode=rwc&_journal_mode=WAL", username),
 	), &gorm.Config{})
 	if err != nil {
-		log.Fatalf("failed to connect database: %v", err)
+		return nil, fmt.Errorf("connect user database: %w", err)
 	}
 
 	// Migrate the schema
@@ -190,7 +212,11 @@ func getCachedOrCreateDB(username string) *UserDb {
 		&Kudo{},
 	)
 	if err != nil {
-		log.Fatalf("failed to migrate database: %v", err)
+		sqlDB, dbErr := db.DB()
+		if dbErr == nil {
+			_ = sqlDB.Close()
+		}
+		return nil, fmt.Errorf("migrate user database: %w", err)
 	}
 
 	userDb := &UserDb{Db: db}
@@ -200,5 +226,5 @@ func getCachedOrCreateDB(username string) *UserDb {
 		lastAccess: time.Now(),
 	}
 
-	return userDb
+	return userDb, nil
 }

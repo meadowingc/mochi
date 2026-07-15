@@ -47,3 +47,15 @@ type PasswordResetToken struct {
 	ExpiresAt time.Time
 	Used      bool
 }
+
+type PublicSiteRoute struct {
+	ID                         uint `gorm:"primaryKey"`
+	CreatedAt                  time.Time
+	UpdatedAt                  time.Time
+	PublicID                   string `gorm:"size:43;not null;uniqueIndex"`
+	Username                   string `gorm:"not null;uniqueIndex:idx_public_site_route_owner,priority:1"`
+	SiteID                     uint   `gorm:"not null;uniqueIndex:idx_public_site_route_owner,priority:2"`
+	LegacyAnalyticsLastSeenAt  *time.Time
+	LegacyWebmentionLastSeenAt *time.Time
+	LegacyAPILastSeenAt        *time.Time
+}

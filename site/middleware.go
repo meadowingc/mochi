@@ -143,7 +143,7 @@ func TryPutUserInContextMiddleware(next http.Handler) http.Handler {
 		cookieParts := strings.Split(cookie.Value, "///")
 
 		if len(cookieParts) != 2 {
-			log.Printf("Invalid cookie value: %s", cookie.Value)
+			log.Printf("Invalid authentication cookie")
 
 			clearUserSession(w)
 
@@ -152,10 +152,16 @@ func TryPutUserInContextMiddleware(next http.Handler) http.Handler {
 		}
 
 		authTokenItself, username := cookieParts[0], cookieParts[1]
+		if authTokenItself == "" || username == "" {
+			log.Printf("Invalid authentication cookie")
+			clearUserSession(w)
+			next.ServeHTTP(w, r)
+			return
+		}
 
 		useruser_database := user_database.GetDbIfExists(username)
 		if useruser_database == nil {
-			log.Printf("User user_database not found for user: %s", username)
+			log.Printf("Authentication failed: user database not found")
 			clearUserSession(w)
 			next.ServeHTTP(w, r)
 			return
@@ -163,8 +169,10 @@ func TryPutUserInContextMiddleware(next http.Handler) http.Handler {
 
 		// Validate the token and retrieve the corresponding user
 		var user user_database.User
-		result := user_database.GetDbOrFatal(username).Db.Where(&user_database.User{SessionToken: authTokenItself}).First(&user)
-		if result.Error != nil {
+		result := useruser_database.Db.
+			Where("username = ? AND session_token = ?", username, authTokenItself).
+			First(&user)
+		if result.Error != nil || user.SessionExpiresAt.IsZero() || !user.SessionExpiresAt.After(time.Now()) {
 			// Clear the invalid cookie
 			clearUserSession(w)
 			next.ServeHTTP(w, r)
@@ -286,6 +294,10 @@ func Logger(next http.Handler) http.Handler {
 
 		// Log the request details (without IP address for GDPR compliance)
 		duration := time.Since(start)
+		routePattern := chi.RouteContext(r.Context()).RoutePattern()
+		if routePattern == "" {
+			routePattern = "<unmatched>"
+		}
 
 		// Determine log level and status color based on status code
 		var logLevel string
@@ -331,7 +343,7 @@ func Logger(next http.Handler) http.Handler {
 		log.Printf("%s %s %s %s %s %s",
 			gray(fmt.Sprintf("[%s]", logLevel)), // [INFO] in gray
 			blue(r.Method),                      // GET in blue
-			magenta(r.URL.Path),                 // /path in magenta
+			magenta(routePattern),               // matched route pattern in magenta
 			statusStr,                           // 200 in appropriate color
 			durationStr,                         // 2ms in appropriate color
 			gray(fmt.Sprintf("(%s)", sizeStr)),  // (1.2KB) in gray

@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"mochi/constants"
@@ -24,6 +25,13 @@ import (
 	"gorm.io/datatypes"
 )
 
+const dummyPasswordHash = "$2a$10$RtuziNPDxuUWR675xVDfjurpVVR6IvrJZYnZAqYPb8lO9.SRxZuz."
+
+func invalidLogin(w http.ResponseWriter, r *http.Request) {
+	SetFlashMessage(w, "error", "Invalid username or password")
+	http.Redirect(w, r, "/user/login", http.StatusSeeOther)
+}
+
 func UserLogin(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		adminUser := GetSignedInUserOrNil(r)
@@ -41,23 +49,22 @@ func UserLogin(w http.ResponseWriter, r *http.Request) {
 		user_db := user_database.GetDbIfExists(username)
 
 		if user_db == nil {
-			SetFlashMessage(w, "error", "User not found. You're trying to sign in, but perhaps you still need to sign up?")
-			http.Redirect(w, r, "/user/login", http.StatusSeeOther)
+			_ = bcrypt.CompareHashAndPassword([]byte(dummyPasswordHash), []byte(password))
+			invalidLogin(w, r)
 			return
 		}
 
 		var admin user_database.User
 		result := user_db.Db.Where(&user_database.User{Username: username}).First(&admin)
 		if result.Error != nil {
-			SetFlashMessage(w, "error", "User not found. You're trying to sign in, but perhaps you still need to sign up?")
-			http.Redirect(w, r, "/user/login", http.StatusSeeOther)
+			_ = bcrypt.CompareHashAndPassword([]byte(dummyPasswordHash), []byte(password))
+			invalidLogin(w, r)
 			return
 		}
 
 		err := bcrypt.CompareHashAndPassword([]byte(admin.PasswordHash), []byte(password))
 		if err != nil {
-			SetFlashMessage(w, "error", "Invalid password")
-			http.Redirect(w, r, "/user/login", http.StatusSeeOther)
+			invalidLogin(w, r)
 			return
 		}
 
@@ -71,10 +78,16 @@ func UserLogin(w http.ResponseWriter, r *http.Request) {
 		}
 
 		admin.SessionToken = token
-		user_db.Db.Save(&admin)
+		admin.SessionExpiresAt = newSessionExpiry()
+		if err := user_db.Db.Save(&admin).Error; err != nil {
+			log.Printf("Error saving user session: %v", err)
+			SetFlashMessage(w, "error", "Error signing in")
+			http.Redirect(w, r, "/user/login", http.StatusSeeOther)
+			return
+		}
 
 		setUserSession(
-			w, username, token,
+			w, username, token, admin.SessionExpiresAt,
 		)
 
 		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
@@ -151,7 +164,12 @@ func UserRegister(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		newAdmin := user_database.User{Username: username, PasswordHash: passwordHash, SessionToken: token}
+		newAdmin := user_database.User{
+			Username:         username,
+			PasswordHash:     passwordHash,
+			SessionToken:     token,
+			SessionExpiresAt: newSessionExpiry(),
+		}
 
 		result := user_database.GetOrCreateDB(username).Db.Create(&newAdmin)
 		if result.Error != nil {
@@ -161,7 +179,7 @@ func UserRegister(w http.ResponseWriter, r *http.Request) {
 		}
 
 		setUserSession(
-			w, username, token,
+			w, username, token, newAdmin.SessionExpiresAt,
 		)
 
 		// Redirect to the admin sign-in page after successful sign-up
@@ -171,12 +189,7 @@ func UserRegister(w http.ResponseWriter, r *http.Request) {
 }
 
 func UserLogout(w http.ResponseWriter, r *http.Request) {
-	http.SetCookie(w, &http.Cookie{
-		Name:   string(AuthenticatedUserTokenCookieName),
-		Value:  "",
-		Path:   "/",
-		MaxAge: -1,
-	})
+	clearUserSession(w)
 
 	SetFlashMessage(w, "success", "You have been logged out successfully.")
 	http.Redirect(w, r, "/user/login", http.StatusSeeOther)
@@ -224,9 +237,9 @@ func UserDashboardHome(w http.ResponseWriter, r *http.Request) {
 	// Initialize stats for all sites (include archived all-time counts)
 	for _, site := range userSites {
 		siteStats[site.ID] = SiteStats{
-			SiteID:    site.ID,
-			TodayHits: 0,
-			TotalHits: int(site.AllTimeHits),
+			SiteID:     site.ID,
+			TodayHits:  0,
+			TotalHits:  int(site.AllTimeHits),
 			TotalKudos: int(site.AllTimeKudos),
 		}
 	}
@@ -443,26 +456,23 @@ func CreateNewSite(w http.ResponseWriter, r *http.Request) {
 	// Create a standardized URL with just the hostname (using https://)
 	standardizedURL := "https://" + hostname
 
-	// Check if the site already exists
-	user_db := user_database.GetDbOrFatal(user.Username)
-
-	var existingSite user_database.Site
-	result := user_db.Db.Where(&user_database.Site{
-		URL:    standardizedURL,
-		UserID: user.ID,
-	}).First(&existingSite)
-
-	if result.Error == nil {
+	userDB := user_database.GetDbOrFatal(user.Username)
+	_, _, err = createSiteWithPublicRoute(
+		userDB.Db,
+		user.Username,
+		user.ID,
+		standardizedURL,
+		shared_database.CreateOrGetPublicSiteRoute,
+		shared_database.DeletePublicSiteRoute,
+	)
+	if errors.Is(err, errSiteAlreadyExists) {
 		SetFlashMessage(w, "error", "Site already exists")
 		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 		return
 	}
-
-	newSite := user_database.Site{URL: standardizedURL, UserID: user.ID}
-
-	result = user_db.Db.Create(&newSite)
-	if result.Error != nil {
-		SetFlashMessage(w, "error", "Error creating site: "+result.Error.Error())
+	if err != nil {
+		log.Printf("CreateNewSite: site and public route creation failed")
+		SetFlashMessage(w, "error", "Unable to create the site")
 		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 		return
 	}
@@ -835,31 +845,23 @@ func DeleteSite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userDb := user_database.GetDbOrFatal(signedInUser.Username)
-
-	// First delete related records (hits and webmentions) - PERMANENT DELETE
-	if err := userDb.Db.Unscoped().Where("site_id = ?", site.ID).Delete(&user_database.Hit{}).Error; err != nil {
-		SetFlashMessage(w, "error", fmt.Sprintf("Failed to delete site hits: %s", err))
+	userDB := user_database.GetDbOrFatal(signedInUser.Username)
+	primaryDeleted, err := permanentlyDeleteSite(
+		userDB.Db,
+		signedInUser.Username,
+		site.ID,
+		shared_database.DeletePublicSiteRoute,
+	)
+	if err != nil && !primaryDeleted {
+		log.Printf("DeleteSite: permanent site deletion failed")
+		SetFlashMessage(w, "error", "Failed to permanently delete the site")
 		http.Redirect(w, r, fmt.Sprintf("/dashboard/%d/settings", site.ID), http.StatusSeeOther)
 		return
 	}
-
-	if err := userDb.Db.Unscoped().Where("site_id = ?", site.ID).Delete(&user_database.WebMention{}).Error; err != nil {
-		SetFlashMessage(w, "error", fmt.Sprintf("Failed to delete site webmentions: %s", err))
-		http.Redirect(w, r, fmt.Sprintf("/dashboard/%d/settings", site.ID), http.StatusSeeOther)
-		return
-	}
-
-	if err := userDb.Db.Unscoped().Where("site_id = ?", site.ID).Delete(&user_database.Kudo{}).Error; err != nil {
-		SetFlashMessage(w, "error", fmt.Sprintf("Failed to delete site kudos: %s", err))
-		http.Redirect(w, r, fmt.Sprintf("/dashboard/%d/settings", site.ID), http.StatusSeeOther)
-		return
-	}
-
-	// Now delete the site itself - PERMANENT DELETE
-	if err := userDb.Db.Unscoped().Delete(site).Error; err != nil {
-		SetFlashMessage(w, "error", fmt.Sprintf("Failed to delete site: %s", err))
-		http.Redirect(w, r, fmt.Sprintf("/dashboard/%d/settings", site.ID), http.StatusSeeOther)
+	if err != nil {
+		log.Printf("DeleteSite: public route cleanup failed after site deletion")
+		SetFlashMessage(w, "error", "The site was deleted, but route cleanup failed")
+		http.Redirect(w, r, "/dashboard", http.StatusSeeOther)
 		return
 	}
 
@@ -869,30 +871,12 @@ func DeleteSite(w http.ResponseWriter, r *http.Request) {
 }
 
 func ReaperGetEmbedJs(w http.ResponseWriter, r *http.Request) {
-	escapedUsername := chi.URLParam(r, "username")
-	escapedUsername = strings.TrimSpace(escapedUsername)
-
-	username, err := url.PathUnescape(escapedUsername)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Error unescaping username '%s': %v", escapedUsername, err), http.StatusBadRequest)
+	resolved, ok := getResolvedPublicSite(r)
+	if !ok {
+		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}
-
-	siteID := chi.URLParam(r, "siteID")
-
-	useruser_database := user_database.GetDbIfExists(username)
-
-	if useruser_database == nil {
-		http.Error(w, "User not found", http.StatusNotFound)
-		return
-	}
-
-	var site user_database.Site
-	result := useruser_database.Db.First(&site, siteID)
-	if result.Error != nil {
-		http.Error(w, "Site not found", http.StatusNotFound)
-		return
-	}
+	site := resolved.Site
 
 	urlOfIncomingRequest := r.Header.Get("origin")
 
@@ -940,16 +924,22 @@ func ReaperGetEmbedJs(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "public, max-age=300")
 	RenderTemplate(w, r, "pages/reaper/embed/reaper_embed.js",
 		&map[string]CustomDeclaration{
-			"site":          {(*user_database.Site)(nil), &site},
-			"ownerUsername": {(*string)(nil), &username},
-			"countryFlags":  {(*string)(nil), &countryFlagsStr},
-			"kudosEnabled":  {(*bool)(nil), &kudosParamExists},
-			"kudosEmoji":    {(*string)(nil), &kudosEmoji},
+			"countryFlags": {(*string)(nil), &countryFlagsStr},
+			"kudosEnabled": {(*bool)(nil), &kudosParamExists},
+			"kudosEmoji":   {(*string)(nil), &kudosEmoji},
 		},
 	)
 }
 
 func ReaperPostHit(w http.ResponseWriter, r *http.Request) {
+	resolved, ok := getResolvedPublicSite(r)
+	if !ok {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+	userDB := resolved.UserDB
+	site := *resolved.Site
+
 	// Return immediately
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Request received"))
@@ -969,34 +959,9 @@ func ReaperPostHit(w http.ResponseWriter, r *http.Request) {
 			pagePathParam = strings.TrimRight(pagePathParam, "/")
 		}
 
-		escapedUsername := chi.URLParam(r, "username")
-		escapedUsername = strings.TrimSpace(escapedUsername)
-
-		username, err := url.PathUnescape(escapedUsername)
-		if err != nil {
-			log.Printf("ReaperPostHit: Error unescaping username '%s': %v", escapedUsername, err)
-			return
-		}
-
-		siteID := chi.URLParam(r, "siteID")
-
-		useruser_database := user_database.GetDbIfExists(username)
-
-		if useruser_database == nil {
-			log.Printf("ReaperPostHit: User not found: %s", username)
-			return
-		}
-
-		var site user_database.Site
-		result := useruser_database.Db.First(&site, siteID)
-		if result.Error != nil {
-			log.Printf("ReaperPostHit: Site '%s' not found for user '%s'", siteID, username)
-			return
-		}
-
 		siteURL, err := url.Parse(site.URL)
 		if err != nil {
-			log.Printf("ReaperPostHit: Can't parse site URL '%s' for user '%s'", site.URL, username)
+			log.Printf("ReaperPostHit: invalid configured site URL site_id=%d", site.ID)
 			return
 		}
 
@@ -1009,14 +974,14 @@ func ReaperPostHit(w http.ResponseWriter, r *http.Request) {
 		if urlOfIncomingRequest != "" {
 			incomingURL, err := url.Parse(urlOfIncomingRequest)
 			if err != nil {
-				log.Printf("ReaperPostHit: Can't parse origin URL: %s", urlOfIncomingRequest)
+				log.Printf("ReaperPostHit: invalid origin URL site_id=%d", site.ID)
 				return
 			}
 
 			if siteURL.Host != incomingURL.Host &&
 				// if we're in debug mode then we allow the test-embed-page
 				!(constants.DEBUG_MODE && strings.Contains(constants.PUBLIC_URL, incomingURL.Host)) {
-				log.Printf("ReaperPostHit: Origin mismatch. Site URL: %s, Origin URL: %s", siteURL.Host, incomingURL.Host)
+				log.Printf("ReaperPostHit: origin mismatch site_id=%d", site.ID)
 				return
 			}
 		}
@@ -1114,10 +1079,10 @@ func ReaperPostHit(w http.ResponseWriter, r *http.Request) {
 			VisitorBrowser:    visitorBrowser,
 		}
 
-		result = useruser_database.Db.Create(&hit)
+		result := userDB.Db.Create(&hit)
 
 		if result.Error != nil {
-			log.Printf("ReaperPostHit: Error saving hit: %v", result.Error)
+			log.Printf("ReaperPostHit: error saving hit site_id=%d: %v", site.ID, result.Error)
 			return
 		}
 	}()
@@ -1187,14 +1152,14 @@ func WebmentionSenderAddURLs(w http.ResponseWriter, r *http.Request) {
 
 		urlStr, err := webmention_sender.StandardizeURL(urlStr)
 		if err != nil {
-			log.Printf("Error standardizing URL %s: %v", urlStr, err)
+			log.Printf("WebmentionSenderAddURLs: invalid submitted URL")
 			continue
 		}
 
 		// Add URL to database
 		err = webmention_sender.AddURLToMonitor(user.Username, urlStr, isRss)
 		if err != nil {
-			log.Printf("Error adding URL %s: %v", urlStr, err)
+			log.Printf("WebmentionSenderAddURLs: error adding submitted URL")
 		}
 	}
 
@@ -1303,15 +1268,6 @@ func ChangePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Update the user's password
-	signedInUser.PasswordHash = datatypes.JSON(newPasswordHash)
-	result := userDb.Db.Save(signedInUser)
-	if result.Error != nil {
-		SetFlashMessage(w, "error", "Error saving password: "+result.Error.Error())
-		http.Redirect(w, r, "/dashboard/settings", http.StatusSeeOther)
-		return
-	}
-
 	// Generate a new session token to force login on other devices
 	token, err := generateAuthToken()
 	if err != nil {
@@ -1320,17 +1276,19 @@ func ChangePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Update the session token
+	// Update the password and rotate the session.
+	signedInUser.PasswordHash = datatypes.JSON(newPasswordHash)
 	signedInUser.SessionToken = token
-	result = userDb.Db.Save(signedInUser)
+	signedInUser.SessionExpiresAt = newSessionExpiry()
+	result := userDb.Db.Save(signedInUser)
 	if result.Error != nil {
-		SetFlashMessage(w, "error", "Error updating session: "+result.Error.Error())
+		SetFlashMessage(w, "error", "Error saving password: "+result.Error.Error())
 		http.Redirect(w, r, "/dashboard/settings", http.StatusSeeOther)
 		return
 	}
 
 	// Update the cookie
-	setUserSession(w, signedInUser.Username, token)
+	setUserSession(w, signedInUser.Username, token, signedInUser.SessionExpiresAt)
 
 	// Redirect with success message
 	SetFlashMessage(w, "success", "Password changed successfully")
@@ -1496,7 +1454,7 @@ func PasswordResetRequest(w http.ResponseWriter, r *http.Request) {
 	err = notifier.SendPasswordResetTokenViaDiscord(username, token)
 	if err != nil {
 		// User might not have Discord connected, but don't reveal that
-		log.Printf("Error sending password reset via Discord: %v", err)
+		log.Printf("PasswordResetRequest: Discord delivery failed")
 	}
 
 	SetFlashMessage(w, "success", "If the account exists, a password reset link will be sent to your Discord account if connected")
@@ -1581,29 +1539,13 @@ func ReaperGetKudos(w http.ResponseWriter, r *http.Request) {
 		pathParam = strings.TrimRight(pathParam, "/")
 	}
 
-	escapedUsername := chi.URLParam(r, "username")
-	escapedUsername = strings.TrimSpace(escapedUsername)
-
-	username, err := url.PathUnescape(escapedUsername)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Error unescaping username '%s': %v", escapedUsername, err), http.StatusBadRequest)
+	resolved, ok := getResolvedPublicSite(r)
+	if !ok {
+		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}
-
-	siteID := chi.URLParam(r, "siteID")
-
-	userDb := user_database.GetDbIfExists(username)
-	if userDb == nil {
-		http.Error(w, "User not found", http.StatusNotFound)
-		return
-	}
-
-	var site user_database.Site
-	result := userDb.Db.First(&site, siteID)
-	if result.Error != nil {
-		http.Error(w, "Site not found", http.StatusNotFound)
-		return
-	}
+	userDB := resolved.UserDB
+	site := resolved.Site
 
 	// Validate origin
 	urlOfIncomingRequest := r.Header.Get("origin")
@@ -1632,7 +1574,7 @@ func ReaperGetKudos(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var count int64
-	userDb.Db.Model(&user_database.Kudo{}).Where("site_id = ? AND path = ?", site.ID, pathParam).Count(&count)
+	userDB.Db.Model(&user_database.Kudo{}).Where("site_id = ? AND path = ?", site.ID, pathParam).Count(&count)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]int64{"count": count})
@@ -1650,29 +1592,13 @@ func ReaperPostKudo(w http.ResponseWriter, r *http.Request) {
 		pathParam = strings.TrimRight(pathParam, "/")
 	}
 
-	escapedUsername := chi.URLParam(r, "username")
-	escapedUsername = strings.TrimSpace(escapedUsername)
-
-	username, err := url.PathUnescape(escapedUsername)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Error unescaping username '%s': %v", escapedUsername, err), http.StatusBadRequest)
+	resolved, ok := getResolvedPublicSite(r)
+	if !ok {
+		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}
-
-	siteID := chi.URLParam(r, "siteID")
-
-	userDb := user_database.GetDbIfExists(username)
-	if userDb == nil {
-		http.Error(w, "User not found", http.StatusNotFound)
-		return
-	}
-
-	var site user_database.Site
-	result := userDb.Db.First(&site, siteID)
-	if result.Error != nil {
-		http.Error(w, "Site not found", http.StatusNotFound)
-		return
-	}
+	userDB := resolved.UserDB
+	site := resolved.Site
 
 	// Validate origin
 	urlOfIncomingRequest := r.Header.Get("origin")
@@ -1717,7 +1643,7 @@ func ReaperPostKudo(w http.ResponseWriter, r *http.Request) {
 	// Server-side dedup: check if this visitor already gave kudos to this path
 	if visitorHash != nil {
 		var existingCount int64
-		userDb.Db.Model(&user_database.Kudo{}).Where(
+		userDB.Db.Model(&user_database.Kudo{}).Where(
 			"site_id = ? AND path = ? AND visitor_ip_ua_hash = ?",
 			site.ID, pathParam, *visitorHash,
 		).Count(&existingCount)
@@ -1725,7 +1651,7 @@ func ReaperPostKudo(w http.ResponseWriter, r *http.Request) {
 		if existingCount > 0 {
 			// Already gave kudos — return current count without creating a new one
 			var count int64
-			userDb.Db.Model(&user_database.Kudo{}).Where("site_id = ? AND path = ?", site.ID, pathParam).Count(&count)
+			userDB.Db.Model(&user_database.Kudo{}).Where("site_id = ? AND path = ?", site.ID, pathParam).Count(&count)
 
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(map[string]int64{"count": count})
@@ -1740,15 +1666,15 @@ func ReaperPostKudo(w http.ResponseWriter, r *http.Request) {
 		VisitorIpUaHash: visitorHash,
 	}
 
-	result = userDb.Db.Create(&kudo)
+	result := userDB.Db.Create(&kudo)
 	if result.Error != nil {
-		log.Printf("ReaperPostKudo: Error saving kudo: %v", result.Error)
+		log.Printf("ReaperPostKudo: error saving kudo site_id=%d: %v", site.ID, result.Error)
 		http.Error(w, "Error saving kudo", http.StatusInternalServerError)
 		return
 	}
 
 	var count int64
-	userDb.Db.Model(&user_database.Kudo{}).Where("site_id = ? AND path = ?", site.ID, pathParam).Count(&count)
+	userDB.Db.Model(&user_database.Kudo{}).Where("site_id = ? AND path = ?", site.ID, pathParam).Count(&count)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]int64{"count": count})

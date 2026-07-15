@@ -2,12 +2,13 @@ package site
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"mochi/notifier"
+	"mochi/safehttp"
 	"mochi/user_database"
-	"net"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -16,7 +17,11 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"gorm.io/gorm"
 )
+
+var newWebmentionReceiverHTTPClient = safehttp.NewClient
+var sendWebmentionNotification = notifier.SendMessageToUsername
 
 // PublicWebMention represents the public-facing structure of a webmention
 type PublicWebMention struct {
@@ -25,29 +30,28 @@ type PublicWebMention struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// WebmentionPublicAPI handles serving approved webmentions as JSON
+// WebmentionPublicAPI handles serving approved webmentions as JSON.
+// @Summary Get approved webmentions for a site
+// @Description Returns the approved webmentions for the site identified by an opaque public ID.
+// @Tags webmentions
+// @Produce json
+// @Param publicID path string true "Opaque public site ID"
+// @Success 200 {array} PublicWebMention
+// @Failure 404 {string} string "Not found"
+// @Failure 500 {string} string "Internal server error"
+// @Router /api/webmentions/{publicID} [get]
 func WebmentionPublicAPI(w http.ResponseWriter, r *http.Request) {
-	username := chi.URLParam(r, "username")
-	siteID := chi.URLParam(r, "siteID")
-
-	// Get the user database
-	userDB := user_database.GetDbIfExists(username)
-	if userDB == nil {
-		http.Error(w, "User not found", http.StatusNotFound)
+	resolved, ok := getResolvedPublicSite(r)
+	if !ok {
+		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}
-
-	// Get the site
-	var site user_database.Site
-	result := userDB.Db.First(&site, siteID)
-	if result.Error != nil {
-		http.Error(w, "Site not found", http.StatusNotFound)
-		return
-	}
+	userDB := resolved.UserDB
+	site := resolved.Site
 
 	// Get approved webmentions for the site
 	var webmentions []user_database.WebMention
-	result = userDB.Db.Where(&user_database.WebMention{
+	result := userDB.Db.Where(&user_database.WebMention{
 		SiteID: site.ID,
 		Status: "approved",
 	}).Find(&webmentions)
@@ -239,94 +243,62 @@ func WebmentionChangeStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func WebmentionReceive(w http.ResponseWriter, r *http.Request) {
-
-	//	extract request data
-	escapedUsername := chi.URLParam(r, "username")
-	siteID := chi.URLParam(r, "siteId")
-
-	escapedUsername = strings.TrimSpace(escapedUsername)
-	username, err := url.PathUnescape(escapedUsername)
-	if err != nil {
-		log.Printf("WebmentionPost: Error unescaping username '%s': %v", escapedUsername, err)
+	resolved, ok := getResolvedPublicSite(r)
+	if !ok {
+		http.Error(w, "Not Found", http.StatusNotFound)
 		return
 	}
 
-	// Process the webmention
-	sourceUrlStr := r.FormValue("source")
-	targetUrlStr := r.FormValue("target")
-
+	sourceUrlStr := strings.TrimSpace(r.FormValue("source"))
+	targetUrlStr := strings.TrimSpace(r.FormValue("target"))
 	sourceUrl, err := url.Parse(sourceUrlStr)
-	if err != nil {
-		log.Printf("WebmentionPost: Can't parse source URL '%s' for user '%s'", sourceUrlStr, username)
+	if err != nil || safehttp.ValidateURL(sourceUrl) != nil {
+		http.Error(w, "Invalid source URL", http.StatusBadRequest)
 		return
 	}
-
 	targetUrl, err := url.Parse(targetUrlStr)
-	if err != nil {
-		log.Printf("WebmentionPost: Can't parse target URL '%s' for user '%s'", targetUrlStr, username)
+	if err != nil || safehttp.ValidateURL(targetUrl) != nil {
+		http.Error(w, "Invalid target URL", http.StatusBadRequest)
 		return
 	}
 
-	// Check if the target URL is a loopback address
-	if isLoopbackAddress(targetUrl.Hostname()) {
-		log.Printf("WebmentionPost: Target URL '%s' is a loopback address for user '%s'", targetUrlStr, username)
+	siteURL, err := url.Parse(resolved.Site.URL)
+	if err != nil || siteURL.Hostname() == "" {
+		log.Printf("WebmentionReceive: configured site URL is invalid")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	if !strings.EqualFold(targetUrl.Hostname(), siteURL.Hostname()) {
+		http.Error(w, "Invalid target URL", http.StatusBadRequest)
+		return
+	}
+	if strings.EqualFold(sourceUrl.Hostname(), targetUrl.Hostname()) {
+		http.Error(w, "Invalid source URL", http.StatusBadRequest)
 		return
 	}
 
-	// Return immediately and defer the rest of the logic
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Request received"))
+	_, _ = w.Write([]byte("Request received"))
 
-	// Execute the rest of the logic in a goroutine
 	go func() {
+		user_db := resolved.UserDB
+		site := resolved.Site
+		username := resolved.Route.Username
 
-		user_db := user_database.GetDbIfExists(username)
-
-		if user_db == nil {
-			log.Printf("WebmentionPost: User not found: '%s'", username)
+		client := newWebmentionReceiverHTTPClient(
+			safehttp.WithTimeout(5*time.Second),
+			safehttp.WithMaxRedirects(20),
+		)
+		if client == nil {
+			log.Printf("WebmentionReceive: HTTP client initialization failed site_id=%d", site.ID)
 			return
 		}
-
-		var site user_database.Site
-		result := user_db.Db.First(&site, siteID)
-		if result.Error != nil {
-			log.Printf("WebmentionPost: Site '%s' not found for user '%s'", siteID, username)
-			return
-		}
-
-		siteURL, err := url.Parse(site.URL)
-		if err != nil {
-			log.Printf("WebmentionPost: Can't parse site URL '%s' for user '%s'", site.URL, username)
-			return
-		}
-
-		// Check if the target URL is the same as the site URL
-		if targetUrl.Hostname() != siteURL.Hostname() {
-			log.Printf("WebmentionPost: Target URL '%s' does not match site URL '%s' for user '%s'", targetUrlStr, site.URL, username)
-			return
-		}
-
-		// Check if the target is in the same domain as the source
-		if sourceUrl.Hostname() == targetUrl.Hostname() {
-			log.Printf("WebmentionPost: Source URL '%s' and target URL '%s' are in the same domain for user '%s'", sourceUrlStr, targetUrlStr, username)
-			return
-		}
-
-		// now validate that the source URL contains a link to the target URL
-		client := &http.Client{
-			Timeout: 5 * time.Second,
-			CheckRedirect: func(req *http.Request, via []*http.Request) error {
-				if len(via) >= 20 {
-					return http.ErrUseLastResponse
-				}
-				return nil
-			},
-		}
+		defer client.CloseIdleConnections()
 
 		// Make an initial HEAD request
 		req, err := http.NewRequest("HEAD", sourceUrlStr, nil)
 		if err != nil {
-			log.Printf("WebmentionPost: Error creating HEAD request for source URL '%s' for user '%s': %v", sourceUrlStr, username, err)
+			log.Printf("WebmentionReceive: error creating source HEAD request site_id=%d", site.ID)
 			return
 		}
 
@@ -338,21 +310,24 @@ func WebmentionReceive(w http.ResponseWriter, r *http.Request) {
 
 		resp, err := client.Do(req)
 		if err != nil {
-			log.Printf("WebmentionPost: Error fetching source URL '%s' for user '%s': %v", sourceUrlStr, username, err)
+			_ = closeResponseBody(resp)
+			log.Printf("WebmentionReceive: source HEAD request failed site_id=%d", site.ID)
 			return
 		}
-
-		if resp.StatusCode != http.StatusOK {
-			log.Printf("WebmentionPost: [HEAD] Source URL '%s' returned status code %d for user '%s'", sourceUrlStr, resp.StatusCode, username)
+		statusCode := resp.StatusCode
+		if err := closeResponseBody(resp); err != nil {
+			log.Printf("WebmentionReceive: source HEAD response close failed site_id=%d", site.ID)
 			return
 		}
-
-		resp.Body.Close()
+		if statusCode != http.StatusOK {
+			log.Printf("WebmentionReceive: source HEAD status=%d site_id=%d", statusCode, site.ID)
+			return
+		}
 
 		// Make a full GET request to fetch the source URL
 		req, err = http.NewRequest("GET", sourceUrlStr, nil)
 		if err != nil {
-			log.Printf("WebmentionPost: Error creating GET request for source URL '%s' for user '%s': %v", sourceUrlStr, username, err)
+			log.Printf("WebmentionReceive: error creating source GET request site_id=%d", site.ID)
 			return
 		}
 
@@ -362,23 +337,23 @@ func WebmentionReceive(w http.ResponseWriter, r *http.Request) {
 
 		resp, err = client.Do(req)
 		if err != nil {
-			log.Printf("WebmentionPost: Error fetching source URL '%s' for user '%s': %v", sourceUrlStr, username, err)
+			_ = closeResponseBody(resp)
+			log.Printf("WebmentionReceive: source GET request failed site_id=%d", site.ID)
 			return
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			log.Printf("WebmentionPost: [GET] Source URL '%s' returned status code %d for user '%s'", sourceUrlStr, resp.StatusCode, username)
+			statusCode = resp.StatusCode
+			_ = closeResponseBody(resp)
+			log.Printf("WebmentionReceive: source GET status=%d site_id=%d", statusCode, site.ID)
 			return
 		}
 
-		// Limit the amount of data fetched to 1MB
-		sourceHtmlBytes, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20)) // 1MB
+		sourceHtmlBytes, err := readAndCloseLimitedBody(resp, 1<<20)
 		if err != nil {
-			log.Printf("WebmentionPost: Error reading source URL '%s' for user '%s': %v", sourceUrlStr, username, err)
+			log.Printf("WebmentionReceive: error reading source response site_id=%d", site.ID)
 			return
 		}
-
-		resp.Body.Close()
 
 		sourceHtml := string(sourceHtmlBytes)
 
@@ -387,30 +362,33 @@ func WebmentionReceive(w http.ResponseWriter, r *http.Request) {
 		hrefRegex := regexp.MustCompile(hrefPattern)
 
 		if !hrefRegex.MatchString(sourceHtml) {
-			log.Printf("WebmentionPost: Source URL '%s' does not contain target URL '%s' wrapped in href for user '%s'", sourceUrlStr, targetUrlStr, username)
+			log.Printf("WebmentionReceive: source does not link to target site_id=%d", site.ID)
 			return
 		}
 
 		// now verify that the target URL is valid and exists
 		req, err = http.NewRequest("GET", targetUrlStr, nil)
 		if err != nil {
-			log.Printf("WebmentionPost: Error creating GET request for target URL '%s' for user '%s': %v", targetUrlStr, username, err)
+			log.Printf("WebmentionReceive: error creating target GET request site_id=%d", site.ID)
 			return
 		}
 
 		req.Header.Set("Accept", "text/html")
 		resp, err = client.Do(req)
 		if err != nil {
-			log.Printf("WebmentionPost: Error fetching target URL '%s' for user '%s': %v", targetUrlStr, username, err)
+			_ = closeResponseBody(resp)
+			log.Printf("WebmentionReceive: target GET request failed site_id=%d", site.ID)
 			return
 		}
-
-		if resp.StatusCode != http.StatusOK {
-			log.Printf("WebmentionPost: Target URL '%s' returned status code %d for user '%s'", targetUrlStr, resp.StatusCode, username)
+		statusCode = resp.StatusCode
+		if err := closeResponseBody(resp); err != nil {
+			log.Printf("WebmentionReceive: target response close failed site_id=%d", site.ID)
 			return
 		}
-
-		resp.Body.Close()
+		if statusCode != http.StatusOK {
+			log.Printf("WebmentionReceive: target GET status=%d site_id=%d", statusCode, site.ID)
+			return
+		}
 
 		// normalize the target and source URLs
 		normalizeURL := func(u *url.URL) string {
@@ -433,14 +411,18 @@ func WebmentionReceive(w http.ResponseWriter, r *http.Request) {
 
 		// Check if the webmention already exists
 		var existingWebmention user_database.WebMention
-		result = user_db.Db.Where(&user_database.WebMention{
+		result := user_db.Db.Where(&user_database.WebMention{
 			SiteID:    site.ID,
 			SourceURL: sourceUrlStr,
 			TargetURL: targetUrlStr,
 		}).First(&existingWebmention)
 
 		if result.Error == nil {
-			log.Printf("WebmentionPost: Webmention already exists for source URL '%s' and target URL '%s' for user '%s'", sourceUrlStr, targetUrlStr, username)
+			log.Printf("WebmentionReceive: duplicate webmention site_id=%d", site.ID)
+			return
+		}
+		if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			log.Printf("WebmentionReceive: duplicate check failed site_id=%d", site.ID)
 			return
 		}
 
@@ -454,7 +436,7 @@ func WebmentionReceive(w http.ResponseWriter, r *http.Request) {
 
 		result = user_db.Db.Create(&webmention)
 		if result.Error != nil {
-			log.Printf("WebmentionPost: Error creating webmention for user '%s': %v", username, result.Error)
+			log.Printf("WebmentionReceive: error creating webmention site_id=%d", site.ID)
 			return
 		}
 
@@ -474,36 +456,39 @@ func WebmentionReceive(w http.ResponseWriter, r *http.Request) {
 				"View all webmentions in your dashboard: https://mochi.meadow.cafe/dashboard/%d/webmentions",
 				sourceUrlStr, targetUrl.Hostname(), targetPath, site.ID)
 
-			err := notifier.SendMessageToUsername(username, message)
+			err := sendWebmentionNotification(username, message)
 			if err != nil {
 				// Just log the error but don't interrupt the flow
-				log.Printf("Failed to send Discord notification for webmention: %v", err)
+				log.Printf("WebmentionReceive: Discord notification failed site_id=%d", site.ID)
 			} else {
-				log.Printf("Discord notification sent to %s for new webmention", username)
+				log.Printf("WebmentionReceive: Discord notification sent site_id=%d", site.ID)
 			}
 		}()
 
 	}()
 }
 
-// Helper function to check if a hostname is a loopback address
-func isLoopbackAddress(hostname string) bool {
-	ip := net.ParseIP(hostname)
-	if ip != nil {
-		return ip.IsLoopback()
+func readAndCloseLimitedBody(response *http.Response, limit int64) ([]byte, error) {
+	if response == nil || response.Body == nil {
+		return nil, errors.New("response body is missing")
 	}
-
-	// Resolve the hostname to an IP address
-	ips, err := net.LookupIP(hostname)
-	if err != nil {
-		return false
+	body, readErr := io.ReadAll(io.LimitReader(response.Body, limit+1))
+	closeErr := response.Body.Close()
+	if readErr != nil {
+		return nil, readErr
 	}
-
-	for _, ip := range ips {
-		if ip.IsLoopback() {
-			return true
-		}
+	if closeErr != nil {
+		return nil, closeErr
 	}
+	if int64(len(body)) > limit {
+		return nil, errors.New("response body exceeds limit")
+	}
+	return body, nil
+}
 
-	return false
+func closeResponseBody(response *http.Response) error {
+	if response == nil || response.Body == nil {
+		return nil
+	}
+	return response.Body.Close()
 }

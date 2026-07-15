@@ -2,16 +2,14 @@ package site
 
 import (
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"mochi/user_database"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
-
-	"github.com/go-chi/chi/v5"
 )
 
 // GenerateAPIKey generates or regenerates an API key for a site
@@ -44,12 +42,12 @@ func GenerateAPIKey(w http.ResponseWriter, r *http.Request) {
 
 // AnalyticsAPIResponse is the response body for the analytics API endpoint
 type AnalyticsAPIResponse struct {
-	SiteURL        string                `json:"site_url"`
-	Period         AnalyticsAPIPeriod    `json:"period"`
-	Referrers      []AnalyticsReferrer   `json:"referrers"`
-	Pages          []AnalyticsPage       `json:"pages"`
-	TotalHits      int                   `json:"total_hits"`
-	UniqueVisitors int                   `json:"unique_visitors"`
+	SiteURL        string              `json:"site_url"`
+	Period         AnalyticsAPIPeriod  `json:"period"`
+	Referrers      []AnalyticsReferrer `json:"referrers"`
+	Pages          []AnalyticsPage     `json:"pages"`
+	TotalHits      int                 `json:"total_hits"`
+	UniqueVisitors int                 `json:"unique_visitors"`
 }
 
 type AnalyticsAPIPeriod struct {
@@ -74,49 +72,34 @@ type AnalyticsPage struct {
 // @Tags analytics
 // @Accept json
 // @Produce json
-// @Param username path string true "Username of the site owner"
-// @Param siteID path string true "Site ID"
+// @Param publicID path string true "Opaque public site ID"
 // @Param minDate query string false "Start date (YYYY-MM-DD format, defaults to 30 days ago)"
 // @Param maxDate query string false "End date (YYYY-MM-DD format, defaults to today)"
 // @Security BearerAuth
 // @Success 200 {object} AnalyticsAPIResponse
 // @Failure 401 {string} string "Unauthorized"
-// @Failure 404 {string} string "Not found"
-// @Router /api/analytics/{username}/{siteID} [get]
+// @Failure 500 {string} string "Internal server error"
+// @Router /api/analytics/{publicID} [get]
 func AnalyticsAPI(w http.ResponseWriter, r *http.Request) {
-	escapedUsername := chi.URLParam(r, "username")
-	escapedUsername = strings.TrimSpace(escapedUsername)
-
-	username, err := url.PathUnescape(escapedUsername)
-	if err != nil {
-		http.Error(w, "Invalid username", http.StatusBadRequest)
+	resolved, ok := getResolvedPublicSite(r)
+	if !ok {
+		writeUnauthorized(w)
 		return
 	}
-
-	siteID := chi.URLParam(r, "siteID")
-
-	userDb := user_database.GetDbIfExists(username)
-	if userDb == nil {
-		http.Error(w, "Not found", http.StatusNotFound)
-		return
-	}
-
-	var site user_database.Site
-	if err := userDb.Db.First(&site, siteID).Error; err != nil {
-		http.Error(w, "Not found", http.StatusNotFound)
-		return
-	}
+	userDB := resolved.UserDB
+	site := resolved.Site
 
 	// Validate API key
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" || site.APIKey == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		writeUnauthorized(w)
 		return
 	}
 
-	providedKey := strings.TrimPrefix(authHeader, "Bearer ")
-	if providedKey == authHeader || providedKey != *site.APIKey {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+	providedKey, found := strings.CutPrefix(authHeader, "Bearer ")
+	if !found || providedKey == "" ||
+		subtle.ConstantTimeCompare([]byte(providedKey), []byte(*site.APIKey)) != 1 {
+		writeUnauthorized(w)
 		return
 	}
 
@@ -139,7 +122,7 @@ func AnalyticsAPI(w http.ResponseWriter, r *http.Request) {
 
 	// Query hits
 	var hits []user_database.Hit
-	if err := userDb.Db.Where(
+	if err := userDB.Db.Where(
 		"site_id = ? AND date >= ? AND date <= ?", site.ID, minDate, maxDate,
 	).Find(&hits).Error; err != nil {
 		http.Error(w, "Error fetching data", http.StatusInternalServerError)

@@ -15,7 +15,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/api/analytics/{username}/{siteID}": {
+        "/api/analytics/{publicID}": {
             "get": {
                 "security": [
                     {
@@ -36,15 +36,8 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Username of the site owner",
-                        "name": "username",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Site ID",
-                        "name": "siteID",
+                        "description": "Opaque public site ID",
+                        "name": "publicID",
                         "in": "path",
                         "required": true
                     },
@@ -74,8 +67,52 @@ const docTemplate = `{
                             "type": "string"
                         }
                     },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/webmentions/{publicID}": {
+            "get": {
+                "description": "Returns the approved webmentions for the site identified by an opaque public ID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "webmentions"
+                ],
+                "summary": "Get approved webmentions for a site",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Opaque public site ID",
+                        "name": "publicID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/site.PublicWebMention"
+                            }
+                        }
+                    },
                     "404": {
                         "description": "Not found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
                         "schema": {
                             "type": "string"
                         }
@@ -149,6 +186,20 @@ const docTemplate = `{
                     }
                 },
                 "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "site.PublicWebMention": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "target": {
                     "type": "string"
                 }
             }

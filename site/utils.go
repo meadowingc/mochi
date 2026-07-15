@@ -4,16 +4,20 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"log"
+	"mochi/constants"
 	"mochi/user_database"
 	"net/http"
 	"sort"
 	"strings"
+	"time"
 )
 
 type AdminCookieName string
 
 const AuthenticatedUserCookieName = AdminCookieName("authenticated_user")
 const AuthenticatedUserTokenCookieName = AdminCookieName("authenticated_user_token")
+
+const userSessionDuration = 30 * 24 * time.Hour
 
 func sortMapByValue(m map[string]int) []struct {
 	Key   string
@@ -62,20 +66,32 @@ func generateAuthToken() (string, error) {
 
 func clearUserSession(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
-		Name:   string(AuthenticatedUserTokenCookieName),
-		Value:  "",
-		Path:   "/",
-		MaxAge: -1,
+		Name:     string(AuthenticatedUserTokenCookieName),
+		Value:    "",
+		Path:     "/",
+		Expires:  time.Unix(1, 0).UTC(),
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   !constants.DEBUG_MODE,
+		SameSite: http.SameSiteLaxMode,
 	})
 }
 
-func setUserSession(w http.ResponseWriter, username string, authToken string) {
+func newSessionExpiry() time.Time {
+	return time.Now().UTC().Add(userSessionDuration).Truncate(time.Second)
+}
+
+func setUserSession(w http.ResponseWriter, username string, authToken string, expiresAt time.Time) {
 	cookieValue := authToken + "///" + username
 	http.SetCookie(w, &http.Cookie{
-		Name:   string(AuthenticatedUserTokenCookieName),
-		Value:  cookieValue,
-		Path:   "/",
-		MaxAge: 60 * 60 * 24 * 365 * 10, // 10 years
+		Name:     string(AuthenticatedUserTokenCookieName),
+		Value:    cookieValue,
+		Path:     "/",
+		Expires:  expiresAt,
+		MaxAge:   int(userSessionDuration / time.Second),
+		HttpOnly: true,
+		Secure:   !constants.DEBUG_MODE,
+		SameSite: http.SameSiteLaxMode,
 	})
 }
 

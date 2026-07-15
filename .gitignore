@@ -12,6 +12,9 @@ shared.db*
 
 tmp
 node_modules
+playwright-report/
+test-results/
+blob-report/
 
 # Swagger auto-generated files (docs.go is kept since it's compiled)
 docs/swagger.json

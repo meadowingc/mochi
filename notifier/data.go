@@ -387,7 +387,7 @@ func CheckAndSendScheduledMetricsReports() {
 		// Check if it's the right time to send notifications based on user's timezone
 		tzLocation, err := time.LoadLocation(settings.Timezone)
 		if err != nil {
-			log.Printf("Invalid timezone %s for user %s: %v", settings.Timezone, settings.Username, err)
+			log.Printf("Scheduled metrics: invalid configured timezone; using UTC")
 			tzLocation = time.UTC // Default to UTC if timezone is invalid
 		}
 
@@ -409,14 +409,14 @@ func CheckAndSendScheduledMetricsReports() {
 		// Get the user's database and sites
 		userDb := user_database.GetDbIfExists(settings.Username)
 		if userDb == nil {
-			log.Printf("User database not found for %s", settings.Username)
+			log.Printf("Scheduled metrics: user database not found")
 			continue
 		}
 
 		// Get all sites for this user
 		var sites []user_database.Site
 		if err := userDb.Db.Find(&sites).Error; err != nil {
-			log.Printf("Error fetching sites for user %s: %v", settings.Username, err)
+			log.Printf("Scheduled metrics: error fetching sites: %v", err)
 			continue
 		}
 
@@ -462,20 +462,18 @@ func CheckAndSendScheduledMetricsReports() {
 			if shouldSend {
 				// Send the metrics report
 				if err := SendSiteMetricsReport(settings.Username, site); err != nil {
-					log.Printf("Error sending metrics report for user %s, site %s: %v",
-						settings.Username, site.URL, err)
+					log.Printf("Scheduled metrics: report delivery failed site_id=%d", site.ID)
 					continue
 				}
 
 				// Update the last notification time to now
 				site.LastMetricsSentAt = time.Now()
 				if err := userDb.Db.Save(&site).Error; err != nil {
-					log.Printf("Error updating LastMetricsSentAt for site %s: %v",
-						site.URL, err)
+					log.Printf("Scheduled metrics: error updating last sent time site_id=%d: %v",
+						site.ID, err)
 				} else {
-					log.Printf("Sent %s metrics report to %s for site %s at their local time (%s %d:00)",
-						site.MetricsNotificationFreq, settings.Username, site.URL,
-						settings.Timezone, notificationHour)
+					log.Printf("Scheduled metrics: sent %s report site_id=%d",
+						site.MetricsNotificationFreq, site.ID)
 				}
 			}
 		}

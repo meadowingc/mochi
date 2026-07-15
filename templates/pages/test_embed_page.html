@@ -1,9 +1,11 @@
 {% extends "/layouts/standard.html" %}
 
-{% macro Title %}Test embed page for site 1{% end %}
+{% macro Title %}Test embed page{% end %}
 
 {% macro Body %}
-  <script src="{{publicURL}}/reaper/{{signedInUser.Username}}/embed/1.js?kudos" async></script>
+  {% if selfSitePublicID != "" %}
+  <script src="{{publicURL}}/reaper/{{selfSitePublicID}}/embed.js?kudos" async></script>
+  {% end %}
   <div class="m-4 mb-8">
     <div class="bg-white shadow-md rounded-lg p-6">
       <h2 class="text-xl font-bold">Hi!</h2>
@@ -12,7 +14,7 @@
           [DEV] Page to test the embed code
         </p>
         <p class="mb-2">
-          This page embeds the <code>site 1</code> analytics script.
+          This page embeds the configured self-site analytics script when <code>SELF_SITE_PUBLIC_ID</code> is set.
         </p>
         <p class="mt-4">
           <strong>Kudos test:</strong>

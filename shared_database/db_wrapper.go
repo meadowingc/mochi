@@ -25,6 +25,7 @@ func InitSharedDb() {
 		&UserMonitoredURL{},
 		&UserDiscordSettings{},
 		&PasswordResetToken{}, // Add the new model for password reset
+		&PublicSiteRoute{},
 	)
 	if err != nil {
 		log.Fatalf("failed to migrate database: %v", err)
