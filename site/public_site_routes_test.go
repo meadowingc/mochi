@@ -156,14 +156,13 @@ func TestCanonicalPublicSiteResolutionRejectsUnknownStaleAndMismatchedMappings(t
 	}
 }
 
-func TestLegacyResolutionCreatesRouteAndTracksFamilies(t *testing.T) {
+func TestLegacyResolutionCreatesRoute(t *testing.T) {
 	fixture := newPublicSiteFixture(t, false)
 
 	resolved, err := resolveLegacyPublicSite(
 		fixture.deps,
 		fixture.owner.Username,
 		fixture.site.ID,
-		shared_database.LegacyRouteFamilyAnalyticsReaper,
 	)
 	if err != nil {
 		t.Fatalf("resolve legacy site: %v", err)
@@ -176,20 +175,8 @@ func TestLegacyResolutionCreatesRouteAndTracksFamilies(t *testing.T) {
 		fixture.deps,
 		fixture.owner.Username,
 		fixture.site.ID,
-		shared_database.LegacyRouteFamilyAPI,
 	); err != nil {
 		t.Fatal(err)
-	}
-
-	var stored shared_database.PublicSiteRoute
-	if err := fixture.registryDB.First(&stored, resolved.Route.ID).Error; err != nil {
-		t.Fatal(err)
-	}
-	if stored.LegacyAnalyticsLastSeenAt == nil || stored.LegacyAPILastSeenAt == nil {
-		t.Fatal("legacy family timestamps were not recorded")
-	}
-	if stored.LegacyWebmentionLastSeenAt != nil {
-		t.Fatal("unseen legacy family was modified")
 	}
 }
 
@@ -199,7 +186,6 @@ func TestPublicSiteMiddlewareUnknownResponsesAndLegacyHeader(t *testing.T) {
 	legacyRouter := chi.NewRouter()
 	legacyRouter.With(legacyPublicSiteMiddlewareWithDependencies(
 		fixture.deps,
-		shared_database.LegacyRouteFamilyWebmention,
 		http.StatusNotFound,
 	)).Get("/legacy/{username}/{siteID}", func(w http.ResponseWriter, r *http.Request) {
 		if resolved, ok := getResolvedPublicSite(r); !ok || resolved.Site.ID != fixture.site.ID {
@@ -219,14 +205,6 @@ func TestPublicSiteMiddlewareUnknownResponsesAndLegacyHeader(t *testing.T) {
 	}
 	if legacyResponse.Header().Get("Deprecation") != "true" {
 		t.Fatal("legacy response is missing Deprecation: true")
-	}
-
-	var stored shared_database.PublicSiteRoute
-	if err := fixture.registryDB.First(&stored).Error; err != nil {
-		t.Fatal(err)
-	}
-	if stored.LegacyWebmentionLastSeenAt == nil {
-		t.Fatal("legacy middleware did not record receiver use")
 	}
 
 	for name, status := range map[string]int{
@@ -288,7 +266,6 @@ func TestCanonicalAndLegacyAnalyticsAuthenticationFailuresAreUniform(t *testing.
 	legacy := chi.NewRouter()
 	legacy.With(legacyPublicSiteMiddlewareWithDependencies(
 		fixture.deps,
-		shared_database.LegacyRouteFamilyAPI,
 		http.StatusUnauthorized,
 	)).Get("/api/analytics/{username}/{siteID}", AnalyticsAPI)
 

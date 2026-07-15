@@ -28,14 +28,12 @@ type resolvedPublicSite struct {
 type publicSiteDependencies struct {
 	lookupRoute       func(string) (*shared_database.PublicSiteRoute, error)
 	createRoute       func(string, uint) (*shared_database.PublicSiteRoute, error)
-	updateLegacySeen  func(string, shared_database.LegacyRouteFamily) (bool, error)
 	getUserDBIfExists func(string) (*user_database.UserDb, error)
 }
 
 var defaultPublicSiteDependencies = publicSiteDependencies{
 	lookupRoute:       shared_database.LookupPublicSiteRoute,
 	createRoute:       shared_database.CreateOrGetPublicSiteRoute,
-	updateLegacySeen:  shared_database.UpdatePublicSiteRouteLegacyLastSeen,
 	getUserDBIfExists: user_database.GetDbIfExistsWithError,
 }
 
@@ -67,7 +65,6 @@ func resolveLegacyPublicSite(
 	deps publicSiteDependencies,
 	username string,
 	siteID uint,
-	family shared_database.LegacyRouteFamily,
 ) (*resolvedPublicSite, error) {
 	if username == "" || siteID == 0 {
 		return nil, errPublicSiteNotFound
@@ -84,10 +81,6 @@ func resolveLegacyPublicSite(
 	}
 	if route == nil || route.Username != username || route.SiteID != site.ID || route.PublicID == "" {
 		return nil, errPublicSiteNotFound
-	}
-
-	if _, err := deps.updateLegacySeen(route.PublicID, family); err != nil {
-		return nil, fmt.Errorf("update legacy route state: %w", err)
 	}
 
 	return &resolvedPublicSite{Route: route, UserDB: userDB, Site: site}, nil
@@ -177,7 +170,6 @@ func canonicalPublicSiteMiddlewareWithDependencies(
 
 func legacyPublicSiteMiddlewareWithDependencies(
 	deps publicSiteDependencies,
-	family shared_database.LegacyRouteFamily,
 	unknownStatus int,
 ) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
@@ -198,7 +190,7 @@ func legacyPublicSiteMiddlewareWithDependencies(
 				return
 			}
 
-			resolved, err := resolveLegacyPublicSite(deps, username, uint(parsedSiteID), family)
+			resolved, err := resolveLegacyPublicSite(deps, username, uint(parsedSiteID))
 			if err != nil {
 				writePublicSiteResolutionError(w, err, unknownStatus)
 				return
@@ -246,7 +238,6 @@ func CanonicalAnalyticsSiteMiddleware(next http.Handler) http.Handler {
 func LegacyAnalyticsReaperMiddleware(next http.Handler) http.Handler {
 	return legacyPublicSiteMiddlewareWithDependencies(
 		defaultPublicSiteDependencies,
-		shared_database.LegacyRouteFamilyAnalyticsReaper,
 		http.StatusNotFound,
 	)(next)
 }
@@ -255,7 +246,6 @@ func LegacyAnalyticsReaperMiddleware(next http.Handler) http.Handler {
 func LegacyWebmentionMiddleware(next http.Handler) http.Handler {
 	return legacyPublicSiteMiddlewareWithDependencies(
 		defaultPublicSiteDependencies,
-		shared_database.LegacyRouteFamilyWebmention,
 		http.StatusNotFound,
 	)(next)
 }
@@ -264,7 +254,6 @@ func LegacyWebmentionMiddleware(next http.Handler) http.Handler {
 func LegacyAPIMiddleware(next http.Handler) http.Handler {
 	return legacyPublicSiteMiddlewareWithDependencies(
 		defaultPublicSiteDependencies,
-		shared_database.LegacyRouteFamilyAPI,
 		http.StatusNotFound,
 	)(next)
 }
@@ -273,7 +262,6 @@ func LegacyAPIMiddleware(next http.Handler) http.Handler {
 func LegacyAnalyticsAPIMiddleware(next http.Handler) http.Handler {
 	return legacyPublicSiteMiddlewareWithDependencies(
 		defaultPublicSiteDependencies,
-		shared_database.LegacyRouteFamilyAPI,
 		http.StatusUnauthorized,
 	)(next)
 }

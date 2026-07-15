@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"mochi/user_database"
 
@@ -79,6 +78,58 @@ func TestPublicSiteRouteCreateLookupAndDelete(t *testing.T) {
 	}
 }
 
+func TestRemoveObsoletePublicSiteRouteColumnsPreservesRoutes(t *testing.T) {
+	db := newRouteTestDB(t)
+	for _, column := range []string{
+		"legacy_analytics_last_seen_at",
+		"legacy_webmention_last_seen_at",
+		"legacy_api_last_seen_at",
+	} {
+		if err := db.Exec("ALTER TABLE public_site_routes ADD COLUMN " + column + " datetime").Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	route, err := createOrGetPublicSiteRoute(db, "owner", 1, generatePublicSiteID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := removeObsoletePublicSiteRouteColumns(db); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, column := range []string{
+		"legacy_analytics_last_seen_at",
+		"legacy_webmention_last_seen_at",
+		"legacy_api_last_seen_at",
+	} {
+		var count int64
+		if err := db.Raw(
+			"SELECT COUNT(*) FROM pragma_table_info('public_site_routes') WHERE name = ?",
+			column,
+		).Scan(&count).Error; err != nil {
+			t.Fatal(err)
+		}
+		if count != 0 {
+			t.Errorf("obsolete column %q still exists", column)
+		}
+	}
+
+	stored, err := lookupPublicSiteRoute(db, route.PublicID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.Username != route.Username || stored.SiteID != route.SiteID {
+		t.Fatal("route changed while removing obsolete columns")
+	}
+
+	if _, err := createOrGetPublicSiteRoute(db, "other", 2, func() (string, error) {
+		return route.PublicID, nil
+	}); err == nil {
+		t.Fatal("public ID uniqueness was lost while removing obsolete columns")
+	}
+}
+
 func TestPublicSiteRouteCreationCollisionAndGeneratorErrors(t *testing.T) {
 	db := newRouteTestDB(t)
 	collidingID, err := generatePublicSiteID()
@@ -124,51 +175,6 @@ func TestPublicSiteRouteCreationCollisionAndGeneratorErrors(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("invalid generated ID was accepted")
-	}
-}
-
-func TestPublicSiteRouteLegacyLastSeenThrottle(t *testing.T) {
-	db := newRouteTestDB(t)
-	route, err := createOrGetPublicSiteRoute(db, "owner", 1, generatePublicSiteID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	now := time.Date(2026, 7, 14, 12, 0, 0, 0, time.UTC)
-
-	updated, err := updatePublicSiteRouteLegacyLastSeen(db, route.PublicID, LegacyRouteFamilyAnalyticsReaper, now)
-	if err != nil || !updated {
-		t.Fatalf("first update = %v, %v; want true, nil", updated, err)
-	}
-	updated, err = updatePublicSiteRouteLegacyLastSeen(db, route.PublicID, LegacyRouteFamilyAnalyticsReaper, now.Add(23*time.Hour))
-	if err != nil || updated {
-		t.Fatalf("throttled update = %v, %v; want false, nil", updated, err)
-	}
-	updated, err = updatePublicSiteRouteLegacyLastSeen(db, route.PublicID, LegacyRouteFamilyAnalyticsReaper, now.Add(24*time.Hour))
-	if err != nil || !updated {
-		t.Fatalf("24-hour update = %v, %v; want true, nil", updated, err)
-	}
-	updated, err = updatePublicSiteRouteLegacyLastSeen(db, route.PublicID, LegacyRouteFamilyAPI, now)
-	if err != nil || !updated {
-		t.Fatalf("independent API-family update = %v, %v; want true, nil", updated, err)
-	}
-
-	var stored PublicSiteRoute
-	if err := db.First(&stored, route.ID).Error; err != nil {
-		t.Fatal(err)
-	}
-	if stored.LegacyAnalyticsLastSeenAt == nil || stored.LegacyAPILastSeenAt == nil || stored.LegacyWebmentionLastSeenAt != nil {
-		t.Fatal("legacy family updates did not remain independent")
-	}
-
-	if _, err := updatePublicSiteRouteLegacyLastSeen(db, route.PublicID, LegacyRouteFamily(99), now); err == nil {
-		t.Fatal("unknown legacy family was accepted")
-	}
-	missing, err := generatePublicSiteID()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := updatePublicSiteRouteLegacyLastSeen(db, missing, LegacyRouteFamilyAPI, now); !errors.Is(err, gorm.ErrRecordNotFound) {
-		t.Fatalf("missing route error = %v, want record not found", err)
 	}
 }
 

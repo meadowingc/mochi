@@ -9,9 +9,6 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"time"
-
-	"mochi/shared_database"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -46,7 +43,6 @@ func TestLegacyEmbedUsesCanonicalOpaqueEndpoints(t *testing.T) {
 	router := chi.NewRouter()
 	router.With(legacyPublicSiteMiddlewareWithDependencies(
 		fixture.deps,
-		shared_database.LegacyRouteFamilyAnalyticsReaper,
 		http.StatusNotFound,
 	)).Get("/reaper/{username}/embed/{siteID}.js", ReaperGetEmbedJs)
 
@@ -81,16 +77,12 @@ func TestLegacyEmbedUsesCanonicalOpaqueEndpoints(t *testing.T) {
 	}
 }
 
-func TestGeneratedDashboardSnippetsUseOnlyPublicIDAndShowMigrationState(t *testing.T) {
+func TestGeneratedDashboardSnippetsUseOnlyPublicID(t *testing.T) {
 	fixture := newPublicSiteFixture(t, true)
 	route, err := fixture.deps.createRoute(fixture.owner.Username, fixture.site.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	lastSeen := time.Date(2026, 7, 14, 20, 0, 0, 0, time.UTC)
-	route.LegacyAnalyticsLastSeenAt = &lastSeen
-	route.LegacyWebmentionLastSeenAt = &lastSeen
-	route.LegacyAPILastSeenAt = &lastSeen
 	runFromRepositoryRoot(t)
 
 	request := httptest.NewRequest(http.MethodGet, "/dashboard/site/embed", nil)
@@ -105,17 +97,12 @@ func TestGeneratedDashboardSnippetsUseOnlyPublicIDAndShowMigrationState(t *testi
 	}
 
 	body := recorder.Body.String()
-	for _, expected := range []string{
-		"/reaper/" + route.PublicID + "/embed.js",
-		"Old snippets continue to work",
-		"Analytics and kudos",
-		"Webmention receiver",
-		"Public/API access",
-		"2026-07-14 20:00 UTC",
-	} {
-		if !strings.Contains(body, expected) {
-			t.Errorf("dashboard snippet page is missing %q", expected)
-		}
+	if expected := "/reaper/" + route.PublicID + "/embed.js"; !strings.Contains(body, expected) {
+		t.Errorf("dashboard snippet page is missing %q", expected)
+	}
+	if strings.Contains(body, "Replace legacy Mochi integrations") ||
+		strings.Contains(body, "Legacy last seen") {
+		t.Fatal("dashboard snippet page still renders the legacy migration banner")
 	}
 	if strings.Contains(body, fixture.owner.Username) {
 		t.Fatal("generated dashboard page rendered the internal username")

@@ -29,17 +29,6 @@
       <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div class="px-4 py-6 sm:px-0">
           {{ render "/components/flash_message.html" }}
-          {% if signedInUser != nil && publicID != "" %}
-          <aside class="mb-5 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            <p class="font-medium">Replace legacy Mochi integrations</p>
-            <p class="mt-1">Old snippets continue to work, but they expose your account username until you replace them with the opaque-ID examples shown in Mochi.</p>
-            <dl class="mt-2 grid gap-1 text-xs sm:grid-cols-3">
-              <div><dt class="font-medium">Analytics and kudos</dt><dd>Legacy last seen: {{legacyAnalyticsLastSeen}}</dd></div>
-              <div><dt class="font-medium">Webmention receiver</dt><dd>Legacy last seen: {{legacyWebmentionLastSeen}}</dd></div>
-              <div><dt class="font-medium">Public/API access</dt><dd>Legacy last seen: {{legacyAPILastSeen}}</dd></div>
-            </dl>
-          </aside>
-          {% end %}
           {{ Body() }}
         </div>
       </div>

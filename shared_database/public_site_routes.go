@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"time"
 
 	"mochi/user_database"
 
@@ -16,17 +15,6 @@ import (
 const (
 	publicSiteIDBytes            = 32
 	publicSiteIDCreationAttempts = 5
-	legacySeenThrottle           = 24 * time.Hour
-)
-
-type LegacyRouteFamily uint8
-
-const (
-	LegacyRouteFamilyAnalyticsReaper LegacyRouteFamily = iota + 1
-	LegacyRouteFamilyWebmention
-	LegacyRouteFamilyAPI
-
-	LegacyRouteFamilyAnalytics = LegacyRouteFamilyAnalyticsReaper
 )
 
 type publicIDGenerator func() (string, error)
@@ -151,53 +139,6 @@ func deletePublicSiteRoute(db *gorm.DB, username string, siteID uint) error {
 		return fmt.Errorf("delete route for site ID %d: %w", siteID, gorm.ErrRecordNotFound)
 	}
 	return nil
-}
-
-func UpdatePublicSiteRouteLegacyLastSeen(publicID string, family LegacyRouteFamily) (bool, error) {
-	return updatePublicSiteRouteLegacyLastSeen(Db, publicID, family, time.Now())
-}
-
-func updatePublicSiteRouteLegacyLastSeen(db *gorm.DB, publicID string, family LegacyRouteFamily, now time.Time) (bool, error) {
-	if db == nil {
-		return false, errors.New("update legacy last-seen: database is not initialized")
-	}
-	db = quietDB(db)
-
-	column, err := legacyLastSeenColumn(family)
-	if err != nil {
-		return false, err
-	}
-	result := db.Model(&PublicSiteRoute{}).
-		Where("public_id = ? AND ("+column+" IS NULL OR "+column+" <= ?)", publicID, now.Add(-legacySeenThrottle)).
-		Update(column, now)
-	if result.Error != nil {
-		return false, fmt.Errorf("update legacy last-seen: %w", result.Error)
-	}
-	if result.RowsAffected > 0 {
-		return true, nil
-	}
-
-	var count int64
-	if err := db.Model(&PublicSiteRoute{}).Where("public_id = ?", publicID).Count(&count).Error; err != nil {
-		return false, fmt.Errorf("verify legacy last-seen route: %w", err)
-	}
-	if count == 0 {
-		return false, fmt.Errorf("update legacy last-seen: %w", gorm.ErrRecordNotFound)
-	}
-	return false, nil
-}
-
-func legacyLastSeenColumn(family LegacyRouteFamily) (string, error) {
-	switch family {
-	case LegacyRouteFamilyAnalyticsReaper:
-		return "legacy_analytics_last_seen_at", nil
-	case LegacyRouteFamilyWebmention:
-		return "legacy_webmention_last_seen_at", nil
-	case LegacyRouteFamilyAPI:
-		return "legacy_api_last_seen_at", nil
-	default:
-		return "", fmt.Errorf("update legacy last-seen: unknown route family %d", family)
-	}
 }
 
 func isValidPublicSiteID(publicID string) bool {

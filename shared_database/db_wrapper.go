@@ -1,6 +1,7 @@
 package shared_database
 
 import (
+	"fmt"
 	"log"
 
 	"gorm.io/driver/sqlite"
@@ -30,6 +31,33 @@ func InitSharedDb() {
 	if err != nil {
 		log.Fatalf("failed to migrate database: %v", err)
 	}
+
+	if err := removeObsoletePublicSiteRouteColumns(Db); err != nil {
+		log.Fatalf("failed to remove obsolete public route columns: %v", err)
+	}
+}
+
+func removeObsoletePublicSiteRouteColumns(db *gorm.DB) error {
+	for _, column := range []string{
+		"legacy_analytics_last_seen_at",
+		"legacy_webmention_last_seen_at",
+		"legacy_api_last_seen_at",
+	} {
+		var count int64
+		if err := db.Raw(
+			"SELECT COUNT(*) FROM pragma_table_info('public_site_routes') WHERE name = ?",
+			column,
+		).Scan(&count).Error; err != nil {
+			return fmt.Errorf("check %s: %w", column, err)
+		}
+		if count == 0 {
+			continue
+		}
+		if err := db.Exec("ALTER TABLE public_site_routes DROP COLUMN " + column).Error; err != nil {
+			return fmt.Errorf("drop %s: %w", column, err)
+		}
+	}
+	return nil
 }
 
 func CleanupOnAppClose() {

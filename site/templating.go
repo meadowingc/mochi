@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"log"
 	"mochi/constants"
-	"mochi/shared_database"
 	"mochi/user_database"
 	"mochi/webmention_sender"
 	"net/http"
@@ -55,22 +54,18 @@ func RenderTemplate(
 	if !ok || constants.DEBUG_MODE {
 		opts := &scriggo.BuildOptions{
 			Globals: native.Declarations{
-				"templateName":             templateName,
-				"signedInUser":             (**user_database.User)(nil),
-				"publicSiteRoute":          (**shared_database.PublicSiteRoute)(nil),
-				"publicID":                 (*string)(nil),
-				"legacyAnalyticsLastSeen":  (*string)(nil),
-				"legacyWebmentionLastSeen": (*string)(nil),
-				"legacyAPILastSeen":        (*string)(nil),
-				"isDebug":                  constants.DEBUG_MODE,
-				"publicURL":                constants.PUBLIC_URL,
-				"webmentionsURL":           constants.WEBMENTIONS_URL,
-				"selfSitePublicID":         os.Getenv("SELF_SITE_PUBLIC_ID"),
-				"appName":                  constants.APP_NAME,
-				"csrfField":                (*native.HTML)(nil),
-				"flashMessage":             (*FlashMessage)(nil),
-				"min":                      builtin.Min,
-				"max":                      builtin.Max,
+				"templateName":     templateName,
+				"signedInUser":     (**user_database.User)(nil),
+				"publicID":         (*string)(nil),
+				"isDebug":          constants.DEBUG_MODE,
+				"publicURL":        constants.PUBLIC_URL,
+				"webmentionsURL":   constants.WEBMENTIONS_URL,
+				"selfSitePublicID": os.Getenv("SELF_SITE_PUBLIC_ID"),
+				"appName":          constants.APP_NAME,
+				"csrfField":        (*native.HTML)(nil),
+				"flashMessage":     (*FlashMessage)(nil),
+				"min":              builtin.Min,
+				"max":              builtin.Max,
 				"escapePath": func(path string) string {
 					return url.PathEscape(path)
 				},
@@ -162,22 +157,12 @@ func RenderTemplate(
 
 	route := getPublicSiteRoute(r)
 	publicID := ""
-	legacyAnalyticsLastSeen := ""
-	legacyWebmentionLastSeen := ""
-	legacyAPILastSeen := ""
 	if route != nil {
 		publicID = route.PublicID
-		legacyAnalyticsLastSeen = formatLegacyRouteLastSeen(route.LegacyAnalyticsLastSeenAt)
-		legacyWebmentionLastSeen = formatLegacyRouteLastSeen(route.LegacyWebmentionLastSeenAt)
-		legacyAPILastSeen = formatLegacyRouteLastSeen(route.LegacyAPILastSeenAt)
 	}
 	runTemplateData := map[string]any{
-		"signedInUser":             GetSignedInUserOrNil(r),
-		"publicSiteRoute":          route,
-		"publicID":                 &publicID,
-		"legacyAnalyticsLastSeen":  &legacyAnalyticsLastSeen,
-		"legacyWebmentionLastSeen": &legacyWebmentionLastSeen,
-		"legacyAPILastSeen":        &legacyAPILastSeen,
+		"signedInUser": GetSignedInUserOrNil(r),
+		"publicID":     &publicID,
 	}
 
 	flashMessage := GetFlashMessage(r)
@@ -223,11 +208,4 @@ func RenderTemplate(
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-}
-
-func formatLegacyRouteLastSeen(lastSeen *time.Time) string {
-	if lastSeen == nil {
-		return "Not observed"
-	}
-	return lastSeen.UTC().Format("2006-01-02 15:04 UTC")
 }
