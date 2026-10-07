@@ -1,4 +1,5 @@
 from contextlib import closing, nullcontext
+from http.server import BaseHTTPRequestHandler, HTTPServer
 import io
 import json
 import os
@@ -8,11 +9,24 @@ import shutil
 import sqlite3
 import tarfile
 import tempfile
+import threading
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
+from urllib.parse import urlsplit
 
 import deploy_vps as d
+
+
+def create_assets(path):
+    for name in d.REQUIRED_ASSETS:
+        asset = path / name
+        asset.parent.mkdir(parents=True, exist_ok=True)
+        asset.write_bytes(b"body { color: black; }" if name.endswith(".css") else b"console.log('chart');")
+    layout = path / "templates/layouts/standard.html"
+    layout.parent.mkdir(parents=True, exist_ok=True)
+    layout.write_text('<link href="/assets/css/bundled_styles.css?v='
+                      + d.checksum(path / "assets/css/bundled_styles.css")[:12] + '">')
 
 
 def create_state(path):
@@ -31,6 +45,65 @@ class StateTests(unittest.TestCase):
         self.directory = tempfile.TemporaryDirectory()
         self.root = Path(self.directory.name)
         self.addCleanup(self.directory.cleanup)
+
+    def test_required_assets_and_cache_version_are_validated(self):
+        create_assets(self.root)
+        d.validate_assets(self.root)
+        css = self.root / "assets/css/bundled_styles.css"
+        original = css.read_bytes()
+        for replacement in (None, b"", b"changed CSS"):
+            if replacement is None:
+                css.unlink()
+            else:
+                css.write_bytes(replacement)
+            with self.assertRaises(d.DeploymentError):
+                d.validate_assets(self.root)
+            css.write_bytes(original)
+        (self.root / "assets/js/chart.js").unlink()
+        with self.assertRaises(d.DeploymentError):
+            d.validate_assets(self.root)
+
+    def test_tracked_bundle_and_template_have_matching_cache_version(self):
+        d.validate_assets(Path(__file__).resolve().parents[1])
+
+    def test_http_checks_reject_missing_wrong_mime_and_changed_assets(self):
+        create_assets(self.root)
+        state = {"status": 200, "mime": "text/css", "changed": False}
+        root = self.root
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                path = urlsplit(self.path).path
+                if path.startswith("/assets/"):
+                    body = (root / path.lstrip("/")).read_bytes()
+                    mime = state["mime"] if path.endswith(".css") else "text/javascript"
+                    status = state["status"] if path.endswith(".css") else 200
+                    if state["changed"] and path.endswith(".css"):
+                        body = b"different stylesheet"
+                else:
+                    body, mime, status = b"<html>page</html>", "text/html", 200
+                self.send_response(status)
+                self.send_header("Content-Type", mime)
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *args):
+                pass
+
+        with HTTPServer(("127.0.0.1", 0), Handler) as server:
+            thread = threading.Thread(target=server.serve_forever)
+            thread.start()
+            try:
+                origin = "http://127.0.0.1:" + str(server.server_port)
+                d.check_http(origin, root)
+                for changes in ({"status": 404}, {"mime": "text/plain"}, {"changed": True}):
+                    state.update(changes)
+                    with self.assertRaises(d.DeploymentError):
+                        d.check_http(origin, root)
+                    state.update(status=200, mime="text/css", changed=False)
+            finally:
+                server.shutdown()
+                thread.join()
 
     def test_complete_snapshot_preserves_legacy_tables_and_identifiers(self):
         state = self.root / "state"
@@ -203,7 +276,7 @@ class RollbackTests(unittest.TestCase):
         self.before = d.state_manifest(d.DATA)
 
     def activate(self):
-        with patch.object(d.os, "chown"):
+        with patch.object(d.os, "chown"), patch.object(d, "check_http"):
             self.installer.activate(self.release, "a" * 40, None)
 
     def test_unchanged_state_allows_binary_only_rollback(self):
@@ -256,6 +329,7 @@ class RollbackTests(unittest.TestCase):
         self.assertEqual(self.installer.starts, 0)
 
     def test_healthy_identical_release_does_not_stop_or_start(self):
+        create_assets(self.release)
         (self.release / "mochi").write_bytes(b"fixture")
         files = d.release_files(self.release)
         manifest = {"revision": "a" * 40, "architecture": platform.machine(), "files": files}

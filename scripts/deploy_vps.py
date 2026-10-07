@@ -32,6 +32,10 @@ ENV = Path("/etc/mochi/mochi.env")
 ROOT = Path("/opt/mochi")
 PUBLIC = "https://mochi.meadow.cafe"
 TOOLCHAIN = "go1.25.6"
+REQUIRED_ASSETS = {
+    "assets/css/bundled_styles.css": "text/css",
+    "assets/js/chart.js": "text/javascript",
+}
 
 
 class DeploymentError(RuntimeError):
@@ -96,6 +100,17 @@ def release_files(directory):
         if path.is_file() and path != directory / "release.json":
             result[path.relative_to(directory).as_posix()] = checksum(path)
     return result
+
+
+def validate_assets(directory):
+    for name in REQUIRED_ASSETS:
+        path = directory / name
+        require(path.is_file() and not path.is_symlink() and path.stat().st_size > 0,
+                "Required release asset missing or empty: " + name)
+    stylesheet = "assets/css/bundled_styles.css"
+    require("/" + stylesheet + "?v=" + checksum(directory / stylesheet)[:12]
+            in (directory / "templates/layouts/standard.html").read_text(),
+            "Stylesheet cache version does not match the release asset")
 
 
 def database_digest(db):
@@ -190,13 +205,15 @@ class NoRedirect(HTTPRedirectHandler):
         return None
 
 
-def request(url):
+def request(url, content_type=None):
     req = Request(url, headers={"User-Agent": "MochiDeploymentCheck/1.0"})
     try:
         response = build_opener(ProxyHandler({}), NoRedirect()).open(req, timeout=15)
     except HTTPError as error:
         response = error
     with response:
+        require(content_type is None or response.headers.get_content_type() == content_type,
+                "Deployment response MIME mismatch: " + url)
         body = response.read(4 * 1024**2 + 1)
         require(len(body) <= 4 * 1024**2, "Oversized deployment response")
         return response.status, body
@@ -212,10 +229,16 @@ def health(origin, revision, workers, users=None):
     require(users is None or value["userDatabases"] == users, "User database inventory mismatch")
 
 
-def check_http(origin):
+def check_http(origin, release=None):
     for path in ("/", "/user/login", "/user/register"):
         code, body = request(origin + path)
         require(code == 200 and b"<html" in body.lower(), "Mochi page check failed")
+    if release is not None:
+        for name, content_type in REQUIRED_ASSETS.items():
+            expected = (release / name).read_bytes()
+            version = hashlib.sha256(expected).hexdigest()
+            code, body = request(origin + "/" + name + "?v=" + version[:12], content_type)
+            require(code == 200 and body == expected, "Mochi asset content check failed: " + name)
 
 
 def process_identity(pid):
@@ -486,7 +509,7 @@ class Installer:
                       "-p", "StandardError=append:" + str(self.stage / "preflight.private.log"), str(release / "mochi")])
             started = True
             self.wait_health("http://127.0.0.1:" + str(port), revision, False, len(before) - 1)
-            check_http("http://127.0.0.1:" + str(port))
+            check_http("http://127.0.0.1:" + str(port), release)
             self.run(["systemctl", "stop", name], timeout=680)
             started = False
             require(state_manifest(trial / "state") == before, "Copied startup changed schema/data; review migration")
@@ -546,6 +569,7 @@ class Installer:
             self.run(["systemctl", "start", "mochi.service"])
             self.wait_health("http://127.0.0.1:4738", revision, True, len(state_before) - 1)
             self.check_process(release)
+            check_http("http://127.0.0.1:4738", release)
             require(state_manifest(DATA) == state_before, "State changed during startup verification")
             self.run(["systemctl", "enable", "mochi.service"])
             self.record("healthy", revision=revision, release=str(release), relocation_verified=initial)
@@ -625,6 +649,7 @@ class Installer:
             extract(self.stage / "release.tar", unpacked)
             manifest = json.loads((unpacked / "release.json").read_text())
             files = release_files(unpacked)
+            validate_assets(unpacked)
             revision = manifest["revision"]
             require(re.fullmatch("[0-9a-f]{40}", revision) and manifest["architecture"] == platform.machine()
                     and files == manifest["files"] and {"mochi", "mochi.service"} <= files.keys()
@@ -662,6 +687,7 @@ class Installer:
             check_http(PUBLIC)
             if not initial and self.current.resolve() == release:
                 self.check_process(release)
+                check_http(PUBLIC, release)
                 require(self.run(["systemctl", "is-enabled", "mochi.service"]) == "enabled", "Service not enabled")
                 self.record("already_current", revision=revision, release=str(release))
                 return
@@ -678,7 +704,7 @@ class Installer:
                         "Configuration changed before cutover")
                 self.activate(release, revision, legacy)
             health(PUBLIC, revision, True)
-            check_http(PUBLIC)
+            check_http(PUBLIC, release)
             self.record("verified_public")
             private_write(ROOT / "deployed.json", (self.stage / "deployment.json").read_text())
             self.pending.unlink()
@@ -725,6 +751,7 @@ def deploy(args):
                        cwd=source, env=environment, check=True)
         for name in ("assets", "templates"):
             shutil.copytree(source / name, payload / name)
+        validate_assets(payload)
         shutil.copyfile(source / "deploy/mochi.service", payload / "mochi.service")
         private_write(payload / "release.json", json.dumps({
             "revision": revision, "architecture": platform.machine(), "files": release_files(payload)}))

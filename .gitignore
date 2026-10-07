@@ -1,7 +1,5 @@
 __astro_back
 
-assets/css/bundled_styles.css
-
 mochi
 mochi.db*
 shared.db*

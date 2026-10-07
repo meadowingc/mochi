@@ -68,6 +68,17 @@ python3 scripts/deploy_vps.py meadow-ubuntu-8gb-hel1-1 --yes
 The updater validates both race-enabled Go modes and deployment regressions,
 builds the committed archive, and uploads an immutable binary/assets/templates
 release. A serialized transient systemd installer survives SSH disconnects.
+The generated stylesheet is tracked in Git so clean source archives include it;
+deployment does not regenerate it or upgrade Tailwind. The initial tracked bundle
+is the preserved production Tailwind 4.1.18 artifact (SHA-256
+`606bd6e66903abe4e15073ba2bccbd601a419c216ee1a690b9f203fd1e898601`).
+When deliberately rebuilding CSS, review the Tailwind version and bundle changes,
+update the stylesheet URL's `v` value in `templates/layouts/standard.html` to the
+first 12 SHA-256 characters, and commit both files. This prevents cached missing
+or stale styles from surviving an asset change.
+Missing/empty CSS or Chart.js and a mismatched stylesheet cache version block
+packaging and installation. Copied startup, live startup, public verification
+and no-op checks fetch both assets and verify MIME types and exact release bytes.
 The private receipt printed before installation contains logs, configuration
 backups, complete SQLite snapshots and `deployment.json`; inspect that receipt
 rather than repeating an interrupted command.
