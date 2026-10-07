@@ -22,14 +22,14 @@ type Site struct {
 	UserID                  uint `gorm:"index"`
 	CreatedAt               time.Time
 	URL                     string
-	DataRetentionMonths     int       `gorm:"default:6"`
-	LastDataCleanupDate     time.Time `gorm:"default:0"`
-	AllTimeHits             int64     `gorm:"default:0"`
-	AllTimeKudos            int64     `gorm:"default:0"`
-	Hits                    []Hit     `gorm:"foreignKey:SiteID"`
-	MetricsNotificationFreq string    // Frequency of site metrics notifications: "none", "daily", "weekly", "monthly"
-	LastMetricsSentAt       time.Time `gorm:"default:0"`
-	APIKey                  *string   `gorm:"uniqueIndex"`
+	DataRetentionMonths     int `gorm:"default:6"`
+	LastDataCleanupDate     time.Time
+	AllTimeHits             int64  `gorm:"default:0"`
+	AllTimeKudos            int64  `gorm:"default:0"`
+	Hits                    []Hit  `gorm:"foreignKey:SiteID"`
+	MetricsNotificationFreq string // Frequency of site metrics notifications: "none", "daily", "weekly", "monthly"
+	LastMetricsSentAt       time.Time
+	APIKey                  *string `gorm:"uniqueIndex"`
 }
 
 type Hit struct {

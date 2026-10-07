@@ -11,6 +11,7 @@ import (
 	"mochi/lifecycle"
 	"mochi/notifier"
 	"mochi/shared_database"
+	"mochi/storage"
 	"mochi/user_database"
 	"mochi/webmention_sender"
 	"net"
@@ -44,6 +45,9 @@ func loadRuntimeConfig() (runtimeConfig, error) {
 	}
 	if !constants.DEBUG_MODE && os.Getenv("CSRF_KEY") == "" {
 		return config, errors.New("CSRF_KEY is required")
+	}
+	if _, err := storage.AutomaticMigrationsEnabled(); err != nil {
+		return config, err
 	}
 	config.address = os.Getenv("MOCHI_HTTP_ADDR")
 	if config.address == "" {

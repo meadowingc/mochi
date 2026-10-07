@@ -6,6 +6,9 @@ import (
 	"path/filepath"
 	"slices"
 	"testing"
+	"time"
+
+	"gorm.io/gorm"
 )
 
 func TestGetAllUsernamesPreservesEmailShapedIdentifiers(t *testing.T) {
@@ -89,5 +92,75 @@ func TestUserDatabaseURIQuotesFilename(t *testing.T) {
 	}
 	if info, err := os.Stat(databasePath(username)); err != nil || !info.Mode().IsRegular() {
 		t.Fatal("filename was interpreted as database URI parameters")
+	}
+}
+
+type historicalSite struct {
+	gorm.Model
+	UserID                  uint
+	URL                     string
+	DataRetentionMonths     int       `gorm:"default:6"`
+	LastDataCleanupDate     time.Time `gorm:"default:'2001-01-01 00:00:00'"`
+	AllTimeHits             int64     `gorm:"default:0"`
+	AllTimeKudos            int64     `gorm:"default:0"`
+	MetricsNotificationFreq string
+	LastMetricsSentAt       time.Time `gorm:"default:'2001-01-01 00:00:00'"`
+	APIKey                  *string   `gorm:"uniqueIndex"`
+}
+
+func (historicalSite) TableName() string { return "sites" }
+
+func TestManagedExistingOpenPreservesHistoricalDefaults(t *testing.T) {
+	t.Setenv("MOCHI_STATE_DIR", t.TempDir())
+	t.Setenv("MOCHI_AUTO_MIGRATE", "enabled")
+	CleanupOnAppClose()
+	t.Cleanup(CleanupOnAppClose)
+	username := "fixture-owner"
+	userDB, err := getCachedOrCreateDBWithError(username)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := userDB.Db.AutoMigrate(&historicalSite{}); err != nil {
+		t.Fatal(err)
+	}
+	var before string
+	if err := userDB.Db.Raw("SELECT sql FROM sqlite_master WHERE name='sites'").Scan(&before).Error; err != nil {
+		t.Fatal(err)
+	}
+	CleanupOnAppClose()
+	t.Setenv("MOCHI_AUTO_MIGRATE", "disabled")
+	userDB, err = openUserDB(username, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var after string
+	if err := userDB.Db.Raw("SELECT sql FROM sqlite_master WHERE name='sites'").Scan(&after).Error; err != nil {
+		t.Fatal(err)
+	}
+	if after != before {
+		t.Fatal("managed existing open changed historical schema defaults")
+	}
+}
+
+func TestNewUserAndSiteRetainIntentionalZeroDatesInManagedMode(t *testing.T) {
+	t.Setenv("MOCHI_STATE_DIR", t.TempDir())
+	t.Setenv("MOCHI_AUTO_MIGRATE", "disabled")
+	CleanupOnAppClose()
+	t.Cleanup(CleanupOnAppClose)
+	userDB, err := getCachedOrCreateDBWithError("new-fixture-owner")
+	if err != nil {
+		t.Fatal(err)
+	}
+	site := Site{URL: "https://fixture.example"}
+	if err := userDB.Db.Create(&site).Error; err != nil {
+		t.Fatal(err)
+	}
+	var stored Site
+	if err := userDB.Db.First(&stored).Error; err != nil {
+		t.Fatal(err)
+	}
+	if !site.LastDataCleanupDate.IsZero() || !site.LastMetricsSentAt.IsZero() ||
+		!stored.LastDataCleanupDate.IsZero() || !stored.LastMetricsSentAt.IsZero() {
+		t.Fatal("a date default became today's midnight instead of zero")
 	}
 }

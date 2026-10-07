@@ -3,6 +3,7 @@ package shared_database
 import (
 	"fmt"
 	"log"
+	"mochi/storage"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -24,9 +25,13 @@ func DatabasePath() string {
 }
 
 func InitSharedDbWithError() error {
+	migrate, err := storage.AutomaticMigrationsEnabled()
+	if err != nil {
+		return err
+	}
 	path := DatabasePath()
 	mode := "rwc"
-	if os.Getenv("MOCHI_REQUIRE_EXISTING") == "1" {
+	if os.Getenv("MOCHI_REQUIRE_EXISTING") == "1" || !migrate {
 		info, err := os.Lstat(path)
 		if err != nil || !info.Mode().IsRegular() {
 			return fmt.Errorf("required existing shared database is missing or redirected")
@@ -46,15 +51,18 @@ func InitSharedDbWithError() error {
 		return fmt.Errorf("connect shared database: %w", err)
 	}
 
-	// Migrate the schema
-	err = Db.AutoMigrate(
+	models := []any{
 		&MonitoredURL{},
 		&SentWebmention{},
 		&UserMonitoredURL{},
 		&UserDiscordSettings{},
 		&PasswordResetToken{}, // Add the new model for password reset
 		&PublicSiteRoute{},
-	)
+	}
+	if !migrate {
+		return storage.ValidateModels(Db, models...)
+	}
+	err = Db.AutoMigrate(models...)
 	if err != nil {
 		return fmt.Errorf("migrate shared database: %w", err)
 	}

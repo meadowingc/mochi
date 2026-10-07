@@ -30,6 +30,7 @@ func testRuntimeEnvironment(t *testing.T) string {
 	t.Setenv("MOCHI_WORKERS", "disabled")
 	t.Setenv("MOCHI_WORKER_START_DELAY", "")
 	t.Setenv("MOCHI_REQUIRE_EXISTING", "0")
+	t.Setenv("MOCHI_AUTO_MIGRATE", "enabled")
 	t.Setenv("MOCHI_HTTP_ADDR", "127.0.0.1:4738")
 	return directory
 }
@@ -43,6 +44,7 @@ func TestRuntimeConfigurationGuards(t *testing.T) {
 	for key, value := range map[string]string{
 		"MOCHI_HTTP_ADDR": "127.0.0.1:0", "MOCHI_WORKERS": "typo",
 		"MOCHI_WORKER_START_DELAY": "-1s", "MOCHI_REQUIRE_EXISTING": "typo",
+		"MOCHI_AUTO_MIGRATE": "typo",
 	} {
 		t.Run(key, func(t *testing.T) {
 			t.Setenv(key, value)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"mochi/storage"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -258,20 +259,27 @@ func openUserDB(username string, allowCreate bool) (*UserDb, error) {
 		return nil, fmt.Errorf("connect user database: %w", err)
 	}
 
-	// Migrate the schema
-	err = db.AutoMigrate(
+	models := []any{
 		&User{},
 		&Site{},
 		&Hit{},
 		&WebMention{},
 		&Kudo{},
-	)
+	}
+	migrate, err := storage.AutomaticMigrationsEnabled()
+	if err == nil {
+		if migrate || mode == "rwc" {
+			err = db.AutoMigrate(models...)
+		} else {
+			err = storage.ValidateModels(db, models...)
+		}
+	}
 	if err != nil {
 		sqlDB, dbErr := db.DB()
 		if dbErr == nil {
 			_ = sqlDB.Close()
 		}
-		return nil, fmt.Errorf("migrate user database: %w", err)
+		return nil, fmt.Errorf("initialize user database schema: %w", err)
 	}
 
 	userDb := &UserDb{Db: db}

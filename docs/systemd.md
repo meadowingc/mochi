@@ -12,6 +12,7 @@ continues waiting; it does not close stores underneath accepted work.
 | `MOCHI_STATE_DIR` | current directory | `/mnt/volume-hel1-1/mochi-state` |
 | `MOCHI_HTTP_ADDR` | `:4738` | `127.0.0.1:4738` |
 | `MOCHI_REQUIRE_EXISTING` | `0` | `1` |
+| `MOCHI_AUTO_MIGRATE` | `enabled` | `disabled` |
 | `MOCHI_WORKERS` | `enabled` | `enabled` |
 | `MOCHI_WORKER_START_DELAY` | `0s` | `0s` |
 
@@ -21,6 +22,15 @@ database directory. Existing-user lookups use SQLite `mode=rw`; registration
 still deliberately creates its new user database. Filenames, including
 email-shaped usernames, are preserved and escaped as SQLite URI paths.
 The original configuration bytes and CSRF key must be preserved.
+
+Managed startup validates the required existing tables, columns and unique
+indexes without automatic migrations. New registration still deliberately
+creates and migrates its own new user database. Existing SQL defaults, legacy
+tables, rows and identifiers remain untouched; schema upgrades require a
+separately reviewed procedure. Unmanaged installations retain automatic
+migration. The two site date fields no longer declare `default:0`: GORM treated
+that value as today's midnight and repeatedly rebuilt existing tables.
+New sites now start with actual zero dates, as the scheduler expects.
 
 `GET /healthz` is separate from public rate limits and authentication. It reads
 the shared schema and user-file inventory without issuing cookies or migrating
