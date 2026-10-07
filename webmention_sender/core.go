@@ -2,11 +2,13 @@ package webmention_sender
 
 import (
 	"bytes"
+	"context"
 	"encoding/xml"
 	"fmt"
 	"io"
 	"log"
 	"mochi/constants"
+	"mochi/lifecycle"
 	"mochi/safehttp"
 	"mochi/shared_database"
 	"net/http"
@@ -59,15 +61,15 @@ type AtomLink struct {
 
 // StartPeriodicChecker starts the periodic checking of monitored URLs
 func StartPeriodicChecker() {
+	StartPeriodicCheckerContext(context.Background(), 0)
+}
+
+func StartPeriodicCheckerContext(ctx context.Context, delay time.Duration) {
 	if !constants.DEBUG_MODE {
-		ticker := time.NewTicker(7 * 24 * time.Hour) // Check once a week
-		go func() {
-			for {
-				log.Println("Running scheduled webmention checks")
-				CheckAllMonitoredURLs()
-				<-ticker.C
-			}
-		}()
+		lifecycle.RunPeriodic(ctx, 7*24*time.Hour, delay, func() {
+			log.Println("Running scheduled webmention checks")
+			CheckAllMonitoredURLsContext(ctx)
+		})
 	} else {
 		log.Println("Skipping scheduled webmention checks in DEBUG_MODE")
 	}
@@ -75,6 +77,10 @@ func StartPeriodicChecker() {
 
 // CheckAllMonitoredURLs processes all monitored URLs
 func CheckAllMonitoredURLs() {
+	CheckAllMonitoredURLsContext(context.Background())
+}
+
+func CheckAllMonitoredURLsContext(ctx context.Context) {
 	var monitoredURLs []shared_database.MonitoredURL
 
 	// only select URLs that have at least one user monitoring them
@@ -90,6 +96,9 @@ func CheckAllMonitoredURLs() {
 	log.Printf("Processing %d monitored URLs", len(monitoredURLs))
 
 	for _, monitoredURL := range monitoredURLs {
+		if ctx.Err() != nil {
+			return
+		}
 		// only check if the URL is older than 24 hours
 		if monitoredURL.LastCheckedAt != nil && time.Since(*monitoredURL.LastCheckedAt) < 7*24*time.Hour {
 			log.Printf("Skipping %s, last checked at %s", monitoredURL.URL, monitoredURL.LastCheckedAt)

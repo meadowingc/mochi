@@ -1,9 +1,12 @@
 package user_database
 
 import (
+	"context"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -38,13 +41,29 @@ var (
 func InitDb() {
 	// Start the cleanup process once
 	cleanupOnce.Do(func() {
-		go func() {
-			for {
-				time.Sleep(cleanupInterval)
-				cleanupCache()
-			}
-		}()
+		go RunCacheCleanup(context.Background())
 	})
+}
+
+func RunCacheCleanup(ctx context.Context) {
+	ticker := time.NewTicker(cleanupInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			cleanupCache()
+		}
+	}
+}
+
+func DatabaseDirectory() string {
+	return filepath.Join(os.Getenv("MOCHI_STATE_DIR"), databaseFolder)
+}
+
+func databasePath(username string) string {
+	return filepath.Join(DatabaseDirectory(), fmt.Sprintf(databaseNameFormat, username))
 }
 
 func (u *UserDb) close() {
@@ -64,7 +83,7 @@ func (u *UserDb) close() {
 }
 
 func databaseFileExists(username string) bool {
-	_, err := os.Stat(fmt.Sprintf(databaseFilePathFormat, username))
+	_, err := os.Stat(databasePath(username))
 	return !os.IsNotExist(err)
 }
 
@@ -78,7 +97,7 @@ func GetDbIfExists(username string) *UserDb {
 }
 
 func GetDbIfExistsWithError(username string) (*UserDb, error) {
-	_, err := os.Stat(fmt.Sprintf(databaseFilePathFormat, username))
+	_, err := os.Stat(databasePath(username))
 	if os.IsNotExist(err) {
 		return nil, nil
 	}
@@ -86,7 +105,7 @@ func GetDbIfExistsWithError(username string) (*UserDb, error) {
 		return nil, fmt.Errorf("stat user database: %w", err)
 	}
 
-	return getCachedOrCreateDBWithError(username)
+	return openUserDB(username, false)
 }
 
 func GetDbOrFatal(username string) *UserDb {
@@ -94,7 +113,11 @@ func GetDbOrFatal(username string) *UserDb {
 		log.Fatalf("Database file for user %s does not exist", username)
 	}
 
-	return getCachedOrCreateDB(username)
+	userDB, err := openUserDB(username, false)
+	if err != nil {
+		log.Fatalf("failed to open existing user database: %v", err)
+	}
+	return userDB
 }
 
 func GetOrCreateDB(username string) *UserDb {
@@ -132,12 +155,16 @@ func cleanupCache() {
 // GetAllUsernames returns a list of all usernames that have databases
 func GetAllUsernames() ([]string, error) {
 	// Create the database folder if it doesn't exist
-	if _, err := os.Stat(databaseFolder); os.IsNotExist(err) {
+	folder := DatabaseDirectory()
+	if _, err := os.Stat(folder); os.IsNotExist(err) {
+		if os.Getenv("MOCHI_REQUIRE_EXISTING") == "1" {
+			return nil, fmt.Errorf("required user database directory is missing")
+		}
 		return []string{}, nil
 	}
 
 	// Get all files in the database folder
-	files, err := os.ReadDir(databaseFolder)
+	files, err := os.ReadDir(folder)
 	if err != nil {
 		return nil, fmt.Errorf("error reading database directory: %v", err)
 	}
@@ -179,6 +206,13 @@ func getCachedOrCreateDB(username string) *UserDb {
 }
 
 func getCachedOrCreateDBWithError(username string) (*UserDb, error) {
+	return openUserDB(username, true)
+}
+
+func openUserDB(username string, allowCreate bool) (*UserDb, error) {
+	if username == "" || strings.Contains(username, "/") {
+		return nil, fmt.Errorf("invalid user database identifier")
+	}
 	cacheMutex.Lock()
 	defer cacheMutex.Unlock()
 
@@ -188,16 +222,37 @@ func getCachedOrCreateDBWithError(username string) (*UserDb, error) {
 	}
 
 	// create the database folder if it doesn't exist
-	if _, err := os.Stat(databaseFolder); os.IsNotExist(err) {
-		if err := os.Mkdir(databaseFolder, 0755); err != nil {
+	folder := DatabaseDirectory()
+	if info, err := os.Lstat(folder); os.IsNotExist(err) {
+		if os.Getenv("MOCHI_REQUIRE_EXISTING") == "1" {
+			return nil, fmt.Errorf("required user database directory is missing")
+		}
+		if err := os.Mkdir(folder, 0755); err != nil {
 			return nil, fmt.Errorf("create user database directory: %w", err)
 		}
 	} else if err != nil {
 		return nil, fmt.Errorf("stat user database directory: %w", err)
+	} else if !info.IsDir() {
+		return nil, fmt.Errorf("user database directory is redirected")
 	}
 
+	path := databasePath(username)
+	mode := "rw"
+	if info, err := os.Lstat(path); os.IsNotExist(err) && allowCreate {
+		mode = "rwc"
+	} else if err != nil {
+		return nil, fmt.Errorf("existing user database is missing: %w", err)
+	} else if !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("user database is redirected")
+	}
+	absolute, err := filepath.Abs(path)
+	if err != nil {
+		return nil, err
+	}
+	dsn := (&url.URL{Scheme: "file", Path: absolute}).String() +
+		"?cache=shared&mode=" + mode + "&_journal_mode=WAL"
 	db, err := gorm.Open(sqlite.Open(
-		fmt.Sprintf("file:"+databaseFilePathFormat+"?cache=shared&mode=rwc&_journal_mode=WAL", username),
+		dsn,
 	), &gorm.Config{})
 	if err != nil {
 		return nil, fmt.Errorf("connect user database: %w", err)

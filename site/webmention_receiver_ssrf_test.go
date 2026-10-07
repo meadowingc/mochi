@@ -3,6 +3,7 @@ package site
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"mochi/lifecycle"
 	"mochi/safehttp"
 	"mochi/shared_database"
 	"mochi/user_database"
@@ -178,14 +180,23 @@ func TestWebmentionReceiverAllowedFlowUsesInjectedSafeTransport(t *testing.T) {
 		newWebmentionReceiverHTTPClient = originalFactory
 	})
 
-	notificationChannel := make(chan struct{}, 1)
+	notificationChannel := make(chan struct{})
+	notificationRelease := make(chan struct{})
+	var releaseOnce sync.Once
 	originalNotification := sendWebmentionNotification
 	sendWebmentionNotification = func(string, string) error {
-		notificationChannel <- struct{}{}
+		close(notificationChannel)
+		<-notificationRelease
 		return nil
 	}
 	t.Cleanup(func() {
 		sendWebmentionNotification = originalNotification
+	})
+	t.Cleanup(func() {
+		releaseOnce.Do(func() { close(notificationRelease) })
+		if err := lifecycle.Background.Wait(context.Background()); err != nil {
+			t.Error(err)
+		}
 	})
 
 	form := url.Values{
@@ -209,6 +220,15 @@ func TestWebmentionReceiverAllowedFlowUsesInjectedSafeTransport(t *testing.T) {
 	case <-notificationChannel:
 	case <-time.After(3 * time.Second):
 		t.Fatal("timed out waiting for allowed webmention processing")
+	}
+	drain, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+	if err := lifecycle.Background.Wait(drain); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("nested notification was not retained during drain: %v", err)
+	}
+	releaseOnce.Do(func() { close(notificationRelease) })
+	if err := lifecycle.Background.Wait(context.Background()); err != nil {
+		t.Fatal(err)
 	}
 
 	calls := make(map[string]bool)

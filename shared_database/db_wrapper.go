@@ -3,6 +3,9 @@ package shared_database
 import (
 	"fmt"
 	"log"
+	"net/url"
+	"os"
+	"path/filepath"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -11,12 +14,36 @@ import (
 var Db *gorm.DB
 
 func InitSharedDb() {
-	var err error
+	if err := InitSharedDbWithError(); err != nil {
+		log.Fatalf("Shared database initialization failed: %v", err)
+	}
+}
+
+func DatabasePath() string {
+	return filepath.Join(os.Getenv("MOCHI_STATE_DIR"), "shared.db")
+}
+
+func InitSharedDbWithError() error {
+	path := DatabasePath()
+	mode := "rwc"
+	if os.Getenv("MOCHI_REQUIRE_EXISTING") == "1" {
+		info, err := os.Lstat(path)
+		if err != nil || !info.Mode().IsRegular() {
+			return fmt.Errorf("required existing shared database is missing or redirected")
+		}
+		mode = "rw"
+	}
+	absolute, err := filepath.Abs(path)
+	if err != nil {
+		return err
+	}
+	dsn := (&url.URL{Scheme: "file", Path: absolute}).String() +
+		"?cache=shared&mode=" + mode + "&_journal_mode=WAL"
 	Db, err = gorm.Open(sqlite.Open(
-		"file:shared.db?cache=shared&mode=rwc&_journal_mode=WAL",
+		dsn,
 	), &gorm.Config{})
 	if err != nil {
-		log.Fatalf("failed to connect database: %v", err)
+		return fmt.Errorf("connect shared database: %w", err)
 	}
 
 	// Migrate the schema
@@ -29,12 +56,13 @@ func InitSharedDb() {
 		&PublicSiteRoute{},
 	)
 	if err != nil {
-		log.Fatalf("failed to migrate database: %v", err)
+		return fmt.Errorf("migrate shared database: %w", err)
 	}
 
 	if err := removeObsoletePublicSiteRouteColumns(Db); err != nil {
-		log.Fatalf("failed to remove obsolete public route columns: %v", err)
+		return err
 	}
+	return nil
 }
 
 func removeObsoletePublicSiteRouteColumns(db *gorm.DB) error {

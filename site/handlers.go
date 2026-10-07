@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"mochi/constants"
+	"mochi/lifecycle"
 	"mochi/notifier"
 	"mochi/shared_database"
 	"mochi/user_database"
@@ -945,7 +946,7 @@ func ReaperPostHit(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Request received"))
 
 	// Execute the rest of the logic in a goroutine
-	go func() {
+	lifecycle.Background.Go(func() {
 		pagePathParam := r.URL.Query().Get("path")
 		referrerParam := stringWithValueOrNil(r.URL.Query().Get("referrer"))
 
@@ -1085,7 +1086,7 @@ func ReaperPostHit(w http.ResponseWriter, r *http.Request) {
 			log.Printf("ReaperPostHit: error saving hit site_id=%d: %v", site.ID, result.Error)
 			return
 		}
-	}()
+	})
 }
 
 // WebmentionSenderDashboard handles the webmention sender dashboard page

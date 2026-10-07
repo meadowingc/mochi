@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"mochi/lifecycle"
 	"mochi/notifier"
 	"mochi/safehttp"
 	"mochi/user_database"
@@ -280,7 +281,7 @@ func WebmentionReceive(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte("Request received"))
 
-	go func() {
+	lifecycle.Background.Go(func() {
 		user_db := resolved.UserDB
 		site := resolved.Site
 		username := resolved.Route.Username
@@ -441,7 +442,7 @@ func WebmentionReceive(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Send a Discord notification
-		go func() {
+		lifecycle.Background.Go(func() {
 			// Extract target path for better context
 			targetPath := targetUrl.Path
 			if targetPath == "" {
@@ -463,9 +464,9 @@ func WebmentionReceive(w http.ResponseWriter, r *http.Request) {
 			} else {
 				log.Printf("WebmentionReceive: Discord notification sent site_id=%d", site.ID)
 			}
-		}()
+		})
 
-	}()
+	})
 }
 
 func readAndCloseLimitedBody(response *http.Response, limit int64) ([]byte, error) {

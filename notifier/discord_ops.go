@@ -2,7 +2,9 @@ package notifier
 
 import (
 	"fmt"
+	"net/http"
 	"os"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 )
@@ -12,6 +14,7 @@ func getDiscordBotHandle() *discordgo.Session {
 	if err != nil {
 		panic(err)
 	}
+	discord.Client = &http.Client{Timeout: 30 * time.Second}
 
 	return discord
 }

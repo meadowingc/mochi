@@ -1,22 +1,19 @@
 package main
 
 import (
+	"context"
 	"log"
 	"mochi/constants"
 	_ "mochi/docs"
+	"mochi/lifecycle"
 	"mochi/notifier"
-	"mochi/shared_database"
 	"mochi/site"
 	"mochi/user_database"
-	"mochi/webmention_sender"
 	"net/http"
 	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/go-chi/cors"
-	"github.com/joho/godotenv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/httprate"
@@ -33,46 +30,10 @@ import (
 // @name Authorization
 // @description Enter your API key with the "Bearer " prefix, e.g. "Bearer abc123..."
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
+	if err := run(); err != nil {
+		log.Printf("Mochi stopped with an error: %v", err)
+		os.Exit(1)
 	}
-
-	shared_database.InitSharedDb()
-	user_database.InitDb()
-	if err := shared_database.ReconcilePublicSiteRoutes(); err != nil {
-		log.Fatal("Public site route reconciliation failed")
-	}
-
-	r := initRouter()
-
-	e2eMode := constants.DEBUG_MODE && os.Getenv("MOCHI_E2E_MODE") == "true"
-	if !e2eMode {
-		go notifier.StartInteractionHandler()
-		go webmention_sender.StartPeriodicChecker()
-		go startDataCleanupScheduler()
-		go startMetricsReportScheduler()
-	}
-
-	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
-
-	const portNum = ":" + constants.LOCAL_PORT_NUM
-	go func() {
-		log.Printf("Running on http://localhost" + ":" + constants.LOCAL_PORT_NUM)
-		if err := http.ListenAndServe(portNum, r); err != nil {
-			log.Printf("HTTP server stopped: %v", err)
-		}
-	}()
-
-	// Block until a signal is received
-	<-signals
-	log.Println("Shutting down gracefully...")
-
-	// Close open user_database connections
-	user_database.CleanupOnAppClose()
-	shared_database.CleanupOnAppClose()
-
 }
 
 func initRouter() *chi.Mux {
@@ -233,6 +194,10 @@ func initRouter() *chi.Mux {
 
 // cleanupOldData deletes data older than the retention period for each site
 func cleanupOldData() {
+	cleanupOldDataContext(context.Background())
+}
+
+func cleanupOldDataContext(ctx context.Context) {
 	log.Println("Starting scheduled data cleanup check...")
 
 	// Get all usernames
@@ -248,6 +213,9 @@ func cleanupOldData() {
 	totalHitsDeleted := int64(0)
 
 	for _, username := range usernames {
+		if ctx.Err() != nil {
+			return
+		}
 		userDB := user_database.GetDbIfExists(username)
 		if userDB == nil {
 			continue
@@ -261,6 +229,9 @@ func cleanupOldData() {
 		}
 
 		for _, siteData := range sites {
+			if ctx.Err() != nil {
+				return
+			}
 			// Default to 6 months if not set
 			retentionMonths := siteData.DataRetentionMonths
 			if retentionMonths <= 0 {
@@ -329,28 +300,15 @@ func cleanupOldData() {
 }
 
 // startDataCleanupScheduler runs the data cleanup process on a regular schedule
-func startDataCleanupScheduler() {
-	ticker := time.NewTicker(2 * 7 * 24 * time.Hour) // Run once every 2 weeks
-	defer ticker.Stop()
-
-	// Run an initial cleanup on startup
-	cleanupOldData()
-
-	for range ticker.C {
-		cleanupOldData()
-	}
+func startDataCleanupScheduler(ctx context.Context, delay time.Duration) {
+	lifecycle.RunPeriodic(ctx, 2*7*24*time.Hour, delay, func() {
+		cleanupOldDataContext(ctx)
+	})
 }
 
 // startMetricsReportScheduler runs the metrics reporting process on a regular schedule
-func startMetricsReportScheduler() {
-	// Check for metrics reports to send every hour
-	ticker := time.NewTicker(1 * time.Hour)
-	defer ticker.Stop()
-
-	// Run an initial check on startup
-	notifier.CheckAndSendScheduledMetricsReports()
-
-	for range ticker.C {
-		notifier.CheckAndSendScheduledMetricsReports()
-	}
+func startMetricsReportScheduler(ctx context.Context, delay time.Duration) {
+	lifecycle.RunPeriodic(ctx, time.Hour, delay, func() {
+		notifier.CheckAndSendScheduledMetricsReportsContext(ctx)
+	})
 }

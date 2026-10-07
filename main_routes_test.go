@@ -8,6 +8,7 @@ import (
 )
 
 func TestCanonicalAndLegacyPublicRoutesAreRegistered(t *testing.T) {
+	t.Setenv("CSRF_KEY", "32-byte-long-auth-key-for-testing")
 	router := initRouter()
 	routes := make(map[string]bool)
 	if err := chi.Walk(router, func(

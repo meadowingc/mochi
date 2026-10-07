@@ -1,0 +1,40 @@
+[Unit]
+Description=Mochi analytics and webmentions
+After=network-online.target
+Wants=network-online.target
+RequiresMountsFor=/mnt/volume-hel1-1/mochi-state /opt/mochi
+ConditionPathExists=/etc/mochi/mochi.env
+ConditionPathExists=/mnt/volume-hel1-1/mochi-state/shared.db
+ConditionPathIsDirectory=/mnt/volume-hel1-1/mochi-state/.user_databases
+
+[Service]
+Type=exec
+User=mochi
+Group=mochi
+WorkingDirectory=/opt/mochi/current
+Environment=MOCHI_ENV_FILE=/etc/mochi/mochi.env
+Environment=MOCHI_STATE_DIR=/mnt/volume-hel1-1/mochi-state
+Environment=MOCHI_REQUIRE_EXISTING=1
+Environment=MOCHI_HTTP_ADDR=127.0.0.1:4738
+Environment=MOCHI_WORKERS=enabled
+ExecStart=/opt/mochi/current/mochi
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=660
+SendSIGKILL=no
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadWritePaths=/mnt/volume-hel1-1/mochi-state
+
+[Install]
+WantedBy=multi-user.target

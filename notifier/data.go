@@ -1,6 +1,7 @@
 package notifier
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
@@ -362,6 +363,10 @@ func SendSiteMetricsReport(username string, site user_database.Site) error {
 // CheckAndSendScheduledMetricsReports checks if users need metrics reports sent
 // based on their notification frequency settings and timezone preferences
 func CheckAndSendScheduledMetricsReports() {
+	CheckAndSendScheduledMetricsReportsContext(context.Background())
+}
+
+func CheckAndSendScheduledMetricsReportsContext(ctx context.Context) {
 	log.Println("Checking for scheduled metrics reports...")
 
 	now := time.Now()
@@ -379,6 +384,9 @@ func CheckAndSendScheduledMetricsReports() {
 	}
 
 	for _, settings := range allSettings {
+		if ctx.Err() != nil {
+			return
+		}
 		// Skip users with notifications disabled
 		if !settings.NotificationsEnabled {
 			continue
@@ -422,6 +430,9 @@ func CheckAndSendScheduledMetricsReports() {
 
 		// Check each site for whether it needs a metrics report
 		for _, site := range sites {
+			if ctx.Err() != nil {
+				return
+			}
 			// Skip sites with no metrics notifications
 			if site.MetricsNotificationFreq == "" || site.MetricsNotificationFreq == "none" {
 				continue
