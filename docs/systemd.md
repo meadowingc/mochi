@@ -14,7 +14,7 @@ continues waiting; it does not close stores underneath accepted work.
 | `MOCHI_REQUIRE_EXISTING` | `0` | `1` |
 | `MOCHI_AUTO_MIGRATE` | `enabled` | `disabled` |
 | `MOCHI_WORKERS` | `enabled` | `enabled` |
-| `MOCHI_WORKER_START_DELAY` | `0s` | `0s` |
+| `MOCHI_WORKER_START_DELAY` | `0s` | `60s` |
 
 State contains `shared.db` and the complete `.user_databases` directory.
 Required-existing mode refuses missing shared state or a missing/redirected user
@@ -49,12 +49,59 @@ Never use actual owner credentials or send provider test messages.
 The optional initial scheduler delay accepts durations from `0s` to `1h`.
 It affects only the first scheduled cleanup, webmention and metrics checks;
 normal intervals remain two weeks, seven days and one hour respectively.
-The default preserves immediate startup checks. Cancellation stops subsequent
+The unmanaged default preserves immediate startup checks. The managed unit
+waits one minute before the first scheduled checks, allowing startup state
+verification without running copied or premature production housekeeping.
+The gateway and accepted HTTP work are not delayed. Cancellation stops subsequent
 scheduled items after the current item completes; provider REST requests have
 a 30-second timeout.
 
-The unit is a deployment template, not a completed installer. Do not start it
-against empty state, stop the legacy wrapper blindly, or restore an old database
-over newly accepted writes. The rollout still requires a guarded updater,
-complete copied-state rehearsal, isolated authenticated acceptance, scoped
-legacy drain and verified backup retargeting.
+## Deployment and updates
+
+From a clean, committed checkout on Linux amd64 with Python 3.11+ and the
+reviewed Go 1.25.6 toolchain:
+
+```sh
+python3 scripts/deploy_vps.py meadow-ubuntu-8gb-hel1-1 --yes
+```
+
+The updater validates both race-enabled Go modes and deployment regressions,
+builds the committed archive, and uploads an immutable binary/assets/templates
+release. A serialized transient systemd installer survives SSH disconnects.
+The private receipt printed before installation contains logs, configuration
+backups, complete SQLite snapshots and `deployment.json`; inspect that receipt
+rather than repeating an interrupted command.
+
+Initial migration additionally requires `--migrate-tmux`, `--legacy-pid`,
+`--wrapper-pid` and `--legacy-sha256`, obtained from a fresh inspection.
+Add `--rehearse` to run copied startup with workers disabled and external traffic
+denied, without stopping the legacy processes or changing live routing/state.
+Rehearsal prepares the service account and immutable release.
+
+The installer takes the existing Backuper job lock before its application lock.
+It verifies complete schema/all-table state, including legacy tables and exact
+user database filenames, and requires copied startup to preserve it. A healthy
+identical release is a PID-preserving no-op. Actual cutover temporarily replaces
+only the two Mochi Caddy proxies with maintenance responses, verifies routing
+restoration, and moves the three backup sources and two SQLite-parent write
+permissions together under the lock.
+
+Initial migration also drains legacy HTTP and inspects goroutine function names
+using pinned Delve 1.25.2 through a root-private Unix socket. Inspection explicitly
+detaches without killing the target; accepted/scheduled work blocks migration.
+Only identity-checked wrapper/application PIDs are signalled, never the tmux shell.
+The original installation is retained.
+
+Releases live under `/opt/mochi/releases`, selected by `/opt/mochi/current`.
+The enabled unit runs as the dedicated non-login `mochi` user with mounted-volume
+dependencies and read-only release/configuration access. Do not start it against
+empty state or stop the legacy wrapper blindly.
+
+`/opt/mochi/deployment-pending.json` blocks subsequent operations after uncertain
+shutdown, accepted writes, schema changes or operator configuration edits.
+Automatic recovery switches binaries/configuration only when complete state is
+unchanged; it never copies an old database over accepted writes. Initial recovery
+can launch the untouched original binary in a transient rollback unit, not revive
+the git-pull/build wrapper. Resolve the receipt and pending marker deliberately,
+preserving current state. Verify an actual restart, public health and both full
+encrypted backup restores before considering a migration complete.
