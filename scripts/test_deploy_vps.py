@@ -120,6 +120,14 @@ class StateTests(unittest.TestCase):
                 d.stop_exact(expected)
         signal.assert_not_called()
 
+    def test_debugger_socket_fits_actual_private_receipt_path(self):
+        receipt = Path("/root/mochi-deploy-backups/update-" + "a" * 32)
+        path = d.debug_socket_path(receipt)
+        self.assertEqual(path.parent, receipt)
+        self.assertLess(len(os.fsencode(path)), 108)
+        with self.assertRaises(d.DeploymentError):
+            d.debug_socket_path(Path("/" + "a" * 108))
+
 
 class FakeInstaller(d.Installer):
     def __init__(self, stage):

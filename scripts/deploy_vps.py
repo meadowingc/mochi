@@ -243,6 +243,12 @@ def stop_exact(expected):
         time.sleep(0.1)
 
 
+def debug_socket_path(receipt):
+    path = receipt / ("debug-" + uuid.uuid4().hex[:16] + ".sock")
+    require(len(os.fsencode(path)) < 108, "Private debugger socket path exceeds Unix limit")
+    return path
+
+
 def inspect_legacy(expected, receipt):
     """Read stack names only, then explicitly detach without killing the target."""
     require(process_identity(expected["pid"]) == expected, "Legacy process changed")
@@ -252,7 +258,7 @@ def inspect_legacy(expected, receipt):
             "Legacy process was already stopped/traced")
     tool = Path("/root/mochi-deploy-backups/tools/dlv")
     require(tool.is_file(), "Install reviewed Delve 1.25.2 before legacy cutover")
-    path = receipt / ("debug-" + uuid.uuid4().hex + ".sock")
+    path = debug_socket_path(receipt)
     with (receipt / "goroutines.private.log").open("ab") as output:
         debugger = subprocess.Popen([str(tool), "attach", str(expected["pid"]), "--headless",
                                      "--api-version=2", "--listen=unix:" + str(path)],
