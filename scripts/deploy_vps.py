@@ -733,6 +733,9 @@ def deploy(args):
         source.mkdir()
         subprocess.run(["git", "-C", str(repository), "archive", "-o", str(directory / "source.tar"), revision], check=True)
         extract(directory / "source.tar", source)
+        subprocess.run(["npm", "ci", "--no-audit", "--no-fund"], cwd=source, check=True)
+        subprocess.run(["npm", "run", "build:css"], cwd=source, check=True)
+        subprocess.run(["npm", "run", "test:css"], cwd=source, check=True)
         environment = {**os.environ, "GOTOOLCHAIN": TOOLCHAIN, "CGO_ENABLED": "1", "CC": "/usr/bin/gcc"}
         require(subprocess.check_output(["go", "version"], env=environment, text=True).strip()
                 == "go version go1.25.6 linux/amd64", "Use the reviewed native Go1.25.6 toolchain")
@@ -751,6 +754,7 @@ def deploy(args):
                        cwd=source, env=environment, check=True)
         for name in ("assets", "templates"):
             shutil.copytree(source / name, payload / name)
+        (payload / "templates/layouts/standard.source.html").unlink()
         validate_assets(payload)
         shutil.copyfile(source / "deploy/mochi.service", payload / "mochi.service")
         private_write(payload / "release.json", json.dumps({

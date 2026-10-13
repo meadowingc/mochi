@@ -7,10 +7,13 @@ tasks:
     - task --list-all
 
   install-tailwind-cli:
-    - npm install tailwindcss @tailwindcss/cli
+    - npm ci --no-audit --no-fund
+
+  build-css:
+    - npm run build:css
 
   watch-tailwind:
-    - npx @tailwindcss/cli -i ./main.css -o ./assets/css/bundled_styles.css --watch
+    - npm run watch:css
 
   lint:
     - go run github.com/nishanths/exhaustive/cmd/exhaustive@latest -default-signifies-exhaustive ./...
@@ -18,7 +21,7 @@ tasks:
     - go vet ./...
 
   release:
-    deps: [tidy, lint, test, fmt]
+    deps: [tidy, lint, test, fmt, build-css]
     cmds:
       - go build -tags="release"
 
@@ -35,9 +38,11 @@ tasks:
     - go test -v ./...
 
   run:
+    deps: [build-css]
     - go run .
 
   dev:
+    deps: [build-css]
     - air -c .air.toml
 
   fmt:

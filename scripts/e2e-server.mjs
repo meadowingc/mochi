@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { cp, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -61,6 +61,14 @@ async function run() {
   const binaryPath = join(runDirectory, "mochi-e2e");
 
   try {
+    const cssBuild = spawnSync(process.execPath, [join(repositoryRoot, "scripts/build-css.mjs")], {
+      cwd: repositoryRoot,
+      stdio: "inherit",
+    });
+    if (cssBuild.error) throw cssBuild.error;
+    if (cssBuild.status !== 0) {
+      throw new Error(`Mochi CSS build failed (${cssBuild.signal ?? cssBuild.status})`);
+    }
     await Promise.all([
       cp(join(repositoryRoot, "templates"), join(runDirectory, "templates"), {
         recursive: true,

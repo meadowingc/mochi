@@ -58,24 +58,51 @@ a 30-second timeout.
 
 ## Deployment and updates
 
-From a clean, committed checkout on Linux amd64 with Python 3.11+ and the
-reviewed Go 1.25.6 toolchain:
+From a clean, committed checkout on Linux amd64 with Python 3.11+, Go 1.25.6,
+Node 22.22.2 and npm 10.9.7:
 
 ```sh
 python3 scripts/deploy_vps.py meadow-ubuntu-8gb-hel1-1 --yes
 ```
 
-The updater validates both race-enabled Go modes and deployment regressions,
-builds the committed archive, and uploads an immutable binary/assets/templates
-release. A serialized transient systemd installer survives SSH disconnects.
-The generated stylesheet is tracked in Git so clean source archives include it;
-deployment does not regenerate it or upgrade Tailwind. The initial tracked bundle
-is the preserved production Tailwind 4.1.18 artifact (SHA-256
-`606bd6e66903abe4e15073ba2bccbd601a419c216ee1a690b9f203fd1e898601`).
-When deliberately rebuilding CSS, review the Tailwind version and bundle changes,
-update the stylesheet URL's `v` value in `templates/layouts/standard.html` to the
-first 12 SHA-256 characters, and commit both files. This prevents cached missing
-or stale styles from surviving an asset change.
+The updater extracts the committed archive, runs `npm ci`, generates the CSS
+and layout, and validates the CSS build and both race-enabled Go modes before
+uploading an immutable binary/assets/templates release. A serialized transient
+systemd installer survives SSH disconnects. Node/npm are build-machine tools;
+the VPS runtime needs neither.
+
+Tailwind and its compiler are pinned to production's existing 4.1.18 version;
+the full dependency graph is locked by `package-lock.json`. `.node-version`,
+package engines and `.npmrc` enforce the reviewed Node/npm versions. Builds
+invoke the installed CLI directly, never downloading an unpinned CLI with npx.
+The generated stylesheet reproduces the original production artifact (SHA-256
+`606bd6e66903abe4e15073ba2bccbd601a419c216ee1a690b9f203fd1e898601`)
+for the initial source recipe; legitimate source edits generate a new hash.
+
+```sh
+npm ci --no-audit --no-fund
+npm run build:css
+npm run test:css
+```
+
+Edit `main.css`, the templates, or `templates/layouts/standard.source.html`,
+not generated files. The compiler explicitly scans templates, site code and
+asset JavaScript; unrelated checkout files, tests outside those directories,
+and the generated layout cannot accidentally add utilities. Tailwind4 sources
+are configured in `main.css`, not a legacy JavaScript configuration file.
+`assets/css/bundled_styles.css` and `templates/layouts/standard.html` are ignored
+build outputs. The layout's stylesheet URL automatically receives the first12
+SHA-256 characters. The source layout remains unchanged and is excluded from
+the release payload; no manual hash edit or generated-file commit is needed.
+Compilation, dependency/version or source-marker failures stop packaging.
+
+For local development, `task run`/`task dev` generate the initial assets; run
+`npm run watch:css` alongside the server to rebuild both outputs on source
+changes. The existing Tailwind install/watch Taskfile targets use these same
+locked commands. `npm run test:e2e` also builds CSS before starting its isolated
+server. The legacy unmanaged wrapper builds locked assets before launching;
+the managed VPS service never installs packages or compiles CSS at startup.
+
 Missing/empty CSS or Chart.js and a mismatched stylesheet cache version block
 packaging and installation. Copied startup, live startup, public verification
 and no-op checks fetch both assets and verify MIME types and exact release bytes.

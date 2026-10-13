@@ -63,7 +63,7 @@ class StateTests(unittest.TestCase):
         with self.assertRaises(d.DeploymentError):
             d.validate_assets(self.root)
 
-    def test_tracked_bundle_and_template_have_matching_cache_version(self):
+    def test_generated_bundle_and_template_have_matching_cache_version(self):
         d.validate_assets(Path(__file__).resolve().parents[1])
 
     def test_http_checks_reject_missing_wrong_mime_and_changed_assets(self):

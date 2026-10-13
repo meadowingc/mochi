@@ -1,1 +1,7 @@
-@import "tailwindcss";
+@import "tailwindcss" source(none);
+@source "./templates";
+@source not "./templates/layouts/standard.html";
+@source "./site";
+@source "./assets/js";
+/* Preserve the compatibility utility in the original production bundle. */
+@source inline("lowercase");

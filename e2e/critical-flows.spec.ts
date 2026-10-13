@@ -1,6 +1,28 @@
 import { expect, test } from "@playwright/test";
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 
 const password = "e2e-password";
+
+test("generated CSS has the correct cache version, MIME type and visible styles", async ({ page }) => {
+  const css = readFileSync("assets/css/bundled_styles.css");
+  const version = createHash("sha256").update(css).digest("hex").slice(0, 12);
+  const pageErrors: string[] = [];
+  page.on("pageerror", error => pageErrors.push(error.message));
+  for (const path of ["/", "/user/login", "/user/register"]) {
+    await page.goto(path);
+    await expect(page.locator('link[rel="stylesheet"]')).toHaveAttribute(
+      "href", `/assets/css/bundled_styles.css?v=${version}`,
+    );
+    const response = await page.request.get(`/assets/css/bundled_styles.css?v=${version}`);
+    expect(response.status()).toBe(200);
+    expect(response.headers()["content-type"]).toContain("text/css");
+    expect(await response.body()).toEqual(css);
+    await expect(page.locator("body")).toHaveCSS("background-color", "oklch(0.985 0.001 106.423)");
+    await expect(page.locator("header")).toHaveCSS("border-bottom-width", "1px");
+  }
+  expect(pageErrors).toEqual([]);
+});
 
 function uniqueUsername(prefix: string, retry: number): string {
   return `${prefix}_${process.pid}_${retry}`;

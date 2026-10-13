@@ -10,6 +10,8 @@ shared.db*
 
 tmp
 node_modules
+assets/css/bundled_styles.css
+templates/layouts/standard.html
 playwright-report/
 test-results/
 blob-report/
